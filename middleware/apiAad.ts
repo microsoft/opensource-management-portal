@@ -3,28 +3,30 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+import { NextFunction, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import jwksClient from 'jwks-rsa';
 
 import { isJsonError, jsonError } from './jsonError';
 import { IApiRequest, wrapErrorForImmediateUserError } from './apiReposAuth';
-import { PersonalAccessToken } from '../entities/token/token';
-import { CreateError, getProviders } from '../transitional';
+import { PersonalAccessToken } from '../business/entities/token/token';
+import { CreateError, getProviders } from '../lib/transitional';
 import getCompanySpecificDeployment from './companySpecificDeployment';
 
 // CONSIDER: Caching of signing keys
 
-export function requireAadApiAuthorizedScope(scope: string) {
-  return (req: IApiRequest, res, next) => {
+export function requireAadApiAuthorizedScope(scope: string | string[]) {
+  return (req: IApiRequest, res: Response, next: NextFunction) => {
     const { apiKeyToken } = req;
-    if (!apiKeyToken.hasScope(scope)) {
+    const scopes = typeof scope === 'string' ? [scope] : scope;
+    if (!apiKeyToken.hasAnyScope(scopes)) {
       return next(jsonError(`Not authorized for ${scope}`, 403));
     }
     return next();
   };
 }
 
-export default function aadApiMiddleware(req: IApiRequest, res, next) {
+export default function aadApiMiddleware(req: IApiRequest, res: Response, next: NextFunction) {
   return validateAadAuthorization(req)
     .then((ok) => {
       return next();
@@ -33,7 +35,7 @@ export default function aadApiMiddleware(req: IApiRequest, res, next) {
       if ((err as any).immediate === true) {
         console.warn(`AAD API authorization failed: ${err}`);
       }
-      return isJsonError(err) ? next(err) : jsonError(err, 500);
+      return isJsonError(err, req.url) ? next(err) : (jsonError(err, 500) as unknown);
     });
 }
 
@@ -121,20 +123,37 @@ async function validateAadAuthorization(req: IApiRequest): Promise<void> {
     }
 
     const { appid, oid } = payload as any;
-    let approvedAppMonikerId = await aadApiValidator.getAuthorizedClientIdToken(appid);
-    if (!approvedAppMonikerId) {
-      approvedAppMonikerId = await aadApiValidator.getAuthorizedObjectIdToken(oid);
+    const monikerSources = [];
+    const approvedAppMonikerClientId = await aadApiValidator.getAuthorizedClientIdToken(appid);
+    if (approvedAppMonikerClientId) {
+      monikerSources.push('client');
+    }
+    const approvedAppMonikerObjectId = await aadApiValidator.getAuthorizedObjectIdToken(oid);
+    if (approvedAppMonikerObjectId) {
+      monikerSources.push('object');
     }
 
-    const notAuthorized = !approvedAppMonikerId;
+    const notAuthorized = !approvedAppMonikerClientId && !approvedAppMonikerObjectId;
     if (notAuthorized) {
       throw wrapErrorForImmediateUserError(
         jsonError(`App ${appid} and object ID ${oid} is not authorized for this API endpoint`, 403)
       );
     }
 
-    const scopes = await aadApiValidator.getScopes(approvedAppMonikerId);
-    const displayValues = await aadApiValidator.getDisplayValues(approvedAppMonikerId);
+    const scopesSet = new Set<string>();
+    if (approvedAppMonikerClientId) {
+      const clientIdScopes = await aadApiValidator.getScopes(approvedAppMonikerClientId);
+      clientIdScopes.forEach((s) => scopesSet.add(s));
+    }
+    if (approvedAppMonikerObjectId) {
+      const objectIdScopes = await aadApiValidator.getScopes(approvedAppMonikerObjectId);
+      objectIdScopes.forEach((s) => scopesSet.add(s));
+    }
+    const scopes = Array.from(scopesSet);
+
+    const displayValues = await aadApiValidator.getDisplayValues(
+      approvedAppMonikerClientId || approvedAppMonikerObjectId
+    );
 
     const apiToken = PersonalAccessToken.CreateFromAadAuthorization(
       {
@@ -151,6 +170,7 @@ async function validateAadAuthorization(req: IApiRequest): Promise<void> {
       name: 'ApiAadAppAuthorized',
       properties: Object.assign({}, decodedToken as any, {
         authorizedScopes: scopes.join(','),
+        monikerSources: monikerSources.join(','),
       }),
     });
   } catch (error) {

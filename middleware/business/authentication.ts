@@ -3,30 +3,32 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+import { Response, NextFunction } from 'express';
+
 import { ReposAppRequest, IAppSession } from '../../interfaces';
 
 import Debug from 'debug';
 const debug = Debug.debug('user');
 
-import { getProviders } from '../../transitional';
+import { getProviders } from '../../lib/transitional';
 import {
   ICorporateIdentity,
   IGitHubIdentity,
   IndividualContext,
   GitHubIdentitySource,
 } from '../../business/user';
-import { storeOriginalUrlAsReferrer } from '../../utils';
+import { storeOriginalUrlAsReferrer } from '../../lib/utils';
 import getCompanySpecificDeployment from '../companySpecificDeployment';
 
 export async function requireAuthenticatedUserOrSignInExcluding(
   exclusionPaths: string[],
   req: ReposAppRequest,
-  res,
-  next
+  res: Response,
+  next: NextFunction
 ) {
-  const baseUrl = req.baseUrl;
+  const url = req.url;
   for (let i = 0; i < exclusionPaths.length; i++) {
-    if (baseUrl.startsWith(exclusionPaths[i])) {
+    if (url.startsWith(exclusionPaths[i])) {
       console.log(`${req.method} ${req.baseUrl} excluded from auth by prefix: ${exclusionPaths[i]}`);
       return next();
     }
@@ -34,7 +36,7 @@ export async function requireAuthenticatedUserOrSignInExcluding(
   return await requireAuthenticatedUserOrSignIn(req, res, next);
 }
 
-export async function requireAccessTokenClient(req: ReposAppRequest, res, next) {
+export async function requireAccessTokenClient(req: ReposAppRequest, res: Response, next: NextFunction) {
   if (req.oauthAccessToken) {
     return next();
   }
@@ -63,7 +65,7 @@ export async function requireAccessTokenClient(req: ReposAppRequest, res, next) 
   return next();
 }
 
-function signoutThenSignIn(req: ReposAppRequest, res) {
+function signoutThenSignIn(req: ReposAppRequest, res: Response) {
   const { insights } = getProviders(req);
   req.logout({ keepSessionInfo: false }, (err) => {
     if (err) {
@@ -73,7 +75,7 @@ function signoutThenSignIn(req: ReposAppRequest, res) {
   });
 }
 
-function redirectToSignIn(req, res) {
+function redirectToSignIn(req: ReposAppRequest, res: Response) {
   const config = getProviders(req).config;
   storeOriginalUrlAsReferrer(
     req,
@@ -83,7 +85,11 @@ function redirectToSignIn(req, res) {
   );
 }
 
-export async function requireAuthenticatedUserOrSignIn(req: ReposAppRequest, res, next) {
+export async function requireAuthenticatedUserOrSignIn(
+  req: ReposAppRequest,
+  res: Response,
+  next: NextFunction
+) {
   const companySpecific = getCompanySpecificDeployment();
   const providers = getProviders(req);
   const { config } = providers;
@@ -111,7 +117,7 @@ export async function requireAuthenticatedUserOrSignIn(req: ReposAppRequest, res
   return shouldRedirectToSignIn ? redirectToSignIn(req, res) : next();
 }
 
-export function setIdentity(req: ReposAppRequest, res, next) {
+export function setIdentity(req: ReposAppRequest, res: Response, next: NextFunction) {
   const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
   if (!activeContext) {
     return next(new Error('No context available'));

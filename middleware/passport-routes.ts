@@ -3,11 +3,11 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Response, NextFunction } from 'express';
+import type { Response, NextFunction } from 'express';
 
-import { redirectToReferrer, storeReferrer } from '../utils';
-import { getProviders } from '../transitional';
-import { ReposAppRequest, IAppSession } from '../interfaces';
+import { redirectToReferrer, storeReferrer } from '../lib/utils';
+import { getProviders } from '../lib/transitional';
+import type { ReposAppRequest, IAppSession } from '../interfaces';
 import getCompanySpecificDeployment from './companySpecificDeployment';
 import { attachAadPassportRoutes } from './passport/aadRoutes';
 import { attachGitHubPassportRoutes } from './passport/githubRoutes';
@@ -228,6 +228,7 @@ export default function configurePassport(app, passport, config) {
             ? `Your ${config.brand.companyName} and GitHub accounts have been unlinked. You no longer have access to any ${config.brand.companyName} organizations, and you have been signed out of this portal.`
             : 'Goodbye',
           title: 'Goodbye',
+          clearLocalStorage: true,
           buttonText: unlinked ? 'Sign in to connect a new account' : 'Sign in',
           config: config.obfuscatedConfig,
         });

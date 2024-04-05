@@ -3,6 +3,9 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+import { promises as fs } from 'fs';
+import { randomUUID } from 'crypto';
+
 import MockMailService from './mockMailService';
 import SmtpMailService from './smtpMailService';
 import AzureServiceBus from './azureServiceBus';
@@ -20,6 +23,46 @@ export interface IMail {
   correlationId?: string;
   senderProfile?: string;
   replyTo?: string;
+  attachments?: MailAttachment[];
+  linkedResources?: MailAttachment[];
+}
+
+export type MailAttachment = {
+  name: string;
+  contentId: string;
+  contentType: string;
+  base64Value: string;
+};
+
+export async function createMailAttachment(
+  localPath: string,
+  name: string,
+  contentType: string,
+  contentId?: string
+): Promise<MailAttachment> {
+  const realContentId = contentId || randomUUID();
+  const content = await fs.readFile(localPath, 'base64');
+  return {
+    name,
+    contentId: realContentId,
+    contentType,
+    base64Value: content,
+  };
+}
+
+export function createMailAttachmentFromBase64(
+  base64contents: string,
+  name: string,
+  contentType: string,
+  contentId?: string
+): MailAttachment {
+  const realContentId = contentId || randomUUID();
+  return {
+    name,
+    contentId: realContentId,
+    contentType,
+    base64Value: base64contents,
+  };
 }
 
 export interface IMailProvider {

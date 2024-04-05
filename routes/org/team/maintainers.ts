@@ -3,11 +3,11 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Router } from 'express';
+import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
-import { getProviders, validateGitHubLogin } from '../../../transitional';
+import { getProviders, validateGitHubLogin } from '../../../lib/transitional';
 import {
   ReposAppRequest,
   RequestTeamMemberAddType,
@@ -28,7 +28,7 @@ interface ILocalRequest extends ReposAppRequest {
 }
 
 router.use(
-  asyncHandler(async (req: ILocalRequest, res, next) => {
+  asyncHandler(async (req: ILocalRequest, res: Response, next: NextFunction) => {
     // Get the latest maintainers, forced, with every request
     const team2 = req.team2 as Team;
     const maintainers = await refreshMaintainers(team2);
@@ -51,7 +51,7 @@ router.get('/refresh', (req: ILocalRequest, res) => {
 router.post(
   '/:id/downgrade',
   MiddlewareTeamAdminRequired,
-  asyncHandler(async (req: ILocalRequest, res, next) => {
+  asyncHandler(async (req: ILocalRequest, res: Response, next: NextFunction) => {
     const team2 = req.team2 as Team;
     const id = req.params.id;
     const verifiedCurrentMaintainers = req.verifiedCurrentMaintainers;
@@ -82,7 +82,7 @@ router.post(
   })
 );
 
-router.use('/add', MiddlewareTeamAdminRequired, (req: ILocalRequest, res, next) => {
+router.use('/add', MiddlewareTeamAdminRequired, (req: ILocalRequest, res: Response, next: NextFunction) => {
   req.team2AddType = RequestTeamMemberAddType.Maintainer;
   return next();
 });
@@ -90,7 +90,7 @@ router.use('/add', MiddlewareTeamAdminRequired, (req: ILocalRequest, res, next) 
 router.post(
   '/add',
   MiddlewareTeamAdminRequired,
-  asyncHandler(async function (req: ILocalRequest, res, next) {
+  asyncHandler(async function (req: ILocalRequest, res: Response, next: NextFunction) {
     const { operations } = getProviders(req);
     const login = validateGitHubLogin(req.body.username);
     const team2 = req.team2 as Team;

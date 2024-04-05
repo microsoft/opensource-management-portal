@@ -2,5 +2,7 @@
   "environmentName": "env://ENVIRONMENT_NAME?default=Unknown",
   "showUsers": "env://SITE_SHOW_USERS?trueIf=show",
   "showDebugFooter": "env://DEBUG_SHOW_FOOTER?trueIf=1",
-  "unlinkWithoutDrops": "env://DEBUG_UNLINK_WITHOUT_DROPS?trueIf=1"
+  "exitImmediately": "env://EXIT_IMMEDIATELY?trueIf=1",
+  "unlinkWithoutDrops": "env://DEBUG_UNLINK_WITHOUT_DROPS?trueIf=1",
+  "breakConsoleEveryMinute": "env://DEBUG_MINUTE_BREAKS?trueIf=1"
 }

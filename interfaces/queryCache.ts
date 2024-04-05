@@ -10,11 +10,11 @@ import {
   GitHubRepositoryPermission,
 } from '.';
 import { Team, Repository, Organization } from '../business';
-import { RepositoryCacheEntity } from '../entities/repositoryCache/repositoryCache';
-import { RepositoryCollaboratorCacheEntity } from '../entities/repositoryCollaboratorCache/repositoryCollaboratorCache';
-import { RepositoryTeamCacheEntity } from '../entities/repositoryTeamCache/repositoryTeamCache';
-import { TeamCacheEntity } from '../entities/teamCache/teamCache';
-import { TeamMemberCacheEntity } from '../entities/teamMemberCache/teamMemberCache';
+import { RepositoryCacheEntity } from '../business/entities/repositoryCache/repositoryCache';
+import { RepositoryCollaboratorCacheEntity } from '../business/entities/repositoryCollaboratorCache/repositoryCollaboratorCache';
+import { RepositoryTeamCacheEntity } from '../business/entities/repositoryTeamCache/repositoryTeamCache';
+import { TeamCacheEntity } from '../business/entities/teamCache/teamCache';
+import { TeamMemberCacheEntity } from '../business/entities/teamMemberCache/teamMemberCache';
 
 export enum QueryCacheOperation {
   New = 'new',

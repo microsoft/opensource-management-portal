@@ -8,16 +8,16 @@ import _ from 'lodash';
 
 import * as common from './common';
 
-import { wrapError } from '../utils';
+import { wrapError } from '../lib/utils';
 import { TeamMember } from './teamMember';
 import { TeamRepositoryPermission } from './teamRepositoryPermission';
-import { IApprovalProvider } from '../entities/teamJoinApproval/approvalProvider';
-import { TeamJoinApprovalEntity } from '../entities/teamJoinApproval/teamJoinApproval';
-import { AppPurpose } from './githubApps';
+import { IApprovalProvider } from './entities/teamJoinApproval/approvalProvider';
+import { TeamJoinApprovalEntity } from './entities/teamJoinApproval/teamJoinApproval';
+import { AppPurpose } from '../lib/github/appPurposes';
 import { CacheDefault, getMaxAgeSeconds, getPageSize, Organization } from '.';
 import {
   IOperationsInstance,
-  IPurposefulGetAuthorizationHeader,
+  PurposefulGetAuthorizationHeader,
   TeamJsonFormat,
   throwIfNotCapable,
   IOperationsUrls,
@@ -25,7 +25,7 @@ import {
   ICacheOptions,
   throwIfNotGitHubCapable,
   IPagedCacheOptions,
-  IGetAuthorizationHeader,
+  GetAuthorizationHeader,
   IUpdateTeamMembershipOptions,
   GitHubTeamRole,
   ITeamMembershipRoleState,
@@ -36,8 +36,9 @@ import {
   IGetTeamRepositoriesOptions,
   GitHubRepositoryType,
   IOperationsProviders,
+  GitHubTeamDetails,
 } from '../interfaces';
-import { validateGitHubLogin, ErrorHelper } from '../transitional';
+import { validateGitHubLogin, ErrorHelper } from '../lib/transitional';
 
 const teamPrimaryProperties = [
   'id',
@@ -82,7 +83,7 @@ export class Team {
 
   private _organization: Organization;
   private _operations: IOperationsInstance;
-  private _getAuthorizationHeader: IPurposefulGetAuthorizationHeader;
+  private _getAuthorizationHeader: PurposefulGetAuthorizationHeader;
 
   private _id: number;
 
@@ -139,7 +140,7 @@ export class Team {
   constructor(
     organization: Organization,
     entity,
-    getAuthorizationHeader: IPurposefulGetAuthorizationHeader,
+    getAuthorizationHeader: PurposefulGetAuthorizationHeader,
     operations: IOperationsInstance
   ) {
     if (!entity || !entity.id) {
@@ -181,6 +182,7 @@ export class Team {
       clone.corporateMetadata = {
         isSystemTeam: this.isSystemTeam,
         isBroadAccessTeam: this.isBroadAccessTeam,
+        isOpenAccessTeam: this.isOpenAccessTeam,
       };
       return clone;
     }
@@ -216,7 +218,7 @@ export class Team {
     if (this._name && this._slug) {
       return;
     }
-    return await this.getDetails();
+    await this.getDetails();
   }
 
   async isDeleted(options?: ICacheOptions): Promise<boolean> {
@@ -230,7 +232,7 @@ export class Team {
     return false;
   }
 
-  async getDetails(options?: ICacheOptions): Promise<any> {
+  async getDetails(options?: ICacheOptions): Promise<GitHubTeamDetails> {
     options = options || {};
     const operations = throwIfNotGitHubCapable(this._operations);
     const cacheOptions = {
@@ -303,7 +305,7 @@ export class Team {
     const getAuthorizationHeader = this._getAuthorizationHeader.bind(
       this,
       AppPurpose.Data
-    ) as IGetAuthorizationHeader;
+    ) as GetAuthorizationHeader;
     const teamEntities = await github.collections.getTeamChildTeams(
       getAuthorizationHeader,
       parameters,
@@ -316,6 +318,15 @@ export class Team {
   get isBroadAccessTeam(): boolean {
     const teams = this._organization.broadAccessTeams;
     // TODO: validating typing here - number or int?
+    if (typeof this._id !== 'number') {
+      throw new Error('Team.id must be a number');
+    }
+    const res = teams.indexOf(this._id);
+    return res >= 0;
+  }
+
+  get isOpenAccessTeam(): boolean {
+    const teams = this._organization.openAccessTeams;
     if (typeof this._id !== 'number') {
       throw new Error('Team.id must be a number');
     }
@@ -687,11 +698,8 @@ export class Team {
     };
   }
 
-  private authorize(purpose: AppPurpose): IGetAuthorizationHeader | string {
-    const getAuthorizationHeader = this._getAuthorizationHeader.bind(
-      this,
-      purpose
-    ) as IGetAuthorizationHeader;
+  private authorize(purpose: AppPurpose): GetAuthorizationHeader | string {
+    const getAuthorizationHeader = this._getAuthorizationHeader.bind(this, purpose) as GetAuthorizationHeader;
     return getAuthorizationHeader;
   }
 }

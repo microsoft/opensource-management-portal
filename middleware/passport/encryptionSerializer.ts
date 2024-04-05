@@ -4,7 +4,7 @@
 //
 
 import { decryptEntityAsync, encryptEntityAsync, IEncryptionOptions } from '../../lib/encryption';
-import { wrapError } from '../../utils';
+import { wrapError } from '../../lib/utils';
 import { LegacySerializer } from './serializer';
 
 // NOTE TO DEVELOPERS: we are no longer using encrypted sessions at our company

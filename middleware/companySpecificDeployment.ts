@@ -18,12 +18,12 @@ function getCompanySpecificDeploymentName() {
 }
 
 function getCompanySpecificDeployment(): ICompanySpecificStartup {
+  if (instance) {
+    return instance;
+  }
   const name = getCompanySpecificDeploymentName();
   if (!name) {
     return null;
-  }
-  if (instance) {
-    return instance;
   }
   try {
     const pn = path.join(__dirname, '..', name);

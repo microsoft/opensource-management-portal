@@ -3,17 +3,13 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { AppPurpose } from './githubApps';
-import {
-  IOperationsInstance,
-  IPurposefulGetAuthorizationHeader,
-  IGetAuthorizationHeader,
-} from '../interfaces';
+import { AppPurpose } from '../lib/github/appPurposes';
+import { IOperationsInstance, PurposefulGetAuthorizationHeader, GetAuthorizationHeader } from '../interfaces';
 import { RepositoryProjectColumn } from './repositoryProjectColumn';
 
 export class RepositoryProjectCard {
   private _operations: IOperationsInstance;
-  private _getAuthorizationHeader: IPurposefulGetAuthorizationHeader;
+  private _getAuthorizationHeader: PurposefulGetAuthorizationHeader;
 
   private _id: number;
   private _column: RepositoryProjectColumn;
@@ -24,7 +20,7 @@ export class RepositoryProjectCard {
     column: RepositoryProjectColumn,
     cardId: number,
     operations: IOperationsInstance,
-    getAuthorizationHeader: IPurposefulGetAuthorizationHeader,
+    getAuthorizationHeader: PurposefulGetAuthorizationHeader,
     entity?: any
   ) {
     this._getAuthorizationHeader = getAuthorizationHeader;
@@ -64,11 +60,8 @@ export class RepositoryProjectCard {
     return this._column;
   }
 
-  private authorize(purpose: AppPurpose): IGetAuthorizationHeader | string {
-    const getAuthorizationHeader = this._getAuthorizationHeader.bind(
-      this,
-      purpose
-    ) as IGetAuthorizationHeader;
+  private authorize(purpose: AppPurpose): GetAuthorizationHeader | string {
+    const getAuthorizationHeader = this._getAuthorizationHeader.bind(this, purpose) as GetAuthorizationHeader;
     return getAuthorizationHeader;
   }
 

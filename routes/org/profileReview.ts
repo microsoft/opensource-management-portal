@@ -3,12 +3,12 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Router } from 'express';
+import { NextFunction, Response, Router } from 'express';
 const router: Router = Router();
 import asyncHandler from 'express-async-handler';
 
 import { ReposAppRequest } from '../../interfaces';
-import { getProviders } from '../../transitional';
+import { getProviders } from '../../lib/transitional';
 
 interface IUserProfileWarnings {
   company?: string;
@@ -17,7 +17,7 @@ interface IUserProfileWarnings {
 
 router.get(
   '/',
-  asyncHandler(async function (req: ReposAppRequest, res, next) {
+  asyncHandler(async function (req: ReposAppRequest, res: Response, next: NextFunction) {
     const organization = req.organization;
     const { operations } = getProviders(req);
     const config = operations.config;

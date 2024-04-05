@@ -5,7 +5,7 @@
 
 import { jsonError } from '..';
 import { IProviders, ReposAppRequest } from '../../interfaces';
-import { getProviders } from '../../transitional';
+import { ErrorHelper, getProviders } from '../../lib/transitional';
 import { IndividualContext } from '../../business/user';
 
 const cachedCorporateMailRequestKey = '__corporateMail';
@@ -25,18 +25,31 @@ export async function getCorporateMailFromActiveContext(
   providers: IProviders,
   activeContext: IndividualContext
 ): Promise<string> {
-  const { graphProvider } = providers;
   if (!activeContext.corporateIdentity || !activeContext.corporateIdentity.id) {
     throw jsonError('No corporate identity', 401);
   }
   let corporateMail = activeContext?.link?.corporateMailAddress;
   if (!corporateMail) {
-    const id = activeContext.corporateIdentity.id;
-    const entry = await graphProvider.getUserById(id);
-    if (!entry || !entry.mailNickname) {
+    const mail = await tryGetCorporateMailFromId(providers, activeContext.corporateIdentity.id);
+    if (!mail) {
       throw jsonError('Invalid corporate identity', 401);
     }
-    corporateMail = entry.mail;
+    corporateMail = mail;
   }
   return corporateMail;
+}
+
+export async function tryGetCorporateMailFromId(providers: IProviders, corporateId: string): Promise<string> {
+  const { graphProvider } = providers;
+  try {
+    const info = await graphProvider.getUserById(corporateId);
+    if (info?.mail) {
+      return info.mail;
+    }
+  } catch (error) {
+    if (!ErrorHelper.IsNotFound(error)) {
+      throw error;
+    }
+  }
+  return null;
 }

@@ -4,6 +4,7 @@
 //
 
 import { GitHubRepositoryPermission, IGitHubCollaboratorPermissions } from '../interfaces';
+import { projectCollaboratorPermissionsObjectToGitHubRepositoryPermission } from '../lib/transitional';
 import * as common from './common';
 
 // prettier-ignore
@@ -13,6 +14,19 @@ const memberPrimaryProperties = [
   'permissions',
   'avatar_url',
 ];
+
+export type CollaboratorJson = {
+  avatar_url: string;
+  id: number;
+  login: string;
+  permissions: IGitHubCollaboratorPermissions;
+};
+
+export type CollaboratorAccount = Collaborator | { id: number; login: string };
+
+export function compareCollaborators(a: Collaborator, b: Collaborator) {
+  return a?.login.localeCompare(b?.login, 'en', { sensitivity: 'base' });
+}
 
 export class Collaborator {
   public static PrimaryProperties = memberPrimaryProperties;
@@ -28,7 +42,7 @@ export class Collaborator {
     }
   }
 
-  asJson() {
+  asJson(): CollaboratorJson {
     return {
       avatar_url: this.avatar_url,
       id: this._id,
@@ -45,15 +59,7 @@ export class Collaborator {
     if (!this._permissions) {
       return GitHubRepositoryPermission.None;
     }
-    const permissions = this._permissions;
-    if (permissions.admin) {
-      return GitHubRepositoryPermission.Admin;
-    } else if (permissions.push) {
-      return GitHubRepositoryPermission.Push;
-    } else if (permissions.pull) {
-      return GitHubRepositoryPermission.Pull;
-    }
-    throw new Error(`Unsupported permission type by getHighestPermission`);
+    return projectCollaboratorPermissionsObjectToGitHubRepositoryPermission(this._permissions);
   }
 
   get id(): number {

@@ -6,8 +6,8 @@
 import { ICacheHelper } from '.';
 import { CosmosClient, Database, Container } from '@azure/cosmos';
 import BlobCache, { IBlobCacheOptions } from './blob';
-import { sleep } from '../../utils';
-import { ErrorHelper, sha256 } from '../../transitional';
+import { sleep } from '../utils';
+import { ErrorHelper, getSafeCosmosResourceKey, sha256 } from '../transitional';
 
 import Debug from 'debug';
 const debug = Debug.debug('cache');
@@ -55,7 +55,7 @@ export default class CosmosCache implements ICacheHelper {
   }
 
   private safetyKey(str: string) {
-    return str.replace(/[%:\\/?#]/g, '');
+    return getSafeCosmosResourceKey(str);
   }
 
   private key(key: string) {

@@ -5,7 +5,7 @@
 
 import _ from 'lodash';
 import moment from 'moment';
-import octicons from 'octicons'; //const octicons = require('octicons');
+import octicons from '@primer/octicons';
 import fileSize from 'file-size';
 import languageMap from 'language-map';
 import validator from 'validator';

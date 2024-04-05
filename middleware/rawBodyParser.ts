@@ -3,10 +3,11 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+import { NextFunction, Response } from 'express';
 import { ReposAppRequest } from '../interfaces';
-import { isWebhookIngestionEndpointEnabled } from '../transitional';
+import { isWebhookIngestionEndpointEnabled } from '../lib/transitional';
 
-export default function rawBodyParser(req: ReposAppRequest, res, next) {
+export default function rawBodyParser(req: ReposAppRequest, res: Response, next: NextFunction) {
   if (!isWebhookIngestionEndpointEnabled(req)) {
     return next();
   }

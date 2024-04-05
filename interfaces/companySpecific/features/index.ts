@@ -3,14 +3,14 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { ICompanySpecificAugmentApiMetadata } from './augmentApiMetadata';
-import { ICompanySpecificFeatureDemo } from './demo';
-import { ICompanySpecificFeatureFirehose } from './firehose';
-import { ICompanySpecificFeatureMailProvider } from './mailProvider';
-import { ICompanySpecificFeatureOrganizationJoinAcl } from './organizationJoinAcl';
-import { ICompanySpecificFeatureOrganizationSudo } from './organizationSudo';
-import { ICompanySpecificFeaturePortalSudo } from './portalSudo';
-import { ICompanySpecificFeatureRepositoryState } from './repositoryActions';
+import type { ICompanySpecificAugmentApiMetadata } from './augmentApiMetadata';
+import type { ICompanySpecificFeatureDemo } from './demo';
+import type { ICompanySpecificFeatureFirehose } from './firehose';
+import type { ICompanySpecificFeatureMailProvider } from './mailProvider';
+import type { ICompanySpecificFeatureOrganizationJoinAcl } from './organizationJoinAcl';
+import type { ICompanySpecificFeatureOrganizationSudo } from './organizationSudo';
+import type { ICompanySpecificFeaturePortalSudo } from './portalSudo';
+import type { ICompanySpecificFeatureRepositoryState } from './repositoryActions';
 
 export * from './organizationSudo';
 export * from './portalSudo';
@@ -22,7 +22,7 @@ export * from './organizationJoinAcl';
 export * from './augmentApiMetadata';
 
 export interface ICompanySpecificFeatures {
-  augmentApiMetadata: ICompanySpecificAugmentApiMetadata;
+  augmentApiMetadata?: ICompanySpecificAugmentApiMetadata;
   organizationSudo?: ICompanySpecificFeatureOrganizationSudo;
   organizationJoinAcl?: ICompanySpecificFeatureOrganizationJoinAcl;
   portalSudo?: ICompanySpecificFeaturePortalSudo;

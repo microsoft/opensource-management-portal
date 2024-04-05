@@ -3,11 +3,11 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Router } from 'express';
+import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
-import { getProviders } from '../transitional';
+import { getProviders } from '../lib/transitional';
 
 import { requirePortalAdministrationPermission } from '../middleware/business/administration';
 import { PostgresLinkProvider } from '../lib/linkProviders/postgres/postgresLinkProvider';
@@ -16,7 +16,7 @@ import { Organization } from '../business';
 import { Account } from '../business';
 import { ILinkProvider } from '../lib/linkProviders';
 import { ICorporateLink, ReposAppRequest, IProviders, UnlinkPurpose } from '../interfaces';
-import { isCodespacesAuthenticating } from '../utils';
+import { isCodespacesAuthenticating } from '../lib/utils';
 
 // - - - Middleware: require that the user isa portal administrator to continue
 router.use(requirePortalAdministrationPermission);
@@ -25,9 +25,11 @@ router.use(requirePortalAdministrationPermission);
 // These functions are not pretty.
 
 enum OperationsAction {
-  DestroyLink,
-  MarkAsServiceAccount,
-  UnmarkServiceAccount,
+  DestroyLink = 'Destroy link',
+  MarkAsServiceAccount = 'Mark as service account',
+  UnmarkServiceAccount = 'Unmark service account',
+  DestroyCollaboratorGrants = 'Destroy collaborator grants',
+  Destroy100 = 'Destroy 100',
 }
 
 enum UserQueryByType {
@@ -207,10 +209,13 @@ async function loadInformation(
       if (queryCache && queryCache.supportsRepositoryCollaborators) {
         const result = await queryCache.userCollaboratorRepositories(thirdPartyId);
         const collaboratorRepositories = [];
+        const hasMany = result.length > 100;
         for (const { repository } of result) {
           try {
-            await repository.getDetails();
-            collaboratorRepositories.push(repository.full_name);
+            if (!hasMany) {
+              await repository.getDetails();
+            }
+            collaboratorRepositories.push(repository.organization.name + '/' + repository.name);
           } catch (ignoreError) {
             console.dir(ignoreError);
           }
@@ -264,7 +269,7 @@ async function getGitHubAccountInformationById(operations: Operations, id: strin
   return account;
 }
 
-router.get('/whois/id/:githubid', function (req: ReposAppRequest, res, next) {
+router.get('/whois/id/:githubid', function (req: ReposAppRequest, res: Response, next: NextFunction) {
   const thirdPartyId = req.params.githubid;
   const providers = getProviders(req);
   queryByGitHubId(providers, thirdPartyId)
@@ -296,7 +301,7 @@ interface IIDValue {
 
 router.get(
   '/whois/link/:linkid',
-  asyncHandler(async function (req: ReposAppRequest, res, next) {
+  asyncHandler(async function (req: ReposAppRequest, res: Response, next: NextFunction) {
     const linkId = req.params.linkid;
     const { linkProvider: lp } = getProviders(req);
     const linkProvider = lp as PostgresLinkProvider;
@@ -315,7 +320,7 @@ router.get(
 
 router.post(
   '/whois/link/:linkid',
-  asyncHandler(async function (req: ReposAppRequest, res, next) {
+  asyncHandler(async function (req: ReposAppRequest, res: Response, next: NextFunction) {
     const { config } = getProviders(req);
     const linkId = req.params.linkid;
     const isLinkDelete = req.body['delete-link'];
@@ -383,7 +388,7 @@ router.post(
 
 router.post(
   '/whois/link/',
-  asyncHandler(async function (req: ReposAppRequest, res, next) {
+  asyncHandler(async function (req: ReposAppRequest, res: Response, next: NextFunction) {
     const { config, operations } = getProviders(req);
     const allowAdministratorManualLinking = operations?.config?.features?.allowAdministratorManualLinking;
     if (!allowAdministratorManualLinking) {
@@ -436,13 +441,17 @@ router.post(
   })
 );
 
-router.post('/whois/id/:githubid', function (req: ReposAppRequest, res, next) {
+router.post('/whois/id/:githubid', function (req: ReposAppRequest, res: Response, next: NextFunction) {
   const thirdPartyId = req.params.githubid;
   const markAsServiceAccount = req.body['mark-as-service-account'];
   const unmarkServiceAccount = req.body['unmark-service-account'];
+  const removeCollaboration = req.body['remove-collaboration'] || req.body['remove-collaboration-100'];
+  const remove100 = req.body['remove-collaboration-100'];
   const providers = getProviders(req);
   let action = OperationsAction.DestroyLink;
-  if (markAsServiceAccount) {
+  if (removeCollaboration) {
+    action = remove100 ? OperationsAction.Destroy100 : OperationsAction.DestroyCollaboratorGrants;
+  } else if (markAsServiceAccount) {
     action = OperationsAction.MarkAsServiceAccount;
   } else if (unmarkServiceAccount) {
     action = OperationsAction.UnmarkServiceAccount;
@@ -458,7 +467,7 @@ router.post('/whois/id/:githubid', function (req: ReposAppRequest, res, next) {
       }
       req.individualContext.webContext.render({
         view: 'organization/whois/drop',
-        title: `Dropped link by ID ${thirdPartyId}`,
+        title: `${action} link by ID ${thirdPartyId}`,
         state,
       });
     })
@@ -467,7 +476,7 @@ router.post('/whois/id/:githubid', function (req: ReposAppRequest, res, next) {
     });
 });
 
-router.get('/whois/aad/:upn', function (req: ReposAppRequest, res, next) {
+router.get('/whois/aad/:upn', function (req: ReposAppRequest, res: Response, next: NextFunction) {
   const upn = req.params.upn;
   const providers = getProviders(req);
   queryByCorporateUsername(providers, upn)
@@ -488,7 +497,7 @@ router.get('/whois/aad/:upn', function (req: ReposAppRequest, res, next) {
     .catch(next);
 });
 
-router.get('/whois/github/:username', function (req: ReposAppRequest, res, next) {
+router.get('/whois/github/:username', function (req: ReposAppRequest, res: Response, next: NextFunction) {
   const login = req.params.username;
   const providers = getProviders(req);
   queryByGitHubLogin(providers, login)
@@ -507,13 +516,17 @@ router.get('/whois/github/:username', function (req: ReposAppRequest, res, next)
     .catch(next);
 });
 
-router.post('/whois/github/:username', function (req: ReposAppRequest, res, next) {
+router.post('/whois/github/:username', function (req: ReposAppRequest, res: Response, next: NextFunction) {
   const username = req.params.username;
   const markAsServiceAccount = req.body['mark-as-service-account'];
   const unmarkServiceAccount = req.body['unmark-service-account'];
+  const removeCollaboration = req.body['remove-collaboration'] || req.body['remove-collaboration-100'];
+  const remove100 = req.body['remove-collaboration-100'];
   const providers = getProviders(req);
   let action = OperationsAction.DestroyLink;
-  if (markAsServiceAccount) {
+  if (removeCollaboration) {
+    action = remove100 ? OperationsAction.Destroy100 : OperationsAction.DestroyCollaboratorGrants;
+  } else if (markAsServiceAccount) {
     action = OperationsAction.MarkAsServiceAccount;
   } else if (unmarkServiceAccount) {
     action = OperationsAction.UnmarkServiceAccount;
@@ -630,6 +643,13 @@ async function destructiveLogic(
     );
   }
 
+  if (action === OperationsAction.DestroyCollaboratorGrants || action === OperationsAction.Destroy100) {
+    const account: Account = operations.getAccount(thirdPartyId);
+    const res = await account.removeCollaboratorPermissions(action === OperationsAction.Destroy100);
+    state.messages = res.history;
+    return state;
+  }
+
   // Account termination
   if (linkQuery && linkQuery.link && !thirdPartyId) {
     thirdPartyId = linkQuery.link.thirdPartyId;
@@ -672,7 +692,7 @@ router.get('/bulkRepoDelete', (req: ReposAppRequest, res) => {
 
 router.post(
   '/bulkRepoDelete',
-  asyncHandler(async (req: ReposAppRequest, res, next) => {
+  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
     const { operations } = getProviders(req);
     let repositories = req.body.repositories;
     // TODO: FEATURE FLAG: add a feature flag whether this API is available.
@@ -708,7 +728,7 @@ router.post(
         log.push(`Skipping, does not appear to be a GitHub repo URL: ${repositoryName}`);
       }
     }
-    return res.json(log);
+    return res.json(log) as unknown as void;
   })
 );
 

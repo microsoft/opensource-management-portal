@@ -3,9 +3,14 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { OrganizationSetting } from '../../entities/organizationSettings/organizationSetting';
-import { GitHubAppAuthenticationType, AppPurpose, ICustomAppPurpose, AppPurposeTypes } from '../githubApps';
-import { GitHubTokenManager } from '../githubApps/tokenManager';
+import { OrganizationSetting } from '../entities/organizationSettings/organizationSetting';
+import {
+  GitHubAppAuthenticationType,
+  AppPurpose,
+  ICustomAppPurpose,
+  AppPurposeTypes,
+} from '../../lib/github/appPurposes';
+import { GitHubTokenManager } from '../../lib/github/tokenManager';
 import {
   IProviders,
   ICacheDefaultTimes,
@@ -19,22 +24,48 @@ import {
   throwIfNotGitHubCapable,
   throwIfNotCapable,
   IOperationsCentralOperationsToken,
-  IAuthorizationHeaderValue,
+  AuthorizationHeaderValue,
   SiteConfiguration,
+  ExecutionEnvironment,
+  IPagedCacheOptions,
+  ICacheOptionsWithPurpose,
 } from '../../interfaces';
 import { RestLibrary } from '../../lib/github';
-import { CreateError } from '../../transitional';
-import { wrapError } from '../../utils';
+import { CreateError } from '../../lib/transitional';
+import { wrapError } from '../../lib/utils';
 import { Account } from '../account';
 import GitHubApplication from '../application';
 
 import Debug from 'debug';
 const debugGitHubTokens = Debug('github:tokens');
 
+const symbolCost = Symbol('cost');
+const symbolHeaders = Symbol('headers');
+
+export function symbolizeApiResponse<T>(response: any): T {
+  if (response && response.headers) {
+    response[symbolHeaders] = response.headers;
+    delete response.headers;
+  }
+  if (response && response.cost) {
+    response[symbolCost] = response.cost;
+    delete response.cost;
+  }
+  return response;
+}
+
+export function getApiSymbolMetadata(response: any) {
+  if (response) {
+    return { headers: response[symbolHeaders], cost: response[symbolCost] };
+  }
+  throw CreateError.ParameterRequired('response');
+}
+
 export interface IOperationsCoreOptions {
   github: RestLibrary;
   providers: IProviders;
   baseUrl?: string;
+  executionEnvironment: ExecutionEnvironment;
 }
 
 export enum CacheDefault {
@@ -61,6 +92,7 @@ export enum CacheDefault {
   teamDetailStaleSeconds = 'teamDetailStaleSeconds',
   orgRepoWebhooksStaleSeconds = 'orgRepoWebhooksStaleSeconds',
   teamRepositoryPermissionStaleSeconds = 'teamRepositoryPermissionStaleSeconds',
+  defaultStaleSeconds = 'defaultStaleSeconds',
 }
 
 // defaults could move to configuration alternatively
@@ -88,6 +120,7 @@ const defaults: ICacheDefaultTimes = {
   [CacheDefault.teamDetailStaleSeconds]: 60 * 60 * 2 /* 2h */,
   [CacheDefault.orgRepoWebhooksStaleSeconds]: 60 * 60 * 8 /* 8h */,
   [CacheDefault.teamRepositoryPermissionStaleSeconds]: 0 /* 0m */,
+  [CacheDefault.defaultStaleSeconds]: 60 /* 1m */,
 };
 
 export const DefaultPageSize = 100;
@@ -104,6 +137,46 @@ export function getPageSize(operations: IOperationsInstance, options?: IOptionWi
     return (operations as any).defaultPageSize as number;
   }
   return DefaultPageSize;
+}
+
+export function createCacheOptions(
+  operations: IOperationsInstance,
+  options?: ICacheOptions,
+  cacheDefault: CacheDefault = CacheDefault.defaultStaleSeconds
+) {
+  const cacheOptions: ICacheOptions = {
+    maxAgeSeconds: getMaxAgeSeconds(operations, cacheDefault, options, 60),
+  };
+  if (options.backgroundRefresh !== undefined) {
+    cacheOptions.backgroundRefresh = options.backgroundRefresh;
+  }
+  return cacheOptions;
+}
+
+export function createPagedCacheOptions(
+  operations: IOperationsInstance,
+  options?: IPagedCacheOptions,
+  cacheDefault: CacheDefault = CacheDefault.defaultStaleSeconds
+) {
+  const cacheOptions: IPagedCacheOptions = {
+    maxAgeSeconds: getMaxAgeSeconds(operations, cacheDefault, options, 60),
+  };
+  if (options.pageRequestDelay !== undefined) {
+    cacheOptions.pageRequestDelay = options.pageRequestDelay;
+  }
+  if (options.backgroundRefresh !== undefined) {
+    cacheOptions.backgroundRefresh = options.backgroundRefresh;
+  }
+  return cacheOptions;
+}
+
+export function popPurpose(options: ICacheOptionsWithPurpose, defaultPurpose: AppPurposeTypes) {
+  if (options.purpose) {
+    const purpose = options.purpose;
+    delete options.purpose;
+    return purpose;
+  }
+  return defaultPurpose;
 }
 
 export function getMaxAgeSeconds(
@@ -195,7 +268,7 @@ export abstract class OperationsCore
   async getAccountByUsername(username: string, options?: ICacheOptions): Promise<Account> {
     options = options || {};
     const operations = throwIfNotGitHubCapable(this);
-    const centralOperations = throwIfNotCapable<IOperationsCentralOperationsToken>(
+    const ops = throwIfNotCapable<IOperationsCentralOperationsToken>(
       this,
       CoreCapability.GitHubCentralOperations
     );
@@ -212,10 +285,9 @@ export abstract class OperationsCore
       cacheOptions.backgroundRefresh = options.backgroundRefresh;
     }
     try {
-      const getHeaderFunction = centralOperations.getCentralOperationsToken();
-      const authorizationHeader = await getHeaderFunction(AppPurpose.Data);
+      const getHeaderFunction = ops.getPublicAuthorizationToken();
       const entity = await operations.github.call(
-        authorizationHeader,
+        getHeaderFunction,
         'users.getByUsername',
         parameters,
         cacheOptions
@@ -335,17 +407,16 @@ export abstract class OperationsCore
     organizationName: string,
     organizationSettings: OrganizationSetting,
     legacyOwnerToken: string,
-    centralOperationsFallbackToken: string,
     appAuthenticationType: GitHubAppAuthenticationType,
     purpose: AppPurposeTypes
-  ): Promise<IAuthorizationHeaderValue> {
+  ): Promise<AuthorizationHeaderValue> {
     const customPurpose = purpose as ICustomAppPurpose;
     const isCustomPurpose = customPurpose?.isCustomAppPurpose === true;
     if (
       !isCustomPurpose &&
       !this.tokenManager.organizationSupportsAnyPurpose(organizationName, organizationSettings)
     ) {
-      const legacyTokenValue = legacyOwnerToken || centralOperationsFallbackToken;
+      const legacyTokenValue = legacyOwnerToken;
       if (!legacyTokenValue) {
         throw new Error(
           `Organization ${organizationName} is not configured with a GitHub app, Personal Access Token ownerToken configuration value, or a fallback central operations token for the ${
@@ -356,7 +427,7 @@ export abstract class OperationsCore
       return {
         value: `token ${legacyTokenValue}`,
         purpose: null,
-        source: legacyOwnerToken ? 'legacyOwnerToken' : 'centralOperationsFallbackToken',
+        source: 'legacyOwnerToken',
       };
     }
     if (!purpose) {

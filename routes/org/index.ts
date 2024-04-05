@@ -3,12 +3,12 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import express, { Router } from 'express';
+import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 const router: Router = Router();
-import { getProviders } from '../../transitional';
+import { getProviders } from '../../lib/transitional';
 import { IAggregateUserSummary } from '../../business/user/aggregate';
-import { TeamJoinApprovalEntity } from '../../entities/teamJoinApproval/teamJoinApproval';
+import { TeamJoinApprovalEntity } from '../../business/entities/teamJoinApproval/teamJoinApproval';
 import { Team } from '../../business';
 import { ReposAppRequest, OrganizationMembershipState } from '../../interfaces';
 import {
@@ -31,7 +31,7 @@ interface ILocalOrgRequest extends ReposAppRequest {
   orgPermissions?: IRequestOrganizationPermissions;
 }
 
-router.use(function (req: ReposAppRequest, res, next) {
+router.use(function (req: ReposAppRequest, res: Response, next: NextFunction) {
   const onboarding = req.query.onboarding;
   const organization = req.organization;
   req.individualContext.webContext.pushBreadcrumb(organization.name, onboarding ? false : undefined);
@@ -43,7 +43,7 @@ router.use(function (req: ReposAppRequest, res, next) {
 });
 
 // Campaign-related redirect to take the user to GitHub
-router.get('/', (req: ReposAppRequest, res, next) => {
+router.get('/', (req: ReposAppRequest, res: Response, next: NextFunction) => {
   const providers = getProviders(req);
   if (!providers || !providers.campaign) {
     return next();
@@ -63,7 +63,7 @@ router.use('/teams', RouteTeams);
 router.use(asyncHandler(AddOrganizationPermissionsToRequest));
 
 router.use(
-  asyncHandler(async (req: ILocalOrgRequest, res, next) => {
+  asyncHandler(async (req: ILocalOrgRequest, res: Response, next: NextFunction) => {
     const organization = req.organization;
     const orgPermissions = req.orgPermissions;
     if (!orgPermissions) {
@@ -90,7 +90,7 @@ router.use(
 
 router.get(
   '/',
-  asyncHandler(async function (req: ReposAppRequest, res, next) {
+  asyncHandler(async function (req: ReposAppRequest, res: Response, next: NextFunction) {
     const providers = getProviders(req);
     const approvalProvider = providers.approvalProvider;
     const organization = req.organization;
@@ -107,9 +107,8 @@ router.get(
       pendingApprovals: null as TeamJoinApprovalEntity[],
       organizationAdmins,
     };
-    results.organizationOverview = await individualContext.aggregations.getAggregatedOrganizationOverview(
-      organization
-    );
+    results.organizationOverview =
+      await individualContext.aggregations.getAggregatedOrganizationOverview(organization);
     // Check for pending approvals
     const teamsMaintained = results.organizationOverview.teams.maintainer as Team[];
     if (teamsMaintained && teamsMaintained.length && teamsMaintained.length > 0) {
@@ -147,7 +146,7 @@ router.use('/wizard', RouteNewRepoSpa);
 
 router.use(
   '/:repoName',
-  asyncHandler(async (req: ReposAppRequest, res, next) => {
+  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
     const repoName = req.params.repoName;
     const organization = req.organization;
     const attemptedRepository = organization.repository(repoName);

@@ -3,13 +3,14 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+import { NextFunction, Response } from 'express';
 import fs from 'fs';
 import path from 'path';
 import recursiveReadDirectory from 'recursive-readdir';
 
-import { wrapError, sleep } from '../../utils';
+import { wrapError, sleep } from '../../lib/utils';
 import { Organization } from '../../business';
-import { RepositoryMetadataEntity } from '../../entities/repositoryMetadata/repositoryMetadata';
+import { RepositoryMetadataEntity } from '../../business/entities/repositoryMetadata/repositoryMetadata';
 import { Repository } from '../../business';
 import { CreateRepositoryEntrypoint, ICreateRepositoryApiResult } from '../../api/createRepo';
 import {
@@ -20,13 +21,14 @@ import {
   IAlternateTokenOption,
   IOperationsRepositoryMetadataProvider,
   IProviders,
+  IReposAppWithTeam,
   throwIfNotCapable,
 } from '../../interfaces';
-import { ErrorHelper } from '../../transitional';
+import { ErrorHelper } from '../../lib/transitional';
 import {
   setupRepositoryReadmeSubstring,
   setupRepositorySubstring,
-} from '../../features/newRepositories/strings';
+} from '../../business/features/newRepositories/strings';
 
 export interface IApprovalPackage {
   id: string;
@@ -83,7 +85,11 @@ export class RepoWorkflowEngine {
   private log: IRepositoryWorkflowOutput[] = [];
   private repository: Repository;
 
-  constructor(private providers: IProviders, organization: Organization, approvalPackage: IApprovalPackage) {
+  constructor(
+    private providers: IProviders,
+    organization: Organization,
+    approvalPackage: IApprovalPackage
+  ) {
     this.request = approvalPackage.repositoryMetadata;
     // this.user = approvalPackage.requestingUser;
     this.id = approvalPackage.id;
@@ -185,7 +191,7 @@ export class RepoWorkflowEngine {
     });
   }
 
-  editPost(req, res, next) {
+  editPost(req: IReposAppWithTeam, res: Response, next: NextFunction) {
     const { operations } = this.providers;
     const ops = throwIfNotCapable<IOperationsRepositoryMetadataProvider>(
       operations,

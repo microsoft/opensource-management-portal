@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { IProviders } from '../interfaces';
+import { IProviders, IReposApplication, SiteConfiguration } from '../interfaces';
 
 // ----------------------------------------------------------------------------
 // Onboarding helper
@@ -14,7 +14,7 @@ import { IProviders } from '../interfaces';
 // rather a configuration/app initialization method just stored here to keep it
 // out of the way.
 // ----------------------------------------------------------------------------
-export default async function Onboard(app, config) {
+export default async function Onboard(app: IReposApplication, config: SiteConfiguration) {
   const { operations } = app.settings.providers as IProviders;
   const onboardingOrganizations = config.github.organizations?.onboarding || [];
   for (const orgEntry of onboardingOrganizations) {

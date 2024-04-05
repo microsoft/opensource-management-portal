@@ -3,16 +3,16 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Router } from 'express';
+import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 
 import moment from 'moment';
 import { ReposAppRequest } from '../interfaces';
 
 import { jsonError } from '../middleware';
-import { getProviders, isWebhookIngestionEndpointEnabled } from '../transitional';
+import { getProviders, isWebhookIngestionEndpointEnabled } from '../lib/transitional';
 
-import OrganizationWebhookProcessor from '../webhooks/organizationProcessor';
+import OrganizationWebhookProcessor from '../business/webhooks/organizationProcessor';
 
 const router: Router = Router();
 
@@ -21,7 +21,7 @@ interface IRequestWithRaw extends ReposAppRequest {
 }
 
 router.use(
-  asyncHandler(async (req: IRequestWithRaw, res, next) => {
+  asyncHandler(async (req: IRequestWithRaw, res: Response, next: NextFunction) => {
     if (!isWebhookIngestionEndpointEnabled(req)) {
       return next(
         jsonError(

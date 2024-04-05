@@ -3,9 +3,11 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+import { NextFunction, Response } from 'express';
+
 import { IReposError } from '../../../interfaces';
 
-export default function middlewareTeamAdminRequired(req, res, next) {
+export default function middlewareTeamAdminRequired(req, res: Response, next: NextFunction) {
   const teamPermissions = req.teamPermissions;
   if (!teamPermissions) {
     return next(new Error('No team permissions information available'));

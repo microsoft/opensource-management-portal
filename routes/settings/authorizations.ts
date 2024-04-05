@@ -3,11 +3,11 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Router } from 'express';
+import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
-import { getProviders } from '../../transitional';
+import { getProviders } from '../../lib/transitional';
 import { Operations } from '../../business';
 import { ReposAppRequest, ICorporateLink } from '../../interfaces';
 
@@ -54,7 +54,7 @@ function createValidator(operations: Operations, link: ICorporateLink, token: st
   };
 }
 
-router.use((req: IRequestWithAuthorizations, res, next) => {
+router.use((req: IRequestWithAuthorizations, res: Response, next: NextFunction) => {
   // This is a lightweight, temporary implementation of authorization management to help clear
   // stored session tokens for apps like GitHub, VSTS, etc.
   const { operations } = getProviders(req);
@@ -113,7 +113,7 @@ router.get('/', (req: IRequestWithAuthorizations, res) => {
 
 router.get(
   '/validate',
-  asyncHandler(async (req: IRequestWithAuthorizations, res, next) => {
+  asyncHandler(async (req: IRequestWithAuthorizations, res: Response, next: NextFunction) => {
     const authorizations = req.authorizations;
     for (const authorization of authorizations) {
       const validator = authorization.validator;

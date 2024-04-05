@@ -1,6 +1,0 @@
-{
-  "former_token": "env://NPM_PUBLISHING_TOKEN",
-  "token": "",
-  "notify": "env://NPM_PUBLISHING_NOTIFICATION_EMAIL",
-  "notifyFrom": "env://NPM_PUBLISHING_NOTIFICATION_FROM"
-}

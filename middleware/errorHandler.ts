@@ -6,9 +6,11 @@
 import querystring from 'querystring';
 import { AxiosError } from 'axios';
 
-import { wrapError } from '../utils';
-import { getProviders } from '../transitional';
+import { wrapError } from '../lib/utils';
+import { getProviders } from '../lib/transitional';
 import { isJsonError } from '.';
+import { NextFunction, Response } from 'express';
+import { ReposAppRequest } from '../interfaces';
 
 function redactRootPathsFromString(string, path) {
   if (typeof string === 'string' && string.includes && string.split) {
@@ -49,9 +51,16 @@ const exceptionFieldsOfInterest = [
   'innerMessage',
 ];
 
-export default function SiteErrorHandler(err, req, res, next) {
+export default function SiteErrorHandler(
+  error: unknown,
+  req: ReposAppRequest,
+  res: Response,
+  next: NextFunction
+) {
+  let err = error as any;
+  const isJson = isJsonError(err, req.url);
   // CONSIDER: Let's eventually decouple all of our error message improvements to another area to keep the error handler intact.
-  const { applicationProfile, config } = getProviders(req);
+  const { applicationProfile, config, insights } = getProviders(req);
   const correlationId = req.correlationId;
   const errorStatus = err ? err.status || err.statusCode : undefined;
   // Per GitHub: https://developer.github.com/v3/oauth/#bad-verification-code
@@ -63,8 +72,8 @@ export default function SiteErrorHandler(err, req, res, next) {
         err.oauthError.message === 'The code passed is incorrect or expired.')) &&
     req.scrubbedUrl.startsWith('/auth/github/')
   ) {
-    req.insights.trackMetric({ name: 'GitHubInvalidExpiredCodeRedirect', value: 1 });
-    req.insights.trackEvent({ name: 'GitHubInvalidExpiredCodeRetry' });
+    insights?.trackMetric({ name: 'GitHubInvalidExpiredCodeRedirect', value: 1 });
+    insights?.trackEvent({ name: 'GitHubInvalidExpiredCodeRetry' });
     return res.redirect(
       req.scrubbedUrl === '/auth/github/callback/increased-scope?code=*****'
         ? '/auth/github/increased-scope'
@@ -74,7 +83,7 @@ export default function SiteErrorHandler(err, req, res, next) {
   const isGitHubAbuseRateLimit =
     err && err.message && err.message.includes && err.message.includes('#abuse-rate-limits');
   if (isGitHubAbuseRateLimit) {
-    req.insights.trackMetric({ name: 'GitHubAbuseRateLimit', value: 1 });
+    insights?.trackMetric({ name: 'GitHubAbuseRateLimit', value: 1 });
   }
   if (
     err.message &&
@@ -82,8 +91,8 @@ export default function SiteErrorHandler(err, req, res, next) {
     err.message.includes('ETIMEDOUT') &&
     (err.message.includes('192.30.253.116') || err.message.includes('192.30.253.117'))
   ) {
-    req.insights.trackMetric({ name: 'GitHubApiTimeout', value: 1 });
-    req.insights.trackEvent({ name: 'GitHubApiTimeout' });
+    insights?.trackMetric({ name: 'GitHubApiTimeout', value: 1 });
+    insights?.trackEvent({ name: 'GitHubApiTimeout' });
     err = wrapError(err, 'The GitHub API is temporarily down. Please try again soon.', false);
   }
   let primaryUserInstance = req.user ? req.user.github : null;
@@ -103,7 +112,7 @@ export default function SiteErrorHandler(err, req, res, next) {
         stk: undefined,
         message: undefined,
       };
-      if (req.insights && req.insights.trackException) {
+      if (insights?.trackException) {
         for (let i = 0; err && i < exceptionFieldsOfInterest.length; i++) {
           const key = exceptionFieldsOfInterest[i];
           const value = err[key];
@@ -125,7 +134,7 @@ export default function SiteErrorHandler(err, req, res, next) {
         }
         if (isGitHubAbuseRateLimit) {
           insightsProperties.message = err.message;
-          req.insights.trackEvent({
+          insights?.trackEvent({
             name: 'GitHubAbuseRateLimitError',
             properties: insightsProperties,
           });
@@ -133,7 +142,7 @@ export default function SiteErrorHandler(err, req, res, next) {
           if (err && err['json']) {
             // not tracking jsonErrors for now, they pollute app insights
           } else {
-            req.insights.trackException({ exception: err, properties: insightsProperties });
+            insights?.trackException({ exception: err, properties: insightsProperties });
           }
         }
       }
@@ -141,7 +150,6 @@ export default function SiteErrorHandler(err, req, res, next) {
   }
   if (err !== undefined && err.skipLog !== true) {
     console.log('Error: ' + (err && err.message ? err.message : 'Error is undefined.'));
-    const isJson = isJsonError(err);
     if (err.stack && !isJson) {
       console.error(err.stack);
     }
@@ -234,7 +242,7 @@ export default function SiteErrorHandler(err, req, res, next) {
 
   // Support JSON-based error display for the API route, showing just a small
   // subset of typical view properties to share from the error instance.
-  if (err && err.json === true) {
+  if (isJson) {
     const safeError = {
       message: safeMessage,
       correlationId: correlationId,

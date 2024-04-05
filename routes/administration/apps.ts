@@ -3,39 +3,22 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Router } from 'express';
+import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
-import { getProviders } from '../../transitional';
-import { sortByCaseInsensitive } from '../../utils';
+import { getProviders } from '../../lib/transitional';
+import { sortByCaseInsensitive } from '../../lib/utils';
 import GitHubApplication from '../../business/application';
-import { OrganizationSetting } from '../../entities/organizationSettings/organizationSetting';
 import { ReposAppRequest, UserAlertType } from '../../interfaces';
-
-interface IByOrgViewAppInstallation {
-  app: GitHubApplication;
-  installationId?: number;
-}
-
-enum OrgStatus {
-  Active = 'Active',
-  Adopted = 'Adopted',
-  NotAdopted = 'NotAdopted',
-}
-
-interface IByOrgView {
-  organizationName: string;
-  status: OrgStatus;
-  appInstallations: Map<number, IByOrgViewAppInstallation>;
-  dynamicSettings: OrganizationSetting;
-  configuredInstallations: number[];
-  id?: number;
-}
+import {
+  ManagedOrganizationAppConfigurationsByOrgView,
+  ManagedOrganizationStatus,
+} from '../../api/client/context/administration/types';
 
 router.post(
   '/',
-  asyncHandler(async function (req: ReposAppRequest, res, next) {
+  asyncHandler(async function (req: ReposAppRequest, res: Response, next: NextFunction) {
     const providers = getProviders(req);
     const { deletesettingsorgname } = req.body;
     if (!deletesettingsorgname) {
@@ -69,20 +52,20 @@ router.post(
 
 router.get(
   '/',
-  asyncHandler(async function (req: ReposAppRequest, res, next) {
+  asyncHandler(async function (req: ReposAppRequest, res: Response, next: NextFunction) {
     const providers = getProviders(req);
     const operations = providers.operations;
     const apps = providers.operations.getApplications();
     const individualContext = req.individualContext;
     const organizationSettingsProvider = providers.organizationSettingsProvider;
-    const byOrg = new Map<string, IByOrgView>();
+    const byOrg = new Map<string, ManagedOrganizationAppConfigurationsByOrgView>();
     function getOrg(name: string) {
       let o = byOrg.get(name);
       if (!o) {
         o = {
           organizationName: name,
           id: undefined,
-          status: OrgStatus.NotAdopted,
+          status: ManagedOrganizationStatus.NotAdopted,
           appInstallations: new Map(),
           dynamicSettings: null,
           configuredInstallations: [],
@@ -96,19 +79,19 @@ router.get(
     }
     for (const app of apps) {
       const appInstalls = await app.getInstallations({ maxAgeSeconds: 5 });
-      const { valid } = GitHubApplication.filterInstallations(appInstalls);
-      for (const vi of valid) {
-        const organizationName = vi.account.login;
+      const { valid: validInstallations } = GitHubApplication.filterInstallations(appInstalls);
+      for (const valid of validInstallations) {
+        const organizationName = valid.account.login;
         const o = getOrg(organizationName.toLowerCase());
         o.appInstallations.set(app.id, {
           app,
-          installationId: vi.id,
+          installationId: valid.id,
         });
-        o.id = Number(vi.target_id);
-        if (!o.dynamicSettings && vi.target_type === 'Organization') {
+        o.id = Number(valid.target_id);
+        if (!o.dynamicSettings && valid.target_type === 'Organization') {
           try {
             o.dynamicSettings = await organizationSettingsProvider.getOrganizationSetting(
-              vi.target_id.toString()
+              valid.target_id.toString()
             );
           } catch (ignore) {
             /* ignored */
@@ -117,10 +100,10 @@ router.get(
             o.configuredInstallations = o.dynamicSettings.installations.map(
               (install) => install.installationId
             );
-            o.status = OrgStatus.Adopted;
+            o.status = ManagedOrganizationStatus.Adopted;
           }
           if (o.dynamicSettings && o.dynamicSettings.active === true) {
-            o.status = OrgStatus.Active;
+            o.status = ManagedOrganizationStatus.Active;
           }
         }
       }

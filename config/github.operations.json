@@ -1,5 +1,4 @@
 {
-  "centralOperationsToken": "env://GITHUB_CENTRAL_OPERATIONS_TOKEN",
   "publicAccessToken": "env://GITHUB_PUBLIC_OPERATIONS_TOKEN",
   "primaryOrganizationId": "env://GITHUB_PRIMARY_ORGANIZATION_ID?type=integer"
 }

@@ -5,22 +5,32 @@
 
 extends ../../layout
 
+//- @cspell: ignore microsoftfossfund
+
 block content
-  - var fileSize = viewServices.fileSize
-  - var moment = viewServices.moment
-  - var octicon = viewServices.octicon
-
-  //- var startMonthName = moment(start).format('MMMM')
-  //- var previousMonthName = moment(start).subtract(1, 'months').format('MMMM')
-
   .container
-    h2 Active Elections
+    h2 FOSS Fund Rounds
+    p.
+      The FOSS Fund is a way for Microsoft employees who contribute to open source 
+      to support open source projects that they use and love. Public information 
+      about this fund is available to be shared at #[a(href='https://aka.ms/microsoftfossfund') aka.ms/microsoftfossfund]. The 
+      fund is distributed to projects based on the votes of Microsoft employees.
     
     if activeElections && activeElections.length
-      each election in activeElections
-        //-pre= JSON.stringify(election, undefined, 2)
-        h2: a(href='/contributions/voting/' + election.slug)= election.title
-        p= election.description
-    else
-      p No active voting opportunities.
+      - var election1 = activeElections[0]
+      h3 Most recent funding round
+      h4: strong: a(href='/contributions/voting/' + election1.slug)= election1.title
+      p= election1.description
 
+      h3 Past rounds
+      each election in activeElections
+        if election.slug == election1.slug
+          //- nothing
+        else
+          //-pre= JSON.stringify(election, undefined, 2)
+          p
+            a(href='/contributions/voting/' + election.slug)= election.title
+            br
+            = election.description
+    else
+      p No voting opportunities.

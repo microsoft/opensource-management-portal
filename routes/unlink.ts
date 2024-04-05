@@ -3,18 +3,18 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Router } from 'express';
+import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
-import { getProviders } from '../transitional';
-import { wrapError } from '../utils';
+import { getProviders } from '../lib/transitional';
+import { wrapError } from '../lib/utils';
 import { IndividualContext } from '../business/user';
 import { jsonError } from '../middleware';
 import { ReposAppRequest, OrganizationMembershipState, UnlinkPurpose } from '../interfaces';
 
 router.use(
-  asyncHandler(async function (req: ReposAppRequest, res, next) {
+  asyncHandler(async function (req: ReposAppRequest, res: Response, next: NextFunction) {
     const memberOfOrganizations = [];
     const { operations } = getProviders(req);
     const ghi = req.individualContext.getGitHubIdentity();
@@ -44,7 +44,7 @@ router.use(
 
 router.get(
   '/',
-  asyncHandler(async (req: ReposAppRequest, res, next) => {
+  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
     const link = req.individualContext.link;
     const id = req.individualContext.getGitHubIdentity().id;
     const { operations } = getProviders(req);
@@ -110,7 +110,7 @@ export async function unlinkInteractive(
 
 router.post(
   '/',
-  asyncHandler(async function (req: ReposAppRequest, res, next) {
+  asyncHandler(async function (req: ReposAppRequest, res: Response, next: NextFunction) {
     const individualContext = req.individualContext;
     // TODO: validate
     return unlinkInteractive(false, individualContext, req, res, next);

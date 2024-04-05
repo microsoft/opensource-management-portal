@@ -3,11 +3,11 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Router } from 'express';
+import { NextFunction, Response, Router } from 'express';
 
 import { jsonError } from '../../middleware/jsonError';
 import { IAppSession, ReposAppRequest } from '../../interfaces';
-import { getProviders } from '../../transitional';
+import { getProviders } from '../../lib/transitional';
 
 const router: Router = Router();
 
@@ -42,7 +42,7 @@ router.post('/github', (req: ReposAppRequest, res) => {
   res.end();
 });
 
-router.use('*', (req: ReposAppRequest, res, next) => {
+router.use('*', (req: ReposAppRequest, res: Response, next: NextFunction) => {
   return next(jsonError('API or route not found', 404));
 });
 

@@ -10,6 +10,7 @@ import path from 'path';
 import walkBack from 'walk-back';
 import { InnerError, IPainlessConfigGet, IProviderOptions } from '.';
 import { processEnvironmentProvider } from './environmentConfigurationResolver';
+import { CreateError } from '../transitional';
 
 const debug = Debug.debug('config');
 
@@ -70,10 +71,14 @@ function configurePackageEnvironments(
       try {
         values = environmentPackage(environment);
       } catch (problemCalling) {
-        const asText = problemCalling.toString();
-        throw new Error(
-          `While calling the environment package "${npmName}" for the "${environment}" environment an error was thrown: ${asText}`,
-          { cause: problemCalling }
+        const asText = problemCalling.toString() as string;
+        let suggestion = '';
+        if (asText.includes('Unable to require environment') && asText.includes('dist')) {
+          suggestion = 'Consider deleting and rebuilding the `dist` directory. ';
+        }
+        throw CreateError.ServerError(
+          `${suggestion}While calling the environment package "${npmName}" for the "${environment}" environment an error was thrown: ${asText}`,
+          problemCalling
         );
       }
     } else if (typeof environmentPackage === 'object') {

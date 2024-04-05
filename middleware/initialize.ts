@@ -3,6 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+import { Express, NextFunction, Response } from 'express';
 import path from 'path';
 
 import CosmosSessionStore from '../lib/cosmosSession';
@@ -14,11 +15,11 @@ import {
   createAndInitializeEntityMetadataProviderInstance,
   IEntityMetadataProvidersOptions,
 } from '../lib/entityMetadataProvider';
-import { createAndInitializeRepositoryMetadataProviderInstance } from '../entities/repositoryMetadata';
-import createAndInitializeOrganizationAnnotationProviderInstance from '../entities/organizationAnnotation';
+import { createAndInitializeRepositoryMetadataProviderInstance } from '../business/entities/repositoryMetadata';
+import createAndInitializeOrganizationAnnotationProviderInstance from '../business/entities/organizationAnnotation';
 import { createMailAddressProviderInstance, IMailAddressProvider } from '../lib/mailAddressProvider';
 
-import ErrorRoutes from './error-routes';
+import ErrorRoutes from './errorRoutes';
 
 import { createClient, RedisClientType } from 'redis';
 import { Pool as PostgresPool } from 'pg';
@@ -26,6 +27,7 @@ import { Pool as PostgresPool } from 'pg';
 import Debug from 'debug';
 const debug = Debug.debug('startup');
 const pgDebug = Debug.debug('pgpool');
+const nowDebug = Debug.debug('now');
 
 import appInsights from './appInsights';
 import keyVault from './keyVault';
@@ -36,9 +38,9 @@ import expressRoutes from '../routes/';
 import alternateRoutes from './alternateApps';
 
 import RedisHelper from '../lib/caching/redis';
-import { createTokenProvider } from '../entities/token';
-import { createAndInitializeApprovalProviderInstance } from '../entities/teamJoinApproval';
-import { CreateLocalExtensionKeyProvider } from '../entities/localExtensionKey';
+import { createTokenProvider } from '../business/entities/token';
+import { createAndInitializeApprovalProviderInstance } from '../business/entities/teamJoinApproval';
+import { CreateLocalExtensionKeyProvider } from '../business/entities/localExtensionKey';
 import { CreateGraphProviderInstance, IGraphProvider } from '../lib/graphProvider/';
 import initializeCorporateViews from './corporateViews';
 
@@ -46,16 +48,16 @@ import keyVaultResolver, { IKeyVaultSecretResolver } from '../lib/keyVaultResolv
 
 import { createMailProviderInstance } from '../lib/mailProvider/';
 import { RestLibrary } from '../lib/github';
-import { CreateRepositoryCacheProviderInstance } from '../entities/repositoryCache';
-import { CreateRepositoryCollaboratorCacheProviderInstance } from '../entities/repositoryCollaboratorCache';
-import { CreateTeamCacheProviderInstance } from '../entities/teamCache';
-import { CreateTeamMemberCacheProviderInstance } from '../entities/teamMemberCache';
-import { CreateRepositoryTeamCacheProviderInstance } from '../entities/repositoryTeamCache';
-import { CreateOrganizationMemberCacheProviderInstance } from '../entities/organizationMemberCache';
+import { CreateRepositoryCacheProviderInstance } from '../business/entities/repositoryCache';
+import { CreateRepositoryCollaboratorCacheProviderInstance } from '../business/entities/repositoryCollaboratorCache';
+import { CreateTeamCacheProviderInstance } from '../business/entities/teamCache';
+import { CreateTeamMemberCacheProviderInstance } from '../business/entities/teamMemberCache';
+import { CreateRepositoryTeamCacheProviderInstance } from '../business/entities/repositoryTeamCache';
+import { CreateOrganizationMemberCacheProviderInstance } from '../business/entities/organizationMemberCache';
 import QueryCache from '../business/queryCache';
-import { createAndInitializeOrganizationSettingProviderInstance } from '../entities/organizationSettings';
+import { createAndInitializeOrganizationSettingProviderInstance } from '../business/entities/organizationSettings';
 import { IEntityMetadataProvider } from '../lib/entityMetadataProvider/entityMetadataProvider';
-import { createAndInitializeAuditLogRecordProviderInstance } from '../entities/auditLogRecord';
+import { createAndInitializeAuditLogRecordProviderInstance } from '../business/entities/auditLogRecord';
 import CosmosCache from '../lib/caching/cosmosdb';
 import BlobCache from '../lib/caching/blob';
 import { StatefulCampaignProvider } from '../lib/campaigns';
@@ -63,7 +65,7 @@ import CosmosHelper from '../lib/cosmosHelper';
 import { IQueueProcessor } from '../lib/queues';
 import ServiceBusQueueProcessor from '../lib/queues/servicebus';
 import AzureQueuesProcessor from '../lib/queues/azurequeue';
-import { UserSettingsProvider } from '../entities/userSettings';
+import { UserSettingsProvider } from '../business/entities/userSettings';
 import getCompanySpecificDeployment from './companySpecificDeployment';
 
 import routeCorrelationId from './correlationId';
@@ -71,13 +73,20 @@ import routeHsts from './hsts';
 import routeSslify from './sslify';
 
 import middlewareIndex from '.';
-import { ICacheHelper } from '../lib/caching';
-import { IApplicationProfile, IProviders, IReposApplication, SiteConfiguration } from '../interfaces';
-import initializeRepositoryProvider from '../entities/repository';
+import type { ICacheHelper } from '../lib/caching';
+import type {
+  ExecutionEnvironment,
+  ApplicationProfile,
+  IProviders,
+  IReposApplication,
+  SiteConfiguration,
+} from '../interfaces';
+import initializeRepositoryProvider from '../business/entities/repository';
 import { tryGetImmutableStorageProvider } from '../lib/immutable';
+import { GitHubAppPurposes } from '../lib/github/appPurposes';
 
-const DefaultApplicationProfile: IApplicationProfile = {
-  applicationName: 'GitHub Management Portal',
+const DefaultApplicationProfile: ApplicationProfile = {
+  applicationName: 'Open Source Management Portal',
   serveStaticAssets: true,
   serveClientAssets: true,
   logDependencies: true,
@@ -92,12 +101,13 @@ type CompanyStartupEntrypoint = (
 ) => Promise<void>;
 
 async function initializeAsync(
-  app: IReposApplication,
-  express,
+  executionEnvironment: ExecutionEnvironment,
+  providers: IProviders,
+  // app: IReposApplication,
+  // express,
   rootdir: string,
   config: SiteConfiguration
 ): Promise<void> {
-  const providers = app.get('providers') as IProviders;
   providers.postgresPool = await ConnectPostgresPool(config.data.postgres);
   providers.linkProvider = await createAndInitializeLinkProviderInstance(providers, config);
   if (config.github.cache.provider === 'cosmosdb') {
@@ -111,7 +121,6 @@ async function initializeAsync(
   } else if (config.github.cache.provider === 'redis') {
     const redisClient = await connectRedis(config, config.redis, 'cache');
     const redisHelper = new RedisHelper({ redisClient, prefix: config.redis.prefix });
-    // providers.redisClient = redisClient;
     providers.cacheProvider = redisHelper;
   } else {
     throw new Error('No cache provider available');
@@ -124,10 +133,7 @@ async function initializeAsync(
   }
 
   providers.graphProvider = await createGraphProvider(providers, config);
-  app.set('graphProvider', providers.graphProvider);
-
   providers.mailAddressProvider = await createMailAddressProvider(config, providers);
-  app.set('mailAddressProvider', providers.mailAddressProvider);
 
   const mailProvider = createMailProviderInstance(config);
   if (mailProvider) {
@@ -139,7 +145,6 @@ async function initializeAsync(
   }
 
   providers.github = configureGitHubLibrary(providers.cacheProvider, config);
-  app.set('github', providers.github);
 
   // always check if config exists to prevent crashing because of trying to access an undefined object
   const emOptions: IEntityMetadataProvidersOptions = {
@@ -268,7 +273,7 @@ async function initializeAsync(
   providers.corporateAdministrationProfile = getCompanySpecificDeployment()?.administrationSection;
   providers.corporateViews = await initializeCorporateViews(providers, rootdir);
 
-  await dynamicStartup(config, providers, rootdir);
+  await dynamicStartup(executionEnvironment, config, providers, rootdir);
 
   const webhooksConfig = config.github.webhooks;
   if (webhooksConfig && webhooksConfig.provider) {
@@ -290,16 +295,21 @@ async function initializeAsync(
     const repositoryMetadataProvider = await createAndInitializeRepositoryMetadataProviderInstance({
       entityMetadataProvider: providerNameToInstance(config.entityProviders.repositorymetadata),
     });
-    const operations = new Operations({ providers, repositoryMetadataProvider, github: providers.github });
+    const operations = new Operations({
+      executionEnvironment,
+      providers,
+      repositoryMetadataProvider,
+      github: providers.github,
+    });
     await operations.initialize();
-    app.set('operations', operations);
     providers.operations = operations;
+    GitHubAppPurposes.RegisterOperationsInstanceForBuiltInPurposes(operations);
   } catch (ignoredError2) {
     console.dir(ignoredError2);
     throw ignoredError2;
   }
 
-  await dynamicStartup(config, providers, rootdir, 'secondary');
+  await dynamicStartup(executionEnvironment, config, providers, rootdir, 'secondary');
 
   if (providers.applicationProfile.startup) {
     debug('Application provider-specific startup...');
@@ -307,17 +317,7 @@ async function initializeAsync(
   }
 }
 
-function configureGitHubLibrary(cacheProvider: ICacheHelper, config): RestLibrary {
-  if (
-    config &&
-    config.github &&
-    config.github.operations &&
-    !config.github.operations.centralOperationsToken
-  ) {
-    debug(
-      'WARNING: no central GitHub operations token is defined, some library operations may not succeed. ref: config.github.operations.centralOperationsToken var: GITHUB_CENTRAL_OPERATIONS_TOKEN'
-    );
-  }
+function configureGitHubLibrary(cacheProvider: ICacheHelper, config: SiteConfiguration): RestLibrary {
   const libraryContext = new RestLibrary({
     config,
     cacheProvider,
@@ -327,33 +327,44 @@ function configureGitHubLibrary(cacheProvider: ICacheHelper, config): RestLibrar
 
 // Asynchronous initialization for the Express app, configuration and data stores.
 export default async function initialize(
+  executionEnvironment: ExecutionEnvironment,
   app: IReposApplication,
-  express,
+  express: Express,
   rootdir: string,
-  config: any,
+  config: SiteConfiguration,
   exception: Error
-): Promise<IReposApplication> {
+): Promise<ExecutionEnvironment> {
   if (exception) {
     console.warn(`Startup exception: ${exception}`, exception?.stack);
   }
   if (!config || Object.getOwnPropertyNames(config).length === 0) {
     throw new Error('Empty configuration object');
   }
-  if (!app.runtimeConfiguration) {
+  if (app && !app.runtimeConfiguration) {
     app.runtimeConfiguration = {};
   }
   const applicationProfile =
     config?.web?.app && config.web.app !== 'repos'
       ? await alternateRoutes(config, app, config.web.app)
       : DefaultApplicationProfile;
-  const web = !(config?.skipModules && config.skipModules.has('web'));
+  const web = false === executionEnvironment.skipModules.has('web');
   if (applicationProfile.webServer && !web) {
     applicationProfile.webServer = false;
   }
-  const containerPurpose =
-    config && config.isJobInternal ? 'job' : applicationProfile.webServer ? 'web application' : 'application';
-  debug(`${containerPurpose} name: ${applicationProfile.applicationName}`);
+  const containerPurpose = executionEnvironment.isJob
+    ? 'job'
+    : applicationProfile.webServer
+      ? 'web application'
+      : 'application';
+  if (executionEnvironment.entrypointName) {
+    debug(`${containerPurpose} name: ${executionEnvironment.entrypointName}`);
+  }
+  debug(`${containerPurpose} profile: ${applicationProfile.applicationName}`);
   debug(`environment: ${config?.debug?.environmentName || 'Unknown'}`);
+  if (config?.continuousDeployment) {
+    const values = Object.values(config.continuousDeployment).filter((x) => x);
+    values.length > 0 && debug(`build: ${values.join(', ')}`);
+  }
 
   const codespacesConfig = (config as SiteConfiguration)?.github?.codespaces;
   if (codespacesConfig?.connected === true && codespacesConfig.block === true) {
@@ -377,54 +388,69 @@ export default async function initialize(
       exception = error;
     }
   }
-  app.set('started', new Date());
-  app.config = config;
+  if (app) {
+    app.set('started', executionEnvironment.started);
+    app.config = config;
+  }
   if (exception) {
     // Once app insights is available, will try to log this exception; display for now.
     console.dir(exception);
   }
-  app.set('basedir', rootdir);
+  if (app) {
+    app.set('basedir', rootdir);
+  }
   const providers: IProviders = {
     app,
     basedir: rootdir,
     applicationProfile,
   };
-  app.set('providers', providers);
-  app.providers = providers;
-  app.set('runtimeConfig', config);
+  executionEnvironment.providers = providers;
+  if (app) {
+    app.set('providers', providers);
+    app.providers = providers;
+    app.set('runtimeConfig', config);
+  }
   providers.healthCheck = healthCheck(app, config);
   if (applicationProfile.webServer) {
-    if (!app.startServer) {
+    if (!app) {
+      throw new Error('app (Express) is required for web applications');
+    } else if (!app.startServer) {
       throw new Error(`app.startServer is required for web applications`);
     }
     await app.startServer();
   }
-  app.use(routeCorrelationId);
-  providers.insights = appInsights(app, config);
-  app.set('appInsightsClient', providers.insights);
+  if (app) {
+    app.use(routeCorrelationId);
+  }
+  const insights = appInsights(providers, executionEnvironment, app, config);
+  providers.insights = insights;
   if (!exception && (!config || !config.activeDirectory)) {
     exception = new Error(
       `config.activeDirectory.clientId and config.activeDirectory.clientSecret are required to initialize KeyVault`
     );
   }
-  app.use('*', (req, res, next) => {
-    if (providers.healthCheck.ready) {
-      return next();
-    }
-    return res.send('Service not ready.');
-  });
+  if (app) {
+    app.use('*', (req, res: Response, next: NextFunction) => {
+      if (providers.healthCheck.ready) {
+        return next();
+      }
+      return res.send('Service not ready.');
+    });
+  }
   // See docs/configuration.md for all this
-  if (config?.containers?.deployment) {
-    debug('Container deployment: HTTP: listening, HSTS: on');
-    app.use(routeHsts);
-  } else if (config?.containers?.docker) {
-    debug('Docker image: HTTP: listening, HSTS: off');
-  } else if (config.webServer.allowHttp) {
-    debug('development mode: HTTP: listening, HSTS: off');
-  } else {
-    debug('non-container production mode: HTTP: redirect to HTTPS, HSTS: on');
-    const sslifyRouter = routeSslify(config.webServer);
-    sslifyRouter && app.use(sslifyRouter);
+  if (app) {
+    if (config?.containers?.deployment) {
+      debug('Container deployment: HTTP: listening, HSTS: on');
+      app.use(routeHsts);
+    } else if (config?.containers?.docker) {
+      debug('Docker image: HTTP: listening, HSTS: off');
+    } else if (config.webServer.allowHttp) {
+      debug('development mode: HTTP: listening, HSTS: off');
+    } else {
+      debug('non-container production mode: HTTP: redirect to HTTPS, HSTS: on');
+      const sslifyRouter = routeSslify(config.webServer);
+      sslifyRouter && app.use(sslifyRouter);
+    }
   }
   if (!exception) {
     const kvConfig = {
@@ -437,7 +463,7 @@ export default async function initialize(
     try {
       const keyVaultClient = keyVault(kvConfig);
       keyEncryptionKeyResolver = keyVaultResolver(keyVaultClient);
-      app.set('keyEncryptionKeyResolver', keyEncryptionKeyResolver);
+      app && app.set('keyEncryptionKeyResolver', keyEncryptionKeyResolver);
       providers.keyEncryptionKeyResolver = keyEncryptionKeyResolver;
       debug('configuration secrets resolved');
     } catch (noKeyVault) {
@@ -449,7 +475,7 @@ export default async function initialize(
       }
     }
     try {
-      await initializeAsync(app, express, rootdir, config);
+      await initializeAsync(executionEnvironment, providers, rootdir, config);
     } catch (initializeError) {
       console.dir(initializeError);
       debug(`Initialization failure: ${initializeError}`);
@@ -458,7 +484,9 @@ export default async function initialize(
   }
   const hasCustomRoutes = !!applicationProfile.customRoutes;
   try {
-    await middlewareIndex(app, express, config, rootdir, hasCustomRoutes, exception);
+    if (app) {
+      await middlewareIndex(app, express, providers, config, rootdir, hasCustomRoutes, exception);
+    }
   } catch (middlewareError) {
     exception = middlewareError;
   }
@@ -466,13 +494,12 @@ export default async function initialize(
   if (!exception) {
     if (hasCustomRoutes) {
       await applicationProfile.customRoutes();
-    } else {
+    } else if (app) {
       app.use('/', expressRoutes);
     }
   } else {
     console.error(exception);
-    const appInsightsClient = providers.insights;
-    const crash = (error) => {
+    const crash = (error: Error) => {
       return () => {
         debug('App crashed because of an initialization error.');
         console.log(error.message);
@@ -482,15 +509,15 @@ export default async function initialize(
         process.exit(1);
       };
     };
-    if (appInsightsClient) {
-      appInsightsClient.trackException({
+    if (insights) {
+      insights.trackException({
         exception,
         properties: {
           info: 'App crashed while initializing',
         },
       });
       try {
-        appInsightsClient.flush({ isAppCrashing: true, callback: crash(exception) });
+        insights.flush({ isAppCrashing: true, callback: crash(exception) });
       } catch (sendError) {
         console.dir(sendError);
         crash(exception)();
@@ -500,10 +527,24 @@ export default async function initialize(
     }
   }
   await ErrorRoutes(app, exception);
-  return app;
+  if (config?.debug?.breakConsoleEveryMinute === true) {
+    const isNowDebugging = Debug.enabled('now');
+    const everyMinute = () => {
+      const display = new Date().toISOString().substring(0, 19).replace('T', ' ');
+      if (isNowDebugging) {
+        nowDebug(display);
+      } else {
+        console.log();
+        console.log(display);
+      }
+    };
+    everyMinute();
+    setInterval(everyMinute, 60000);
+  }
+  return executionEnvironment;
 }
 
-function createGraphProvider(providers: IProviders, config: any): Promise<IGraphProvider> {
+function createGraphProvider(providers: IProviders, config: SiteConfiguration): Promise<IGraphProvider> {
   return new Promise((resolve, reject) => {
     // The graph provider is optional. A graph provider can connect to a
     // corporate directory to validate or lookup employees and other
@@ -601,7 +642,10 @@ async function connectRedis(
   return redisClient;
 }
 
-async function createMailAddressProvider(config: any, providers: IProviders): Promise<IMailAddressProvider> {
+async function createMailAddressProvider(
+  config: SiteConfiguration,
+  providers: IProviders
+): Promise<IMailAddressProvider> {
   const options = {
     config: config,
     providers: providers,
@@ -609,7 +653,13 @@ async function createMailAddressProvider(config: any, providers: IProviders): Pr
   return createMailAddressProviderInstance(options);
 }
 
-async function dynamicStartup(config: any, providers: IProviders, rootdir: string, stage?: string) {
+async function dynamicStartup(
+  executionEnvironment: ExecutionEnvironment,
+  config: SiteConfiguration,
+  providers: IProviders,
+  rootdir: string,
+  stage?: string
+) {
   const p = config?.startup?.path;
   if (p) {
     try {
@@ -625,6 +675,7 @@ async function dynamicStartup(config: any, providers: IProviders, rootdir: strin
       }
       const promise = (entrypoint as CompanyStartupEntrypoint).call(
         null,
+        executionEnvironment,
         config,
         providers,
         rootdir
@@ -632,6 +683,9 @@ async function dynamicStartup(config: any, providers: IProviders, rootdir: strin
       await promise;
       debug(`company-specific ${stage || 'startup'} complete (${p})`);
     } catch (dynamicLoadError) {
+      if (dynamicLoadError.stack) {
+        console.error(dynamicLoadError.stack);
+      }
       throw new Error(`config.startup.path=${p} could not successfully load: ${dynamicLoadError}`);
     }
   }

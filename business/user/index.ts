@@ -10,7 +10,7 @@ import objectPath from 'object-path';
 import Debug from 'debug';
 const debug = Debug.debug('context');
 
-import { addBreadcrumb, isCodespacesAuthenticating } from '../../utils';
+import { addBreadcrumb, isCodespacesAuthenticating } from '../../lib/utils';
 import { Operations } from '../operations';
 import { UserContext } from './aggregate';
 import {
@@ -537,7 +537,7 @@ export class IndividualContext {
 
   async isPortalAdministrator(): Promise<boolean> {
     const operations = this._operations;
-    const ghi = this.getGitHubIdentity().username;
+    const ghi = this.getGitHubIdentity()?.username;
     const link = this._link;
     this._isPortalAdministrator = await operations.isPortalSudoer(ghi, link);
     return this._isPortalAdministrator;

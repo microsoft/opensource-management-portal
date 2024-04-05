@@ -3,7 +3,9 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { getProviders } from '../../transitional';
+import { NextFunction, Response } from 'express';
+
+import { getProviders } from '../../lib/transitional';
 import { jsonError } from '../../middleware';
 import { IApiRequest } from '../../middleware/apiReposAuth';
 import { ICorporateLink, LinkOperationSource } from '../../interfaces';
@@ -15,7 +17,7 @@ const supportedApiVersions = new Set([
   '2019-10-01',
 ]);
 
-export default async function postLinkApi(req: IApiRequest, res, next) {
+export default async function postLinkApi(req: IApiRequest, res: Response, next: NextFunction) {
   const providers = getProviders(req);
   const { operations } = providers;
   const token = req.apiKeyToken;

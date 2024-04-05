@@ -3,19 +3,19 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Router } from 'express';
+import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
-import { IApprovalProvider } from '../../entities/teamJoinApproval/approvalProvider';
-import { TeamJoinApprovalEntity } from '../../entities/teamJoinApproval/teamJoinApproval';
-import { safeLocalRedirectUrl } from '../../utils';
+import { IApprovalProvider } from '../../business/entities/teamJoinApproval/approvalProvider';
+import { TeamJoinApprovalEntity } from '../../business/entities/teamJoinApproval/teamJoinApproval';
+import { safeLocalRedirectUrl } from '../../lib/utils';
 import { Operations } from '../../business';
 import { Team } from '../../business';
 import { Organization } from '../../business';
 import { IAggregateUserTeams } from '../../business/user/aggregate';
 import { ReposAppRequest, IReposError, UserAlertType } from '../../interfaces';
-import { getProviders } from '../../transitional';
+import { getProviders } from '../../lib/transitional';
 
 export interface ApprovalPair {
   team: Team;
@@ -82,7 +82,7 @@ export async function Approvals_getUserRequests(
 
 router.get(
   '/',
-  asyncHandler(async function (req: ReposAppRequest, res, next) {
+  asyncHandler(async function (req: ReposAppRequest, res: Response, next: NextFunction) {
     const { approvalProvider, operations } = getProviders(req);
     if (!approvalProvider) {
       return next(new Error('No approval provider instance available'));
@@ -107,7 +107,7 @@ router.get(
   })
 );
 
-router.post('/:requestid/cancel', function (req: ReposAppRequest, res, next) {
+router.post('/:requestid/cancel', function (req: ReposAppRequest, res: Response, next: NextFunction) {
   const { approvalProvider } = getProviders(req);
   if (!approvalProvider) {
     return next(new Error('No approval provider instance available'));
@@ -143,7 +143,7 @@ router.post('/:requestid/cancel', function (req: ReposAppRequest, res, next) {
 
 router.get(
   '/:requestid',
-  asyncHandler(async function (req: ReposAppRequest, res, next) {
+  asyncHandler(async function (req: ReposAppRequest, res: Response, next: NextFunction) {
     const requestid = req.params.requestid;
     const { approvalProvider, operations } = getProviders(req);
     req.individualContext.webContext.pushBreadcrumb('Your Request');

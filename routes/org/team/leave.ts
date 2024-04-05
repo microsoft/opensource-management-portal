@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Router } from 'express';
+import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
@@ -17,7 +17,7 @@ interface ILocalRequest extends ReposAppRequest {
 
 router.post(
   '/',
-  asyncHandler(async (req: ILocalRequest, res, next) => {
+  asyncHandler(async (req: ILocalRequest, res: Response, next: NextFunction) => {
     const organization = req.organization as Organization;
     const team2 = req.team2 as Team;
     const username = req.individualContext.link.thirdPartyUsername;

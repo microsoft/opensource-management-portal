@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { AppPurposeTypes } from '../../business/githubApps';
+import { AppPurposeTypes } from '../../lib/github/appPurposes';
 
 export interface ICacheOptions {
   backgroundRefresh?: any | null | undefined;
@@ -14,25 +14,29 @@ export interface ICacheOptionsWithPurpose extends ICacheOptions {
   purpose?: AppPurposeTypes;
 }
 
+export type WithOptionalPurpose = {
+  purpose?: AppPurposeTypes;
+};
+
 export interface IPagedCacheOptions extends ICacheOptions {
   pageRequestDelay?: number | null | undefined; // FUTURE: could be a function, too
 }
 
-export interface IPurposefulGetAuthorizationHeader {
-  (purpose: AppPurposeTypes): Promise<IAuthorizationHeaderValue>;
-}
+export type PagedCacheOptionsWithPurpose = IPagedCacheOptions & WithOptionalPurpose;
 
-export interface IGetAuthorizationHeader {
-  (): Promise<IAuthorizationHeaderValue>;
-}
+export type PurposefulGetAuthorizationHeader = (
+  purpose: AppPurposeTypes
+) => Promise<AuthorizationHeaderValue>;
 
-export interface IAuthorizationHeaderValue {
+export type GetAuthorizationHeader = () => Promise<AuthorizationHeaderValue>;
+
+export type AuthorizationHeaderValue = {
   value: string;
   purpose: AppPurposeTypes;
   source?: string;
   installationId?: number;
   organizationName?: string;
-}
+};
 
 export interface ICacheDefaultTimes {
   orgReposStaleSeconds: number;
@@ -58,6 +62,7 @@ export interface ICacheDefaultTimes {
   teamDetailStaleSeconds: number;
   orgRepoWebhooksStaleSeconds: number;
   teamRepositoryPermissionStaleSeconds: number;
+  defaultStaleSeconds: number;
 }
 
 // These "core capabilities" were created when the GitHub operations

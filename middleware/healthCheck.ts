@@ -5,13 +5,15 @@
 
 import Debug from 'debug';
 import { IncomingHttpHeaders } from 'http';
+import { NextFunction, Response } from 'express';
+
 import type {
   ConfiguredHeaderProbe,
   ConfiguredGeneralProbe,
   ConfiguredProbeBase,
 } from '../config/webHealthProbes.types';
-import { ReposAppRequest, SiteConfiguration } from '../interfaces';
-import { CreateError } from '../transitional';
+import { IReposApplication, ReposAppRequest, SiteConfiguration } from '../interfaces';
+import { CreateError } from '../lib/transitional';
 
 const dbg = Debug.debug('health');
 
@@ -29,7 +31,7 @@ enum ProbeType {
 }
 
 export default function initializeHealthCheck(
-  app,
+  app: IReposApplication,
   config: SiteConfiguration /* WebHealthProbeSubsetConfiguration */
 ) {
   const { webHealthProbes: healthConfig } = config;
@@ -84,8 +86,8 @@ export default function initializeHealthCheck(
     probeType: ProbeType,
     probeConfigs: ConfiguredHeaderProbe[],
     req: ReposAppRequest,
-    res,
-    next
+    res: Response,
+    next: NextFunction
   ) {
     for (const probeConfig of probeConfigs) {
       if (requestEligibleForCheck(checkType, probeType, probeConfig, req.headers)) {
@@ -133,7 +135,12 @@ export default function initializeHealthCheck(
     return true;
   }
 
-  function returnExpressHealthCheck(checkType: HealthProbeType, req: ReposAppRequest, res, next) {
+  function returnExpressHealthCheck(
+    checkType: HealthProbeType,
+    req: ReposAppRequest,
+    res: Response,
+    next: NextFunction
+  ) {
     let result = null;
     try {
       result = checkHealth(checkType);
@@ -149,7 +156,7 @@ export default function initializeHealthCheck(
     healthy: true,
   };
 
-  if (enabledHeaderProbes.length > 0) {
+  if (enabledHeaderProbes.length > 0 && app) {
     dbg(`Configured header health probes: ${enabledHeaderProbes.length}`);
     app.get(
       '/health/readiness',
@@ -160,7 +167,7 @@ export default function initializeHealthCheck(
       multipleHeaderHealthCheck.bind(null, HealthProbeType.Liveness, ProbeType.Header, enabledHeaderProbes)
     );
   }
-  if (enabledGenericProbes.length > 0) {
+  if (enabledGenericProbes.length > 0 && app) {
     // General probes listen on their own type endpoint
     for (const genericProbeConfig of enabledGenericProbes) {
       const url = genericProbeConfig.endpoint || `/health/${genericProbeConfig.endpointSuffix}`;
@@ -173,7 +180,7 @@ export default function initializeHealthCheck(
       );
     }
   }
-  if (enabledGenericProbes.length + enabledGenericProbes.length > 0) {
+  if (app && enabledGenericProbes.length + enabledGenericProbes.length > 0) {
     dbg('Health probes listening');
     // 404 on anything that was not handled by any active, allowed probe listeners
     app.use('/health/*', (req, res) => {

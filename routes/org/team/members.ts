@@ -3,13 +3,13 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Router } from 'express';
+import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
 import { Team, TeamMember } from '../../../business';
 import { ReposAppRequest, RequestTeamMemberAddType, UserAlertType } from '../../../interfaces';
-import { getProviders, validateGitHubLogin } from '../../../transitional';
+import { getProviders, validateGitHubLogin } from '../../../lib/transitional';
 
 import RoutePeopleSearch from '../../peopleSearch';
 import MiddlewareTeamAdminRequired from './teamAdminRequired';
@@ -55,7 +55,7 @@ async function refreshMembersAndSummary(team2: Team, when): Promise<void> {
 }
 
 router.use(
-  asyncHandler(async (req: ILocalTeamRequest, res, next) => {
+  asyncHandler(async (req: ILocalTeamRequest, res: Response, next: NextFunction) => {
     // Always make sure to have a relatively up-to-date membership cache available
     const team2 = req.team2 as Team;
     req.refreshedMembers = await refreshMembers(
@@ -70,7 +70,7 @@ router.use(
 
 router.get(
   '/refresh',
-  asyncHandler(async (req: ILocalTeamRequest, res, next) => {
+  asyncHandler(async (req: ILocalTeamRequest, res: Response, next: NextFunction) => {
     // Refresh all the pages and also the cached single-page view shown on the team page
     const team2 = req.team2 as Team;
     await refreshMembersAndSummary(team2, 'whenever');
@@ -81,7 +81,7 @@ router.get(
 // Browse members
 router.use(
   '/browse',
-  (req: ILocalTeamRequest, res, next) => {
+  (req: ILocalTeamRequest, res: Response, next: NextFunction) => {
     req.team2RemoveType = 'member';
     return next();
   },
@@ -92,7 +92,7 @@ router.use(
 router.use(
   '/add',
   MiddlewareTeamAdminRequired,
-  (req: ILocalTeamRequest, res, next) => {
+  (req: ILocalTeamRequest, res: Response, next: NextFunction) => {
     req.team2AddType = RequestTeamMemberAddType.Member;
     return next();
   },
@@ -102,7 +102,7 @@ router.use(
 router.post(
   '/remove',
   MiddlewareTeamAdminRequired,
-  asyncHandler(async (req: ILocalTeamRequest, res, next) => {
+  asyncHandler(async (req: ILocalTeamRequest, res: Response, next: NextFunction) => {
     const { operations } = getProviders(req);
     const username = validateGitHubLogin(req.body.username);
     const team2 = req.team2 as Team;
@@ -120,7 +120,7 @@ router.post(
 router.post(
   '/add',
   MiddlewareTeamAdminRequired,
-  asyncHandler(async (req: ILocalTeamRequest, res, next) => {
+  asyncHandler(async (req: ILocalTeamRequest, res: Response, next: NextFunction) => {
     const { operations } = getProviders(req);
     const username = validateGitHubLogin(req.body.username);
     const organization = req.organization;

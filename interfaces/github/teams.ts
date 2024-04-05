@@ -22,6 +22,29 @@ export interface IGitHubTeamBasics {
   slug: string;
 }
 
+export enum GitHubTeamNotificationSetting {
+  Enabled = 'notification_enabled',
+  Disabled = 'notification_disabled',
+}
+
+export type GitHubTeamDetails = IGitHubTeamBasics & {
+  node_id: string;
+  description: string;
+  privacy: GitHubTeamPrivacy;
+  notification_setting: GitHubTeamNotificationSetting;
+  url: string;
+  html_url: string;
+  members_url: string;
+  repositories_url: string;
+  // permission: ...
+  created_at: string;
+  updated_at: string;
+  members_count: number;
+  repos_count: number;
+  // organization: ...
+  parent: IGitHubTeamBasics;
+};
+
 export enum GitHubRepositoryType {
   Sources = 'sources',
 }

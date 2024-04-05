@@ -3,25 +3,25 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Response, Router } from 'express';
+import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
-import { getProviders } from '../transitional';
+import { getProviders } from '../lib/transitional';
 import { setIdentity } from '../middleware/business/authentication';
-import { AddLinkToRequest } from '../middleware/links';
+import { AddLinkToRequest } from '../middleware/business/links';
 import { jsonError } from '../middleware';
 import { apiContextMiddleware } from '../middleware/business/setContext';
-import { ILocalExtensionKeyProvider } from '../entities/localExtensionKey';
-import { LocalExtensionKey } from '../entities/localExtensionKey/localExtensionKey';
+import { ILocalExtensionKeyProvider } from '../business/entities/localExtensionKey';
+import { LocalExtensionKey } from '../business/entities/localExtensionKey/localExtensionKey';
 import { IApiRequest } from '../middleware/apiReposAuth';
-import { PersonalAccessToken } from '../entities/token/token';
+import { PersonalAccessToken } from '../business/entities/token/token';
 
 const thisApiScopeName = 'extension';
 
-interface IExtensionResponse extends Response {
+type ExtensionResponse = Response & {
   localKey?: any;
-}
+};
 
 interface IConnectionInformation {
   link?: any;
@@ -29,7 +29,7 @@ interface IConnectionInformation {
   auth?: any;
 }
 
-router.use(function (req: IApiRequest, res, next) {
+router.use(function (req: IApiRequest, res: Response, next: NextFunction) {
   const token = req.apiKeyToken;
   if (!token.scopes) {
     return next(jsonError('The key is not authorized for specific APIs', 403));
@@ -40,7 +40,7 @@ router.use(function (req: IApiRequest, res, next) {
   return next();
 });
 
-function overwriteUserContext(req: IApiRequest, res, next) {
+function overwriteUserContext(req: IApiRequest, res: Response, next: NextFunction) {
   const token = req.apiKeyToken;
   const corporateId = token.corporateId;
   if (!corporateId) {
@@ -121,7 +121,7 @@ router.get('/', (req: IApiRequest, res) => {
 router.get(
   '/metadata',
   asyncHandler(getLocalEncryptionKeyMiddleware),
-  (req: IApiRequest, res: IExtensionResponse) => {
+  (req: IApiRequest, res: ExtensionResponse) => {
     const apiContext = req.apiContext;
 
     const localKey = res.localKey;
@@ -186,7 +186,11 @@ function getSanitizedOrganizations(operations) {
   return value;
 }
 
-async function getLocalEncryptionKeyMiddleware(req: IApiRequest, res, next): Promise<void> {
+async function getLocalEncryptionKeyMiddleware(
+  req: IApiRequest,
+  res: ExtensionResponse,
+  next: NextFunction
+): Promise<void> {
   const providers = getProviders(req);
   const localExtensionKeyProvider = providers.localExtensionKeyProvider;
   const apiKeyToken = req.apiKeyToken;
@@ -250,7 +254,7 @@ async function getOrCreateLocalEncryptionKey(
   return await createLocalEncryptionKey(insights, localExtensionKeyProvider, corporateId);
 }
 
-router.use('*', (req, res, next) => {
+router.use('*', (req, res: Response, next: NextFunction) => {
   return next(jsonError('API not found', 404));
 });
 

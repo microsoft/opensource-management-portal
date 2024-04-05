@@ -5,22 +5,22 @@
 
 import { NextFunction, Response } from 'express';
 import { PassportStatic } from 'passport';
-import { IReposError, ReposAppRequest } from '../../interfaces';
-import { getProviders } from '../../transitional';
-import { isCodespacesAuthenticating } from '../../utils';
+import { type IReposApplication, type IReposError, ReposAppRequest } from '../../interfaces';
+import { getProviders } from '../../lib/transitional';
+import { isCodespacesAuthenticating } from '../../lib/utils';
 import { IPrimaryAuthenticationHelperMethods } from '../passport-routes';
 import { aadStrategyUserPropertyName } from './aadStrategy';
 
 const aadPassportStrategyName = 'azure-active-directory';
 
 export function attachAadPassportRoutes(
-  app,
+  app: IReposApplication,
   config: any,
   passport: PassportStatic,
   helpers: IPrimaryAuthenticationHelperMethods
 ) {
   const signinPath = isCodespacesAuthenticating(config, 'aad') ? 'sign-in' : 'signin';
-  app.get(`/${signinPath}`, function (req: ReposAppRequest, res, next) {
+  app.get(`/${signinPath}`, function (req: ReposAppRequest, res: Response, next: NextFunction) {
     if (req.isAuthenticated()) {
       const username = req.user?.azure?.username;
       if (username) {
@@ -81,7 +81,7 @@ export function attachAadPassportRoutes(
   // links from apps that temporarily prevent sessions. Technically this seems to
   // impact Windows users who use Word to open links to the site. Collecting
   // telemetry for now.
-  app.get('/auth/azure/callback', (req: ReposAppRequest, res, next) => {
+  app.get('/auth/azure/callback', (req: ReposAppRequest, res: Response, next: NextFunction) => {
     const { insights } = getProviders(req);
     const isAuthenticated = req.isAuthenticated();
     insights?.trackEvent({

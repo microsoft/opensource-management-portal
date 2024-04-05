@@ -7,18 +7,18 @@ import _ from 'lodash';
 
 import * as common from './common';
 
-import { wrapError } from '../utils';
+import { wrapError } from '../lib/utils';
 import { corporateLinkToJson } from './corporateLink';
 import { Organization } from './organization';
-import { AppPurpose } from './githubApps';
+import { AppPurpose } from '../lib/github/appPurposes';
 import { ILinkProvider } from '../lib/linkProviders';
-import { CacheDefault, getMaxAgeSeconds } from '.';
+import { CacheDefault, Operations, getMaxAgeSeconds } from '.';
 import {
   AccountJsonFormat,
   CoreCapability,
   ICacheOptions,
   ICorporateLink,
-  IGetAuthorizationHeader,
+  GetAuthorizationHeader,
   IGitHubAccountDetails,
   IOperationsInstance,
   IOperationsLinks,
@@ -29,7 +29,7 @@ import {
   throwIfNotCapable,
   throwIfNotGitHubCapable,
 } from '../interfaces';
-import { ErrorHelper } from '../transitional';
+import { ErrorHelper } from '../lib/transitional';
 
 interface IRemoveOrganizationMembershipsResult {
   error?: IReposError;
@@ -46,7 +46,7 @@ const secondaryAccountProperties = [];
 
 export class Account {
   private _operations: IOperationsInstance;
-  private _getAuthorizationHeader: IGetAuthorizationHeader;
+  private _getAuthorizationHeader: GetAuthorizationHeader;
 
   private _link: ICorporateLink;
   private _id: number;
@@ -69,6 +69,12 @@ export class Account {
     switch (format) {
       case AccountJsonFormat.GitHub: {
         return basic;
+      }
+      case AccountJsonFormat.GitHubExtended: {
+        const cloneEntity = Object.assign({}, this._originalEntity || {});
+        delete (cloneEntity as any).cost;
+        delete (cloneEntity as any).headers;
+        return cloneEntity;
       }
       case AccountJsonFormat.GitHubDetailedWithLink: {
         const cloneEntity = Object.assign({}, this._originalEntity || {});
@@ -131,7 +137,7 @@ export class Account {
     return this._originalEntity ? this._originalEntity.name : undefined;
   }
 
-  constructor(entity, operations: IOperationsInstance, getAuthorizationHeader: IGetAuthorizationHeader) {
+  constructor(entity, operations: IOperationsInstance, getAuthorizationHeader: GetAuthorizationHeader) {
     common.assignKnownFieldsPrefixed(
       this,
       entity,
@@ -144,7 +150,7 @@ export class Account {
     this._getAuthorizationHeader = getAuthorizationHeader;
   }
 
-  overrideAuthorization(getAuthorizationHeader: IGetAuthorizationHeader) {
+  overrideAuthorization(getAuthorizationHeader: GetAuthorizationHeader) {
     this._getAuthorizationHeader = getAuthorizationHeader;
   }
 
@@ -352,8 +358,10 @@ export class Account {
       cacheOptions.backgroundRefresh = options.backgroundRefresh;
     }
     try {
+      const ops = operations as Operations;
       const entity = (await operations.github.request(
-        this.authorize(AppPurpose.Data),
+        ops.getPublicAuthorizationToken(),
+        // this.authorize(AppPurpose.Data),
         'GET /user/:id',
         parameters,
         cacheOptions
@@ -412,7 +420,7 @@ export class Account {
     };
     const eventData = {
       github: {
-        id: id,
+        id,
         login: this._login,
       },
       aad: aadIdentity,
@@ -478,7 +486,11 @@ export class Account {
     return currentOrganizationMemberships;
   }
 
-  async removeCollaboratorPermissions(): Promise<IRemoveOrganizationMembershipsResult> {
+  async removeCollaboratorPermissions(
+    onlyOneHundred?: boolean
+  ): Promise<IRemoveOrganizationMembershipsResult> {
+    // NOTE: this at least temporarily adds the ability to punt 100
+    // but not all grants; probably should use options eventually vs bool param.
     const history = [];
     const error: IReposError = null;
     const operations = throwIfNotGitHubCapable(this._operations);
@@ -492,13 +504,18 @@ export class Account {
       await this.getDetails();
     }
     const collaborativeRepos = await queryCache.userCollaboratorRepositories(this.id.toString());
+    let i = 0;
     for (const entry of collaborativeRepos) {
+      if (onlyOneHundred && i >= 100) {
+        break;
+      }
       const { repository } = entry;
       try {
         await repository.getDetails();
         if (repository.archived) {
-          history.push(`FYI: previous access to an archived repository ${repository.full_name}`);
+          history.push(`FYI: cannot alter prior grant to archived repository ${repository.full_name}`);
         } else {
+          ++i;
           await repository.removeCollaborator(this.login);
           history.push(`Removed ${this.login} as a Collaborator from the repository ${repository.full_name}`);
         }
@@ -556,11 +573,8 @@ export class Account {
     return { history, error };
   }
 
-  private authorize(purpose: AppPurpose): IGetAuthorizationHeader | string {
-    const getAuthorizationHeader = this._getAuthorizationHeader.bind(
-      this,
-      purpose
-    ) as IGetAuthorizationHeader;
+  private authorize(purpose: AppPurpose): GetAuthorizationHeader | string {
+    const getAuthorizationHeader = this._getAuthorizationHeader.bind(this, purpose) as GetAuthorizationHeader;
     return getAuthorizationHeader;
   }
 }

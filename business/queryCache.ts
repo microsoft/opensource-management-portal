@@ -16,15 +16,15 @@
 
 import Debug from 'debug';
 
-import { MassagePermissionsToGitHubRepositoryPermission } from '../transitional';
-import { OrganizationMemberCacheEntity } from '../entities/organizationMemberCache/organizationMemberCache';
+import { projectCollaboratorPermissionToGitHubRepositoryPermission } from '../lib/transitional';
+import { OrganizationMemberCacheEntity } from './entities/organizationMemberCache/organizationMemberCache';
 import { Operations } from './operations';
-import { TeamMemberCacheEntity } from '../entities/teamMemberCache/teamMemberCache';
+import { TeamMemberCacheEntity } from './entities/teamMemberCache/teamMemberCache';
 
-import { TeamCacheEntity } from '../entities/teamCache/teamCache';
-import { RepositoryTeamCacheEntity } from '../entities/repositoryTeamCache/repositoryTeamCache';
-import { RepositoryCacheEntity } from '../entities/repositoryCache/repositoryCache';
-import { RepositoryCollaboratorCacheEntity } from '../entities/repositoryCollaboratorCache/repositoryCollaboratorCache';
+import { TeamCacheEntity } from './entities/teamCache/teamCache';
+import { RepositoryTeamCacheEntity } from './entities/repositoryTeamCache/repositoryTeamCache';
+import { RepositoryCacheEntity } from './entities/repositoryCache/repositoryCache';
+import { RepositoryCollaboratorCacheEntity } from './entities/repositoryCollaboratorCache/repositoryCollaboratorCache';
 import { Repository } from '.';
 import {
   IProviders,
@@ -665,9 +665,10 @@ export default class QueryCache {
     try {
       const organization = this.operations.getOrganizationById(Number(cacheEntity.organizationId));
       const team = organization.team(Number(cacheEntity.teamId));
-      const iid = cacheEntity.repositoryId;
+      const idAsStringOrNumber = cacheEntity.repositoryId;
+      const repositoryIdAsNumber = Number(idAsStringOrNumber);
       const repository = organization.repository(cacheEntity.repositoryName, {
-        id: cacheEntity.repositoryId, // a string version of repositoryId FYI
+        id: repositoryIdAsNumber,
         private: cacheEntity.repositoryPrivate,
       });
       return {
@@ -835,9 +836,8 @@ export default class QueryCache {
       this.throwMethodNotSupported('repositoryCollaborators', 'repositoryCollaboratorCacheProvider');
     }
     const repositoryCollaboratorCacheProvider = this._providers.repositoryCollaboratorCacheProvider;
-    const rawEntities = await repositoryCollaboratorCacheProvider.queryCollaboratorsByRepositoryId(
-      repositoryId
-    );
+    const rawEntities =
+      await repositoryCollaboratorCacheProvider.queryCollaboratorsByRepositoryId(repositoryId);
     return rawEntities
       .map((cacheEntity) => this.hydrateRepositoryCollaborator(cacheEntity))
       .filter((real) => real);
@@ -894,9 +894,10 @@ export default class QueryCache {
     cacheEntity: RepositoryCollaboratorCacheEntity
   ): IQueryCacheRepositoryCollaborator {
     const organization = this.operations.getOrganizationById(Number(cacheEntity.organizationId));
-    const iid = cacheEntity.repositoryId;
+    const idAsStringOrNumber = cacheEntity.repositoryId;
+    const repositoryIdAsNumber = Number(idAsStringOrNumber);
     const repository = organization.repository(cacheEntity.repositoryName, {
-      id: cacheEntity.repositoryId,
+      id: repositoryIdAsNumber,
       private: cacheEntity.repositoryPrivate,
     }); // a string version of repositoryId FYI
     return {
@@ -904,7 +905,7 @@ export default class QueryCache {
       affiliation: cacheEntity.collaboratorType,
       cacheEntity,
       userId: cacheEntity.userId,
-      permission: MassagePermissionsToGitHubRepositoryPermission(cacheEntity.permission),
+      permission: projectCollaboratorPermissionToGitHubRepositoryPermission(cacheEntity.permission),
     };
   }
 
@@ -993,9 +994,8 @@ export default class QueryCache {
       this.throwMethodNotSupported('organizationMembers', 'organizationMemberCacheProvider');
     }
     const organizationMemberCacheProvider = this._providers.organizationMemberCacheProvider;
-    const rawEntities = await organizationMemberCacheProvider.queryOrganizationMembersByOrganizationId(
-      organizationId
-    );
+    const rawEntities =
+      await organizationMemberCacheProvider.queryOrganizationMembersByOrganizationId(organizationId);
     return this.hydrateOrganizationMembers(rawEntities);
   }
 

@@ -7,7 +7,7 @@ import _ from 'lodash';
 import asyncHandler from 'express-async-handler';
 import { NextFunction, Response } from 'express';
 
-import { getProviders } from '../transitional';
+import { getProviders } from '../lib/transitional';
 import { Operations } from '../business';
 import { Team } from '../business';
 import { UserContext } from '../business/user/aggregate';

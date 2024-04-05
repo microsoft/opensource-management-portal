@@ -18,10 +18,10 @@ import {
   TeamMember,
   OrganizationMember,
 } from '.';
-import { RepositoryMetadataEntity } from '../entities/repositoryMetadata/repositoryMetadata';
-import { AppPurpose, AppPurposeTypes } from './githubApps';
+import { RepositoryMetadataEntity } from './entities/repositoryMetadata/repositoryMetadata';
+import { AppPurpose, AppPurposeTypes } from '../lib/github/appPurposes';
 import {
-  IPurposefulGetAuthorizationHeader,
+  PurposefulGetAuthorizationHeader,
   IOperationsInstance,
   ICacheOptions,
   throwIfNotGitHubCapable,
@@ -33,7 +33,7 @@ import {
   ITemporaryCommandOutput,
   NoCacheNoBackground,
   IGitHubProtectedBranchConfiguration,
-  IRepositoryBranchAccessProtections,
+  RepositoryBranchAccessProtections as RepositoryBranchAccessProtections,
   IListContributorsOptions,
   IGetCollaboratorsOptions,
   GitHubCollaboratorAffiliationQuery,
@@ -44,19 +44,24 @@ import {
   IGitHubSecretScanningAlert,
   operationsWithCapability,
   IOperationsServiceAccounts,
-  IGetAuthorizationHeader,
+  GetAuthorizationHeader,
   IRepositoryGetIssuesOptions,
   IOperationsRepositoryMetadataProvider,
   IOperationsUrls,
   GitHubRepositoryPermission,
+  GitHubRepositoryVisibility,
+  GitHubRepositoryDetails,
 } from '../interfaces';
 import { IListPullsParameters, GitHubPullRequestState } from '../lib/github/collections';
 
-import { wrapError } from '../utils';
+import { wrapError } from '../lib/utils';
 import { RepositoryActions } from './repositoryActions';
 import { RepositoryPullRequest } from './repositoryPullRequest';
-import { ErrorHelper } from '../transitional';
+import { CreateError, ErrorHelper } from '../lib/transitional';
 import { augmentInertiaPreview, RepositoryProject } from './repositoryProject';
+import { RepositoryInvitation } from './repositoryInvitation';
+import { RepositoryProperties } from './repositoryProperties';
+import { WithGitHubRestHeaders } from '../lib/github/core';
 
 interface IRepositoryMoments {
   created?: moment.Moment;
@@ -160,6 +165,46 @@ interface IUnarchiveResponse {
   };
 }
 
+export type GitHubBranchProtectionParameters = {
+  owner: string;
+  repo: string;
+  branch: string;
+  required_status_checks: {
+    strict: boolean;
+    contexts: string[];
+    checks?: string[];
+  } | null;
+  enforce_admins: boolean | null;
+  required_pull_request_reviews: {
+    dismissal_restrictions: {
+      users: string[];
+      teams: string[];
+      apps: string[];
+    };
+    dismiss_stale_reviews: boolean;
+    require_code_owner_reviews: boolean;
+    required_approving_review_count: number;
+    require_last_push_approval: boolean;
+    bypass_pull_request_allowances: {
+      users: string[];
+      teams: string[];
+      apps: string[];
+    };
+  } | null;
+  restrictions: {
+    users: string[];
+    teams: string[];
+    apps: string[];
+  };
+  required_linear_history: boolean;
+  allow_force_pushes: boolean | null;
+  allow_deletions: boolean;
+  block_creations: boolean;
+  required_conversation_resolution: boolean;
+  lock_branch: boolean;
+  allow_fork_syncing: boolean;
+};
+
 export type GitHubPagesResponse = {
   status: string;
   cname: string;
@@ -218,7 +263,7 @@ const sortByLogin = (list) => {
 };
 
 export class Repository {
-  private _entity: any;
+  private _entity: WithGitHubRestHeaders<GitHubRepositoryDetails>;
   private _baseUrl: string;
   private _absoluteBaseUrl: string;
   private _nativeUrl: string;
@@ -226,17 +271,18 @@ export class Repository {
 
   private _awesomeness: number;
 
-  private _getAuthorizationHeader: IPurposefulGetAuthorizationHeader;
-  private _getSpecificAuthorizationHeader: IPurposefulGetAuthorizationHeader;
+  private _getAuthorizationHeader: PurposefulGetAuthorizationHeader;
+  private _getSpecificAuthorizationHeader: PurposefulGetAuthorizationHeader;
   private _operations: IOperationsInstance;
 
   private _organization: Organization;
+  private _customProperties: RepositoryProperties;
 
   private _name: string;
 
   private _moments: IRepositoryMoments;
 
-  getEntity(): any {
+  getEntity(): WithGitHubRestHeaders<GitHubRepositoryDetails> {
     return this._entity;
   }
 
@@ -270,6 +316,9 @@ export class Repository {
   get private(): boolean {
     return this._entity ? this._entity.private : false;
   }
+  get visibility(): GitHubRepositoryVisibility {
+    return this._entity ? this._entity.visibility : null;
+  }
   get html_url(): string {
     return this._entity ? this._entity.html_url : null;
   }
@@ -285,13 +334,13 @@ export class Repository {
   get archived(): boolean {
     return this._entity ? this._entity.archived : false;
   }
-  get created_at(): Date {
+  get created_at(): string {
     return this._entity ? this._entity.created_at : null;
   }
-  get updated_at(): Date {
+  get updated_at(): string {
     return this._entity ? this._entity.updated_at : null;
   }
-  get pushed_at(): Date {
+  get pushed_at(): string {
     return this._entity ? this._entity.pushed_at : null;
   }
   get git_url(): string {
@@ -375,8 +424,8 @@ export class Repository {
   constructor(
     organization: Organization,
     entity: any,
-    getAuthorizationHeader: IPurposefulGetAuthorizationHeader,
-    getSpecificAuthorizationHeader: IPurposefulGetAuthorizationHeader,
+    getAuthorizationHeader: PurposefulGetAuthorizationHeader,
+    getSpecificAuthorizationHeader: PurposefulGetAuthorizationHeader,
     operations: IOperationsInstance
   ) {
     this._organization = organization;
@@ -395,6 +444,17 @@ export class Repository {
     this._getAuthorizationHeader = getAuthorizationHeader;
     this._getSpecificAuthorizationHeader = getSpecificAuthorizationHeader;
     this._operations = operations;
+  }
+
+  get customProperties() {
+    if (!this._customProperties) {
+      this._customProperties = new RepositoryProperties(
+        this,
+        this._operations,
+        this._getSpecificAuthorizationHeader.bind(this)
+      );
+    }
+    return this._customProperties;
   }
 
   get moment(): IRepositoryMoments {
@@ -417,6 +477,17 @@ export class Repository {
     };
   }
 
+  async getId(options?: ICacheOptions): Promise<number> {
+    // Repositories by name may not actually have the ID; this ensures it's available
+    // and a number. Similar to previously checking "isDeleted" or "getDetails" first.
+    if (!this.id) {
+      await this.getDetails(options);
+    }
+    if (this.id) {
+      return typeof this.id === 'number' ? this.id : parseInt(this.id, 10);
+    }
+  }
+
   async isDeleted(options?: ICacheOptions): Promise<boolean> {
     try {
       await this.getDetails(options);
@@ -437,12 +508,22 @@ export class Repository {
     );
   }
 
-  async getDetails(options?: ICacheOptions): Promise<any> {
+  async getDetails(options?: ICacheOptions): Promise<WithGitHubRestHeaders<GitHubRepositoryDetails>> {
     options = options || {};
     const operations = throwIfNotGitHubCapable(this._operations);
-    if (this.id && !this.name) {
+    const cacheOptions: ICacheOptions = {
+      maxAgeSeconds: getMaxAgeSeconds(operations, CacheDefault.orgRepoDetailsStaleSeconds, options),
+    };
+    if (options.backgroundRefresh !== undefined) {
+      cacheOptions.backgroundRefresh = options.backgroundRefresh;
+    }
+    if ((options as any).noConditionalRequests === true) {
+      (cacheOptions as any).noConditionalRequests = true;
+    }
+    // always prefer ID over name
+    if (this.id) {
       try {
-        const lookupById = await this.organization.getRepositoryById(this.id);
+        const lookupById = await this.organization.getRepositoryById(this.id, cacheOptions);
         this._entity = lookupById.getEntity();
         this._name = this._entity.name;
       } catch (getByIdError) {
@@ -460,17 +541,8 @@ export class Repository {
     if (mediaType) {
       (parameters as any).mediaType = mediaType;
     }
-    const cacheOptions: ICacheOptions = {
-      maxAgeSeconds: getMaxAgeSeconds(operations, CacheDefault.orgRepoDetailsStaleSeconds, options),
-    };
-    if (options.backgroundRefresh !== undefined) {
-      cacheOptions.backgroundRefresh = options.backgroundRefresh;
-    }
-    if ((options as any).noConditionalRequests === true) {
-      (cacheOptions as any).noConditionalRequests = true;
-    }
     try {
-      let entity: any = undefined;
+      let entity: WithGitHubRestHeaders<GitHubRepositoryDetails> = undefined;
       if ((cacheOptions as any)?.noConditionalRequests === true) {
         entity = await operations.github.post(this.authorize(AppPurpose.Data), 'repos.get', parameters);
       } else {
@@ -758,6 +830,27 @@ export class Repository {
     }
   }
 
+  async updateBranchProtectionRule2(
+    parameters: GitHubBranchProtectionParameters,
+    cacheOptions?: ICacheOptions
+  ): Promise<RepositoryBranchAccessProtections> {
+    cacheOptions = cacheOptions || {};
+    const operations = throwIfNotGitHubCapable(this._operations);
+    const github = operations.github;
+
+    Object.assign(parameters, cacheOptions);
+    // PUT /repos/{owner}/{repo}/branches/{branch}/protection
+    const protections = await github.call(
+      this.authorize(AppPurpose.Data),
+      'repos.updateBranchProtection',
+      parameters
+    );
+    if (protections.length >= 100) {
+      console.warn('This API does not support pagination currently... there may be more items');
+    }
+    return protections as RepositoryBranchAccessProtections;
+  }
+
   async listBranchProtectionRules(): Promise<IGitHubProtectedBranchConfiguration[]> {
     await this.organization.requireUpdatesApp('listBranchProtectionRules');
     const query = `query($owner: String!, $repo: String!) {
@@ -810,7 +903,7 @@ export class Repository {
   async getProtectedBranchAccessRestrictions(
     branchName: string,
     cacheOptions?: ICacheOptions
-  ): Promise<IRepositoryBranchAccessProtections> {
+  ): Promise<RepositoryBranchAccessProtections> {
     // NOTE: GitHub has a "100-item limit" currently. This is an object response and not
     // technically paginated.
     cacheOptions = cacheOptions || {};
@@ -834,7 +927,31 @@ export class Repository {
       'repos.getBranchProtection',
       parameters
     );
-    return protections as IRepositoryBranchAccessProtections;
+    return protections as RepositoryBranchAccessProtections;
+  }
+
+  async getAdminProtectedBranchAccessRestrictions(
+    branchName: string,
+    cacheOptions?: ICacheOptions
+  ): Promise<RepositoryBranchAccessProtections> {
+    // NOTE: GitHub has a "100-item limit" currently. This is an object response and not
+    // technically paginated.
+    cacheOptions = cacheOptions || {};
+    const operations = throwIfNotGitHubCapable(this._operations);
+    const github = operations.github;
+    const parameters = {
+      owner: this.organization.name,
+      repo: this.name,
+      branch: branchName,
+    };
+    Object.assign(parameters, cacheOptions);
+    // GET /repos/{owner}/{repo}/branches/{branch}/protection/enforce_admins
+    const protections = await github.call(
+      this.authorize(AppPurpose.Data),
+      'repos.getAdminBranchProtection',
+      parameters
+    );
+    return protections as RepositoryBranchAccessProtections;
   }
 
   async setDefaultBranch(defaultBranchName: string): Promise<void> {
@@ -882,9 +999,8 @@ export class Repository {
       cacheOptions.backgroundRefresh = options.backgroundRefresh;
     }
     try {
-      // CONSIDER: need a fallback authentication approach: try and app for a specific capability (the installation knows) and fallback to central ops
-      // const centralOps = operationsWithCapability<IOperationsCentralOperationsToken>(operations, CoreCapability.GitHubCentralOperations);
-      const tokenSource = this._getSpecificAuthorizationHeader(AppPurpose.Data); // centralOps ? centralOps.getCentralOperationsToken()(AppPurpose.Data) :
+      // CONSIDER: need a fallback authentication approach: try and app for a specific capability
+      const tokenSource = this._getSpecificAuthorizationHeader(AppPurpose.Data);
       const token = await tokenSource;
       return await operations.github.call(token, 'repos.getPages', parameters, cacheOptions);
     } catch (error) {
@@ -1054,6 +1170,39 @@ export class Repository {
     collaboratorEntities?.cost && ((collaborators as any).cost = collaboratorEntities.cost);
     collaboratorEntities?.headers && ((collaborators as any).headers = collaboratorEntities.headers);
     return collaborators;
+  }
+
+  async listCollaboratorInvitations(cacheOptions?: IPagedCacheOptions): Promise<RepositoryInvitation[]> {
+    cacheOptions = cacheOptions || {};
+    const operations = throwIfNotGitHubCapable(this._operations);
+    const github = operations.github;
+    const parameters = {
+      owner: this.organization.name,
+      repo: this.name,
+      per_page: getPageSize(operations),
+    };
+    if (!cacheOptions.maxAgeSeconds) {
+      cacheOptions.maxAgeSeconds = getMaxAgeSeconds(
+        operations,
+        CacheDefault.orgRepoCollaboratorsStaleSeconds
+      );
+    }
+    if (cacheOptions.backgroundRefresh === undefined) {
+      cacheOptions.backgroundRefresh = true;
+    }
+    const invitationEntities = await github.collections.getRepoInvitations(
+      this.authorize(AppPurpose.Data),
+      parameters,
+      cacheOptions
+    );
+    const invitations = common.createInstances<RepositoryInvitation>(
+      this,
+      invitationFromEntity,
+      invitationEntities
+    );
+    invitationEntities?.cost && ((invitations as any).cost = invitationEntities.cost);
+    invitationEntities?.headers && ((invitations as any).headers = invitationEntities.headers);
+    return invitations;
   }
 
   async addCollaborator(
@@ -1330,9 +1479,6 @@ export class Repository {
         private: options.private,
       }
     );
-    // BUG: GitHub Apps do not work with locking down no repository permissions as documented here: https://github.community/t5/GitHub-API-Development-and/GitHub-App-cannot-patch-repo-visibility-in-org-with-repo/m-p/33448#M3150
-    // const token = this._operations.getCentralOperationsToken();
-    // return this._operations.github.post(token, 'repos.update', parameters);
     return operations.github.post(this.authorize(AppPurpose.Operations), 'repos.update', parameters);
   }
 
@@ -1554,7 +1700,10 @@ export class Repository {
     const teams = (await this.getTeamPermissions()).filter((tp) => tp.permission === 'admin');
     for (let i = 0; i < teams.length; i++) {
       const team = teams[i];
-      if (excludeBroadAndSystemTeams && (team.team.isSystemTeam || team.team.isBroadAccessTeam)) {
+      if (
+        excludeBroadAndSystemTeams &&
+        (team.team.isSystemTeam || team.team.isBroadAccessTeam || team.team.isOpenAccessTeam)
+      ) {
         // Do not include broad access teams
         continue;
       }
@@ -1734,19 +1883,16 @@ export class Repository {
     return Array.from(users.values());
   }
 
-  private authorize(purpose: AppPurposeTypes): IGetAuthorizationHeader | string {
-    const getAuthorizationHeader = this._getAuthorizationHeader.bind(
-      this,
-      purpose
-    ) as IGetAuthorizationHeader;
+  private authorize(purpose: AppPurposeTypes): GetAuthorizationHeader | string {
+    const getAuthorizationHeader = this._getAuthorizationHeader.bind(this, purpose) as GetAuthorizationHeader;
     return getAuthorizationHeader;
   }
 
-  private specificAuthorization(purpose: AppPurposeTypes): IGetAuthorizationHeader | string {
+  private specificAuthorization(purpose: AppPurposeTypes): GetAuthorizationHeader | string {
     const getSpecificHeader = this._getSpecificAuthorizationHeader.bind(
       this,
       purpose
-    ) as IGetAuthorizationHeader;
+    ) as GetAuthorizationHeader;
     return getSpecificHeader;
   }
 
@@ -2013,4 +2159,10 @@ function collaboratorPermissionFromEntity(entity) {
   // 'this' is bound for this function to be a private method
   const permission = new Collaborator(entity);
   return permission;
+}
+
+function invitationFromEntity(entity) {
+  // 'this' is bound for this function to be a private method
+  const invitation = new RepositoryInvitation(this, entity);
+  return invitation;
 }

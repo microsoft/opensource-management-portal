@@ -4,6 +4,7 @@
 //
 
 import sslify from 'express-sslify';
+
 import type { ConfigWebServer } from '../config/webServer.types';
 
 export default function (webServerConfig: ConfigWebServer) {

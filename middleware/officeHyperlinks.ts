@@ -5,7 +5,8 @@
 
 // I no longer believe this file FYI... I don't think we need this any longer.
 
-import { getProviders } from '../transitional';
+import { NextFunction, Response } from 'express';
+import { getProviders } from '../lib/transitional';
 
 // Office uses a specialized pre-fetch to learn more about hyperlinks before
 // opening. As a result, if the Office user agent is in use, and the
@@ -17,7 +18,7 @@ import { getProviders } from '../transitional';
 const GenericOfficeUserAgent = 'ms-office';
 const WordUserAgent = 'Microsoft Office Word';
 
-export default function supportOfficeHyperlinks(req, res, next) {
+export default function supportOfficeHyperlinks(req, res: Response, next: NextFunction) {
   const { insights } = getProviders(req);
   const userAgent = req.headers['user-agent'];
   const isAuthenticated = req.isAuthenticated ? req.isAuthenticated() : false;

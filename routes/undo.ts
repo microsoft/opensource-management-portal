@@ -3,15 +3,15 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Router } from 'express';
+import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
 import { Operations, Repository } from '../business';
-import { ErrorHelper, getProviders } from '../transitional';
-import { AuditLogRecord } from '../entities/auditLogRecord/auditLogRecord';
-import { daysInMilliseconds } from '../utils';
-import { AuditEvents } from '../entities/auditLogRecord';
+import { ErrorHelper, getProviders } from '../lib/transitional';
+import { AuditLogRecord } from '../business/entities/auditLogRecord/auditLogRecord';
+import { daysInMilliseconds } from '../lib/utils';
+import { AuditEvents } from '../business/entities/auditLogRecord';
 import { IGitHubIdentity, IndividualContext } from '../business/user';
 import { IMail } from '../lib/mailProvider';
 import { GitHubRepositoryPermission, ReposAppRequest, UserAlertType } from '../interfaces';
@@ -291,7 +291,7 @@ async function undoTeamAdminRepoPermissionAsync(
 }
 
 router.use(
-  asyncHandler(async function (req: IHaveUndoCandidates, res, next) {
+  asyncHandler(async function (req: IHaveUndoCandidates, res: Response, next: NextFunction) {
     const { operations } = getProviders(req);
     if (!operations.allowUndoSystem) {
       res.status(404);
@@ -322,7 +322,7 @@ router.use(
 
 router.post(
   '/',
-  asyncHandler(async (req: IHaveUndoCandidates, res, next) => {
+  asyncHandler(async (req: IHaveUndoCandidates, res: Response, next: NextFunction) => {
     const { operations } = getProviders(req);
     const insights = operations.insights;
     const link = req.individualContext.link;
@@ -394,7 +394,7 @@ router.post(
 
 router.get(
   '/',
-  asyncHandler(async (req: IHaveUndoCandidates, res, next) => {
+  asyncHandler(async (req: IHaveUndoCandidates, res: Response, next: NextFunction) => {
     const { operations } = getProviders(req);
     const insights = operations.insights;
     insights?.trackMetric({ name: 'UndoPageViews', value: 1 });

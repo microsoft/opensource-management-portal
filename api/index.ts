@@ -3,13 +3,13 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Router } from 'express';
+import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
 import cors from 'cors';
 
-import { CreateError, getProviders } from '../transitional';
+import { CreateError, getProviders } from '../lib/transitional';
 
 import { jsonError } from '../middleware';
 import { IApiRequest } from '../middleware/apiReposAuth';
@@ -17,8 +17,9 @@ import { IApiRequest } from '../middleware/apiReposAuth';
 import apiExtension from './extension';
 import apiWebhook from './webhook';
 import apiPeople from './people';
+import apiNews from './client/news';
 
-import AadApiAuthentication, { requireAadApiAuthorizedScope } from '../middleware/apiAad';
+import aadApiAuthentication, { requireAadApiAuthorizedScope } from '../middleware/apiAad';
 import AzureDevOpsAuthenticationMiddleware from '../middleware/apiVstsAuth';
 import ReposApiAuthentication from '../middleware/apiReposAuth';
 import { CreateRepository, CreateRepositoryEntrypoint } from './createRepo';
@@ -36,7 +37,7 @@ function isClientRoute(req: ReposAppRequest) {
 
 router.use('/webhook', apiWebhook);
 
-router.use((req: IApiRequest, res, next) => {
+router.use((req: IApiRequest, res: Response, next: NextFunction) => {
   if (isClientRoute(req)) {
     // The frontend client routes are hooked into Express after
     // the session middleware. The client route does not require
@@ -67,15 +68,16 @@ router.use((req: IApiRequest, res, next) => {
 // AUTHENTICATION: VSTS or repos
 //-----------------------------------------------------------------------------
 const multipleProviders = supportMultipleAuthProviders([
-  AadApiAuthentication,
+  aadApiAuthentication,
   ReposApiAuthentication,
   AzureDevOpsAuthenticationMiddleware,
 ]);
 
-const aadAndCustomProviders = supportMultipleAuthProviders([AadApiAuthentication, ReposApiAuthentication]);
+const aadAndCustomProviders = supportMultipleAuthProviders([aadApiAuthentication, ReposApiAuthentication]);
 
 router.use('/people', cors(), multipleProviders, apiPeople);
 router.use('/extension', cors(), multipleProviders, apiExtension);
+router.use('/news', cors(), aadApiAuthentication, requireAadApiAuthorizedScope('news'), apiNews);
 
 //-----------------------------------------------------------------------------
 // AUTHENTICATION: AAD or repos (specific to this app)
@@ -90,8 +92,8 @@ router.post('/:org/repos', aadAndCustomProviders);
 
 router.post(
   '/:org/repos',
-  requireAadApiAuthorizedScope('createRepo'),
-  function (req: IApiRequest, res, next) {
+  requireAadApiAuthorizedScope(['repo/create', 'createRepo']),
+  function (req: IApiRequest, res: Response, next: NextFunction) {
     const orgName = req.params.org;
     if (!req.apiKeyToken.organizationScopes) {
       return next(jsonError('There is a problem with the key configuration (no organization scopes)', 412));
@@ -116,7 +118,7 @@ router.post(
 
 router.post(
   '/:org/repos',
-  asyncHandler(async function (req: ReposAppRequest, res, next) {
+  asyncHandler(async function (req: ReposAppRequest, res: Response, next: NextFunction) {
     const providers = getProviders(req);
     const organization = req.organization;
     const convergedObject = Object.assign({}, req.headers);
@@ -174,7 +176,7 @@ router.post(
           response: JSON.stringify(repoCreateResponse),
         },
       });
-      return res.json(repoCreateResponse);
+      return res.json(repoCreateResponse) as unknown as void;
     } catch (error) {
       const data = { ...convergedObject };
       data.error = error.message;
@@ -185,7 +187,7 @@ router.post(
   })
 );
 
-router.use((req: IApiRequest, res, next) => {
+router.use((req: IApiRequest, res: Response, next: NextFunction) => {
   if (isClientRoute(req)) {
     // The frontend client routes are hooked into Express after
     // the session middleware. The client route does not require

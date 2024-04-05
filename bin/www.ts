@@ -9,12 +9,14 @@ import Debug from 'debug';
 const debug = Debug.debug('g:server');
 const debugInitialization = Debug.debug('startup');
 
-import app from '../app';
-
 import http from 'http';
 import https from 'https';
 import fs from 'fs';
 import path from 'path';
+
+import { createExpressApplication } from '..';
+
+const app = createExpressApplication();
 
 function normalizePort(val) {
   const port = parseInt(val, 10);

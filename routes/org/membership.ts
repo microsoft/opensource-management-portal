@@ -3,18 +3,18 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Router } from 'express';
+import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 
 import { ReposAppRequest, UserAlertType } from '../../interfaces';
-import { wrapError } from '../../utils';
+import { wrapError } from '../../lib/utils';
 import RequireActiveGitHubSession from '../../middleware/github/requireActiveSession';
 const router: Router = Router();
 
 router.get(
   '/',
   RequireActiveGitHubSession,
-  asyncHandler(async function (req: ReposAppRequest, res, next) {
+  asyncHandler(async function (req: ReposAppRequest, res: Response, next: NextFunction) {
     const organization = req.organization;
     if (!organization) {
       // TODO: Was this ever a possible situation? What's going on here? Probably was v1 (single-org)
@@ -56,7 +56,7 @@ router.get(
 router.post(
   '/',
   RequireActiveGitHubSession,
-  asyncHandler(async function (req: ReposAppRequest, res, next) {
+  asyncHandler(async function (req: ReposAppRequest, res: Response, next: NextFunction) {
     const username = req.individualContext.getGitHubIdentity().username;
     const organization = req.organization;
     if (!organization) {

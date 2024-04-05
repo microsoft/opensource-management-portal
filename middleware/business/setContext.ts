@@ -3,6 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+import { NextFunction, Response } from 'express';
 import {
   IndividualContext,
   IIndividualContextOptions,
@@ -11,9 +12,10 @@ import {
   SessionUserProperties,
   WebApiContext,
 } from '../../business/user';
-import { getProviders } from '../../transitional';
+import { ReposAppRequest } from '../../interfaces';
+import { getProviders } from '../../lib/transitional';
 
-export function webContextMiddleware(req, res, next) {
+export function webContextMiddleware(req: ReposAppRequest, res: Response, next: NextFunction) {
   const { operations, insights } = getProviders(req);
   if (req.apiContext) {
     const msg = 'INVALID: API and web contexts should not be mixed';
@@ -46,7 +48,7 @@ export function webContextMiddleware(req, res, next) {
   return next();
 }
 
-export function apiContextMiddleware(req, res, next) {
+export function apiContextMiddleware(req, res: Response, next: NextFunction) {
   const { operations, insights } = getProviders(req);
   if (req.individualContext) {
     const msg = 'INVALID: API and web contexts should not be mixed';

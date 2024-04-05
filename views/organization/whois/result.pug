@@ -173,6 +173,12 @@ block content
           p.lead DANGER ZONE - NO CONFIRMATION
           p
             input.btn.btn-danger(type='submit', value='Remove link', name='remove-link-only')
+        if query && query.collaboratorRepositories && query.collaboratorRepositories.length
+          p
+            input.btn.btn-danger(type='submit', value='Remove collaborator grants', name='remove-collaboration')
+        if query && query.collaboratorRepositories && query.collaboratorRepositories.length > 100
+          p
+            input.btn.btn-danger(type='submit', value='Remove 100 collaborator grants', name='remove-collaboration-100')
 
     if query && query.collaboratorRepositories && query.collaboratorRepositories.length
       h2 Active individual Collaborator permissions on repos

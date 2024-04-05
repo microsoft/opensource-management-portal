@@ -3,13 +3,13 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { AppPurpose, AppPurposeTypes } from './githubApps';
+import { AppPurpose, AppPurposeTypes } from '../lib/github/appPurposes';
 import { Organization } from '.';
 import {
   IOperationsInstance,
-  IPurposefulGetAuthorizationHeader,
+  PurposefulGetAuthorizationHeader,
   throwIfNotGitHubCapable,
-  IGetAuthorizationHeader,
+  GetAuthorizationHeader,
 } from '../interfaces';
 import {
   decorateIterable,
@@ -17,7 +17,7 @@ import {
   IteratorResponse,
   PaginationPageSizeOptions,
 } from './iterable';
-import { DefaultGraphqlPageSize } from '../transitional';
+import { DefaultGraphqlPageSize } from '../lib/transitional';
 import { OrganizationProject } from './project';
 
 type ProjectResponse = {
@@ -35,15 +35,15 @@ export class OrganizationProjects {
   private _organization: Organization;
   private _operations: IOperationsInstance;
 
-  private _getAuthorizationHeader: IPurposefulGetAuthorizationHeader;
-  private _getSpecificAuthorizationHeader: IPurposefulGetAuthorizationHeader;
+  private _getAuthorizationHeader: PurposefulGetAuthorizationHeader;
+  private _getSpecificAuthorizationHeader: PurposefulGetAuthorizationHeader;
   private _purpose: AppPurpose;
 
   constructor(
     organization: Organization,
     operations: IOperationsInstance,
-    getAuthorizationHeader: IPurposefulGetAuthorizationHeader,
-    getSpecificAuthorizationHeader: IPurposefulGetAuthorizationHeader
+    getAuthorizationHeader: PurposefulGetAuthorizationHeader,
+    getSpecificAuthorizationHeader: PurposefulGetAuthorizationHeader
   ) {
     this._getAuthorizationHeader = getAuthorizationHeader;
     this._getSpecificAuthorizationHeader = getSpecificAuthorizationHeader;
@@ -134,19 +134,16 @@ export class OrganizationProjects {
     }
   }
 
-  private authorize(purpose: AppPurpose = this._purpose): IGetAuthorizationHeader {
-    const getAuthorizationHeader = this._getAuthorizationHeader.bind(
-      this,
-      purpose
-    ) as IGetAuthorizationHeader;
+  private authorize(purpose: AppPurpose = this._purpose): GetAuthorizationHeader {
+    const getAuthorizationHeader = this._getAuthorizationHeader.bind(this, purpose) as GetAuthorizationHeader;
     return getAuthorizationHeader;
   }
 
-  private authorizeSpecificPurpose(purpose: AppPurposeTypes): IGetAuthorizationHeader | string {
+  private authorizeSpecificPurpose(purpose: AppPurposeTypes): GetAuthorizationHeader | string {
     const getAuthorizationHeader = this._getSpecificAuthorizationHeader.bind(
       this,
       purpose
-    ) as IGetAuthorizationHeader;
+    ) as GetAuthorizationHeader;
     return getAuthorizationHeader;
   }
 }

@@ -3,7 +3,9 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { ErrorHelper, getProviders } from '../../transitional';
+import { NextFunction, Response } from 'express';
+
+import { ErrorHelper, getProviders } from '../../lib/transitional';
 import { Repository } from '../../business/repository';
 import { GitHubIdentitySource, IIndividualContextOptions, IndividualContext } from '../../business/user';
 import getCompanySpecificDeployment from '../companySpecificDeployment';
@@ -107,30 +109,33 @@ export async function getComputedRepositoryPermissions(
       repoPermissions,
       activeContext
     );
-  if (!activeContext.link) {
-    return repoPermissions;
-  }
-  repoPermissions.isLinked = true;
-  const login = activeContext.getGitHubIdentity().username;
-  const organization = repository.organization;
-  const isSudoer = await organization.isSudoer(login, activeContext.link);
   const isPortalSudoer = await activeContext.isPortalAdministrator();
-  if (isSudoer === true || isPortalSudoer === true) {
+  if (isPortalSudoer) {
     repoPermissions.sudo = true;
   }
-  try {
-    const collaborator = await repository.getCollaborator(login);
-    if (collaborator) {
-      if (collaborator.permission === GitHubCollaboratorPermissionLevel.Admin) {
-        repoPermissions.admin = repoPermissions.read = repoPermissions.write = true;
-      } else if (collaborator.permission === GitHubCollaboratorPermissionLevel.Write) {
-        repoPermissions.read = repoPermissions.write = true;
-      } else if (collaborator.permission === GitHubCollaboratorPermissionLevel.Read) {
-        repoPermissions.read = true;
-      }
+  repoPermissions.isLinked = !!activeContext.link;
+  const hasGitHubIdentity = !!activeContext?.getGitHubIdentity()?.username;
+  if (hasGitHubIdentity) {
+    const login = activeContext.getGitHubIdentity().username;
+    const organization = repository.organization;
+    const isSudoer = await organization.isSudoer(login, activeContext.link);
+    if (isSudoer) {
+      repoPermissions.sudo = true;
     }
-  } catch (getCollaboratorPermissionError) {
-    console.dir(getCollaboratorPermissionError);
+    try {
+      const collaborator = await repository.getCollaborator(login);
+      if (collaborator) {
+        if (collaborator.permission === GitHubCollaboratorPermissionLevel.Admin) {
+          repoPermissions.admin = repoPermissions.read = repoPermissions.write = true;
+        } else if (collaborator.permission === GitHubCollaboratorPermissionLevel.Write) {
+          repoPermissions.read = repoPermissions.write = true;
+        } else if (collaborator.permission === GitHubCollaboratorPermissionLevel.Read) {
+          repoPermissions.read = true;
+        }
+      }
+    } catch (getCollaboratorPermissionError) {
+      console.dir(getCollaboratorPermissionError);
+    }
   }
   if (repoPermissions.admin || repoPermissions.sudo) {
     repoPermissions.allowAdministration = true;
@@ -145,7 +150,11 @@ export async function getComputedRepositoryPermissions(
   return repoPermissions;
 }
 
-export async function AddRepositoryPermissionsToRequest(req: ReposAppRequest, res, next) {
+export async function AddRepositoryPermissionsToRequest(
+  req: ReposAppRequest,
+  res: Response,
+  next: NextFunction
+) {
   if (req[repoPermissionsCacheKeyName]) {
     return next();
   }

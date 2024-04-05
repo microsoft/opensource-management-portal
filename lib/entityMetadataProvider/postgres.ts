@@ -22,7 +22,7 @@ import {
   MetadataMappingDefinition,
   MetadataMappingDefinitionBase,
 } from './declarations';
-import { CreateError } from '../../transitional';
+import { CreateError } from '../transitional';
 import { IDictionary } from '../../interfaces';
 
 const MetadataColumnName = 'metadata';
@@ -33,6 +33,12 @@ const MapMetadataPropertiesToFields: any = {
   entityId: 'entityid',
   entityType: 'entitytype',
 };
+
+export enum PostgresColumnTranslations {
+  None = 'none',
+  Lowercase = 'lowercase',
+  LowercaseUnderscores = 'lowercase_underscores',
+}
 
 class PostgresMetadataDefinition extends MetadataMappingDefinitionBase {
   constructor(name: string) {
@@ -194,6 +200,23 @@ class PostgresInternals {
   }
 }
 
+function translateName(key: string, translations: PostgresColumnTranslations) {
+  switch (translations) {
+    case PostgresColumnTranslations.None: {
+      return key;
+    }
+    case PostgresColumnTranslations.Lowercase: {
+      return key.toLowerCase();
+    }
+    case PostgresColumnTranslations.LowercaseUnderscores: {
+      return key.replace(/([A-Z])/g, '_$1').toLowerCase();
+    }
+    default: {
+      throw CreateError.InvalidParameters(`Invalid column translation type: ${translations}`);
+    }
+  }
+}
+
 export class PostgresConfiguration {
   static IdentifyNativeFields(type: EntityMetadataType, fieldNames: string[]) {
     PostgresInternals.instance(type).nativeFieldNames = fieldNames;
@@ -206,11 +229,12 @@ export class PostgresConfiguration {
   static MapFieldsToColumnNames(
     type: EntityMetadataType,
     map: Map<string, string>,
-    lowercaseColumnNamesAutomatically?: boolean
+    columnTranslations: PostgresColumnTranslations = PostgresColumnTranslations.None
   ) {
     const dest = PostgresInternals.instance(type).mapFieldsToColumnNames;
     for (const [key, value] of map.entries()) {
-      dest.set(key, lowercaseColumnNamesAutomatically ? value.toLowerCase() : value);
+      const translatedValue = translateName(value, columnTranslations);
+      dest.set(key, translatedValue);
     }
   }
 
@@ -230,7 +254,19 @@ export class PostgresConfiguration {
           return [fieldName, fieldName];
         })
       ),
-      true
+      PostgresColumnTranslations.Lowercase
+    );
+  }
+
+  static MapFieldsToColumnNamesFromListUnderscoreLowercased(type: EntityMetadataType, fieldNames: string[]) {
+    PostgresConfiguration.MapFieldsToColumnNames(
+      type,
+      new Map(
+        fieldNames.map((fieldName) => {
+          return [fieldName, fieldName];
+        })
+      ),
+      PostgresColumnTranslations.LowercaseUnderscores
     );
   }
 
@@ -652,18 +688,18 @@ export class PostgresEntityMetadataProvider implements IEntityMetadataProvider {
     }
   }
 
-  private metadataToRowMetadata(metadata: IEntityMetadata): any {
-    const shallowClone = Object.assign({}, metadata);
-    delete shallowClone.entityCreated;
-    delete shallowClone.entityFieldNames;
-    delete shallowClone.entityId;
-    delete shallowClone.entityType;
-    return shallowClone;
-  }
+  // private metadataToRowMetadata(metadata: IEntityMetadata): any {
+  //   const shallowClone = Object.assign({}, metadata);
+  //   delete shallowClone.entityCreated;
+  //   delete shallowClone.entityFieldNames;
+  //   delete shallowClone.entityId;
+  //   delete shallowClone.entityType;
+  //   return shallowClone;
+  // }
 
-  private stripEntityIdentities(type: EntityMetadataType, entity: any) {
-    return stripEntityIdentities(type, entity);
-  }
+  // private stripEntityIdentities(type: EntityMetadataType, entity: any) {
+  //   return stripEntityIdentities(type, entity);
+  // }
 
   private rowToMetadataObject(type: EntityMetadataType, row: any): IEntityMetadata {
     return rowToMetadataObject(type, row);

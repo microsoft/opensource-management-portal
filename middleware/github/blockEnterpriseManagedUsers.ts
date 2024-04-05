@@ -3,10 +3,16 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { ReposAppRequest, IReposError } from '../../interfaces';
-import { isEnterpriseManagedUserLogin } from '../../utils';
+import { NextFunction, Response } from 'express';
 
-export function blockEnterpriseManagedUsersAuthentication(req: ReposAppRequest, res, next) {
+import { ReposAppRequest, IReposError } from '../../interfaces';
+import { isEnterpriseManagedUserLogin } from '../../lib/utils';
+
+export function blockEnterpriseManagedUsersAuthentication(
+  req: ReposAppRequest,
+  res: Response,
+  next: NextFunction
+) {
   const context = req.individualContext;
   if (!context) {
     return next(new Error('Missing context'));

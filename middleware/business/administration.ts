@@ -3,14 +3,13 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Router } from 'express';
-const router: Router = Router();
+import { NextFunction, Response, Router } from 'express';
 
 import { ReposAppRequest } from '../../interfaces';
 
-import { wrapError } from '../../utils';
+import { wrapError } from '../../lib/utils';
 
-function denyRoute(next) {
+function denyRoute(next: NextFunction) {
   next(
     wrapError(
       null,
@@ -20,7 +19,11 @@ function denyRoute(next) {
   );
 }
 
-export function requirePortalAdministrationPermission(req: ReposAppRequest, res, next) {
+export function requirePortalAdministrationPermission(
+  req: ReposAppRequest,
+  res: Response,
+  next: NextFunction
+) {
   req.individualContext
     .isPortalAdministrator()
     .then((isAdmin) => {

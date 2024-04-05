@@ -6,21 +6,23 @@
 import bodyParser from 'body-parser';
 import compression from 'compression';
 import path from 'path';
+import { Express } from 'express';
+import passport from 'passport';
 
 import Debug from 'debug';
 const debug = Debug.debug('startup');
 
 export * from './react';
-export * from './links';
+export * from './business/links';
 export * from './business';
 export * from './jsonError';
 
-import { hasStaticReactClientApp, stripDistFolderName } from '../transitional';
+import { hasStaticReactClientApp, stripDistFolderName } from '../lib/transitional';
 import { StaticClientApp } from './staticClientApp';
 import { StaticReactClientApp } from './staticClientApp2';
 import { StaticSiteFavIcon, StaticSiteAssets } from './staticSiteAssets';
 import connectSession from './session';
-import passportConfig from './passport-config';
+import passportConfig from './passportConfig';
 import onboard from './onboarding';
 import viewServices from '../lib/pugViewServices';
 
@@ -35,12 +37,14 @@ import routePassport from './passport-routes';
 
 import routeApi from '../api';
 
-import { IProviders, IReposApplication, SiteConfiguration } from '../interfaces';
+import type { IProviders, IReposApplication, SiteConfiguration } from '../interfaces';
 import { codespacesDevAssistant } from './codespaces';
+import { ExpressWithStatic } from './types';
 
 export default async function initMiddleware(
   app: IReposApplication,
-  express,
+  express: Express,
+  providers: IProviders,
   config: SiteConfiguration,
   dirname: string,
   hasCustomRoutes: boolean,
@@ -51,7 +55,6 @@ export default async function initMiddleware(
     config && config.typescript && config.typescript.appDirectory
       ? config.typescript.appDirectory
       : stripDistFolderName(dirname);
-  const providers = app.get('providers') as IProviders;
   const applicationProfile = providers.applicationProfile;
   if (initializationError) {
     providers.healthCheck.healthy = false;
@@ -78,14 +81,15 @@ export default async function initMiddleware(
     if (applicationProfile.serveStaticAssets) {
       StaticSiteAssets(app, express);
     }
+    const expressWithStatic = express as ExpressWithStatic;
     if (hasStaticReactClientApp()) {
-      StaticReactClientApp(app, express, config);
+      StaticReactClientApp(app, expressWithStatic, config);
     }
     if (applicationProfile.serveClientAssets) {
-      StaticClientApp(app, express);
+      StaticClientApp(app, expressWithStatic);
     }
     providers.campaign = campaign(app);
-    let passport;
+    let passport: passport.PassportStatic;
     if (!initializationError) {
       if (config.containers && config.containers.deployment) {
         app.enable('trust proxy');

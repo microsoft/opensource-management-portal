@@ -3,9 +3,9 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { IEntityMetadata, EntityMetadataType } from './entityMetadata';
-import { IEntityMetadataFixedQuery } from './query';
-import { swapMap } from '../../utils';
+import { type IEntityMetadata, EntityMetadataType } from './entityMetadata';
+import type { IEntityMetadataFixedQuery } from './query';
+import { swapMap } from '../utils';
 
 export enum EntityField {
   Type = 'entityType',

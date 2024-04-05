@@ -3,19 +3,19 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Router } from 'express';
+import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 
 import { IndividualContext } from '../../business/user';
 import { jsonError } from '../../middleware';
-import { ErrorHelper, getProviders } from '../../transitional';
+import { ErrorHelper, getProviders } from '../../lib/transitional';
 import { unlinkInteractive } from '../../routes/unlink';
 import { interactiveLinkUser } from '../../routes/link';
 import { ReposAppRequest } from '../../interfaces';
 
 const router: Router = Router();
 
-async function validateLinkOk(req: ReposAppRequest, res, next) {
+async function validateLinkOk(req: ReposAppRequest, res: Response, next: NextFunction) {
   const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
   const providers = getProviders(req);
   const insights = providers.insights;
@@ -91,7 +91,7 @@ async function validateLinkOk(req: ReposAppRequest, res, next) {
   }
 }
 
-router.get('/banner', (req: ReposAppRequest, res, next) => {
+router.get('/banner', (req: ReposAppRequest, res: Response, next: NextFunction) => {
   const { config } = getProviders(req);
   const offline = config?.github?.links?.provider?.linkingOfflineMessage;
   return res.json({ offline });
@@ -99,7 +99,7 @@ router.get('/banner', (req: ReposAppRequest, res, next) => {
 
 router.delete(
   '/',
-  asyncHandler(async (req: ReposAppRequest, res, next) => {
+  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
     const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
     return unlinkInteractive(true, activeContext, req, res, next);
   })
@@ -108,13 +108,13 @@ router.delete(
 router.post(
   '/',
   validateLinkOk,
-  asyncHandler(async (req: ReposAppRequest, res, next) => {
+  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
     const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
     return interactiveLinkUser(true, activeContext, req, res, next);
   })
 );
 
-router.use('*', (req: ReposAppRequest, res, next) => {
+router.use('*', (req: ReposAppRequest, res: Response, next: NextFunction) => {
   return next(jsonError('API or route not found', 404));
 });
 

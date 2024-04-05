@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { hasStaticReactClientApp } from '../transitional';
+import { hasStaticReactClientApp } from '../lib/transitional';
 
 import appPackage from '../package.json';
 
@@ -16,6 +16,7 @@ const staticReactFlightingPackageNameKey = 'static-react-flight-package-name';
 const staticClientFlightingPackageName = appPackage[staticReactFlightingPackageNameKey];
 
 import Debug from 'debug';
+import { ExpressWithStatic } from './types';
 const debug = Debug.debug('startup');
 
 export type RuntimeConfigurationClient = {
@@ -31,7 +32,11 @@ export type RootRuntimeConfigurationClient = {
   client?: RuntimeConfigurationClient;
 };
 
-export function StaticReactClientApp(app: IReposApplication, express, config: SiteConfiguration) {
+export function StaticReactClientApp(
+  app: IReposApplication,
+  express: ExpressWithStatic,
+  config: SiteConfiguration
+) {
   const clientRuntimeConfiguration: RuntimeConfigurationClient = {};
   app.runtimeConfiguration.client = clientRuntimeConfiguration;
 

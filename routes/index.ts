@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Router } from 'express';
+import { NextFunction, Response, Router } from 'express';
 const router: Router = Router();
 
 import { webContextMiddleware } from '../middleware/business/setContext';
@@ -16,7 +16,7 @@ import ExploreRoute from './explore';
 import ApprovalsRoute from './approvals';
 import AuthenticatedRoute from './index-authenticated';
 
-import { hasStaticReactClientApp } from '../transitional';
+import { hasStaticReactClientApp } from '../lib/transitional';
 import { injectReactClient } from '../middleware';
 
 router.use('/api/client', clientApiRoute);

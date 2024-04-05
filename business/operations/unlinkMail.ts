@@ -7,7 +7,7 @@ import { Operations } from '.';
 import { Account } from '../account';
 import { UnlinkPurpose, IUnlinkMailStatus, ICachedEmployeeInformation } from '../../interfaces';
 import getCompanySpecificDeployment from '../../middleware/companySpecificDeployment';
-import { assertUnreachable } from '../../transitional';
+import { assertUnreachable } from '../../lib/transitional';
 
 export async function sendTerminatedAccountMail(
   operations: Operations,
@@ -64,7 +64,7 @@ export async function sendTerminatedAccountMail(
       break;
     case UnlinkPurpose.Termination:
       subjectPrefix = '[UNLINKED] ';
-      headline = `${displayName} is not an active employee`;
+      headline = `${displayName} has had their GitHub access offboarded`;
       break;
     case UnlinkPurpose.Unknown:
     default:

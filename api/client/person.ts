@@ -4,13 +4,15 @@
 //
 
 import asyncHandler from 'express-async-handler';
+import { NextFunction, Response } from 'express';
+
 import { ReposAppRequest, AccountJsonFormat } from '../../interfaces';
 import { IGraphEntry } from '../../lib/graphProvider';
 
 import { jsonError } from '../../middleware';
-import { getProviders } from '../../transitional';
+import { CreateError, ErrorHelper, getProviders } from '../../lib/transitional';
 
-export default asyncHandler(async (req: ReposAppRequest, res, next) => {
+const getPerson = asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
   const providers = getProviders(req);
   const { operations, queryCache, graphProvider } = providers;
   const login = req.params.login as string;
@@ -70,8 +72,14 @@ export default asyncHandler(async (req: ReposAppRequest, res, next) => {
       json,
       { corporateEntry }
     );
-    return res.json(combined);
+    return res.json(combined) as unknown as void;
   } catch (error) {
-    return next(jsonError(`login ${login} error: ${error}`, 500));
+    return next(
+      ErrorHelper.IsNotFound(error)
+        ? error
+        : CreateError.InvalidParameters(`Invalid issue retrieving user ${login}: ${error.message}`)
+    );
   }
 });
+
+export { getPerson };

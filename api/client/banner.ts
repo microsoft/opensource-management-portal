@@ -3,17 +3,17 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Router } from 'express';
+import { NextFunction, Response, Router } from 'express';
 import { ReposAppRequest } from '../../interfaces';
 
 import { jsonError } from '../../middleware';
-import { getProviders } from '../../transitional';
+import { getProviders } from '../../lib/transitional';
 
 const router: Router = Router();
 
 // TODO: move to modern w/administration experience, optionally
 
-router.get('/', (req: ReposAppRequest, res, next) => {
+router.get('/', (req: ReposAppRequest, res: Response, next: NextFunction) => {
   const { config } = getProviders(req);
   const text = config?.serviceMessage?.banner || null;
   const link = config.serviceMessage?.link;
@@ -22,7 +22,7 @@ router.get('/', (req: ReposAppRequest, res, next) => {
   return res.json({ banner });
 });
 
-router.use('*', (req, res, next) => {
+router.use('*', (req, res: Response, next: NextFunction) => {
   return next(jsonError('no API or function available within this banner route', 404));
 });
 

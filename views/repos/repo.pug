@@ -13,27 +13,6 @@ mixin simplePersonView(account)
   div(style='display:block;vertical-align:middle')
     h4
       a(href='/people?q=' + account.login)= shorthandName
-    //-ul.list-inline
-      if shorthandName && shorthandName !== account.login
-        li
-          span(title=account.login + ' is the GitHub username for ' + shorthandName)= account.login
-      if corporateIdentity
-        if link && !corporate
-          li.text-warning!= octicon('link', 16)
-          li
-            span(title=link.aadoid)= link.aadupn
-        else
-          li!= octicon('link', 16)
-          li
-            span(title=corporateIdentity + ' is the corporate identity for ' + shorthandName)= corporateIdentity
-        //- just corporate e-mails here, not user emails
-        if email
-          li
-            a(href='mailto:' + email, title='Send corporate email to ' + email)
-              != octicon('mail', 16)
-      if serviceAccount
-        li!= octicon('hubot', 16)
-        li Service account
 
 mixin teamsList(teams, hideJoinOption)
   if teams && teams.length > 0
@@ -123,7 +102,7 @@ block content
             if repo.language
               li
                 span(style={color: languageColor(repo.language)})
-                  != octicon('primitive-dot', 10)
+                  != octicon('dot-fill', 10)
                 = ' ' + repo.language
             if repo.license && repo.license.featured && repo.license.name
               li
@@ -185,9 +164,6 @@ block content
                 | Default branch
                 br
                 strong= repo.default_branch
-                if repo.default_branch === 'master' && admin
-                  span &nbsp;
-                  a.btn.btn-sm.btn-muted(href=repository.baseUrl + 'defaultBranch') Rename...
 
         if organizationSupportsUpdatesApp && repo.default_branch !== 'main' && admin
           .alert.alert-gray

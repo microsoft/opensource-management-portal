@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Router } from 'express';
+import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
@@ -14,9 +14,9 @@ import {
   ICorporateLink,
   LinkOperationSource,
 } from '../interfaces';
-import { getProviders, splitSemiColonCommas } from '../transitional';
+import { getProviders, splitSemiColonCommas } from '../lib/transitional';
 import { IndividualContext } from '../business/user';
-import { isCodespacesAuthenticating, storeOriginalUrlAsReferrer, wrapError } from '../utils';
+import { isCodespacesAuthenticating, storeOriginalUrlAsReferrer, wrapError } from '../lib/utils';
 
 import validator from 'validator';
 
@@ -31,7 +31,7 @@ interface IRequestHacked extends ReposAppRequest {
   overrideLinkUserPrincipalName?: any;
 }
 
-router.use((req: IRequestHacked, res, next) => {
+router.use((req: IRequestHacked, res: Response, next: NextFunction) => {
   const config = getProviders(req).config;
   if (
     config &&
@@ -50,7 +50,7 @@ router.use((req: IRequestHacked, res, next) => {
 
 router.use(
   '/',
-  asyncHandler(async function (req: ReposAppRequest, res, next) {
+  asyncHandler(async function (req: ReposAppRequest, res: Response, next: NextFunction) {
     // Make sure both account types are authenticated before showing the link pg [wi 12690]
     const individualContext = req.individualContext;
     if (!individualContext.corporateIdentity || !individualContext.getGitHubIdentity()) {
@@ -64,7 +64,7 @@ router.use(
 // TODO: graph provider non-guest check should be middleware and in the link business process
 
 router.use(
-  asyncHandler(async (req: IRequestHacked, res, next) => {
+  asyncHandler(async (req: IRequestHacked, res: Response, next: NextFunction) => {
     const individualContext = req.individualContext as IndividualContext;
     const providers = getProviders(req);
     const insights = providers.insights;
@@ -155,7 +155,7 @@ router.use(
 
 router.get(
   '/',
-  asyncHandler(async function (req: ReposAppRequest, res, next) {
+  asyncHandler(async function (req: ReposAppRequest, res: Response, next: NextFunction) {
     const { config } = getProviders(req);
     const individualContext = req.individualContext;
     const link = individualContext.link;
@@ -233,7 +233,7 @@ router.get('/enableMultipleAccounts', function (req: IRequestWithSession, res) {
 
 router.post(
   '/',
-  asyncHandler(async (req: ReposAppRequest, res, next) => {
+  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
     const individualContext = req.individualContext as IndividualContext;
     try {
       await interactiveLinkUser(false, individualContext, req, res, next);
@@ -291,7 +291,7 @@ export async function interactiveLinkUser(
 
 router.use('/remove', unlinkRoute);
 
-router.get('/reconnect', function (req: ReposAppRequest, res, next) {
+router.get('/reconnect', function (req: ReposAppRequest, res: Response, next: NextFunction) {
   const config = getProviders(req).config;
   if (config.authentication.scheme !== 'aad') {
     return next(

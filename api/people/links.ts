@@ -3,16 +3,16 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Router } from 'express';
+import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 
 import { jsonError } from '../../middleware';
 import { ICrossOrganizationMembersResult, MemberSearch, Operations } from '../../business';
-import { ICorporateLink } from '../../interfaces';
+import { ICorporateLink, VoidedExpressRoute } from '../../interfaces';
 import { IApiRequest } from '../../middleware/apiReposAuth';
 import postLinkApi from './link';
-import { ErrorHelper, getProviders } from '../../transitional';
-import { wrapError } from '../../utils';
+import { CreateError, ErrorHelper, getProviders } from '../../lib/transitional';
+import { wrapError } from '../../lib/utils';
 
 const router: Router = Router();
 
@@ -26,7 +26,7 @@ const extendedLinkApiVersions = [
   '2019-02-01',
 ];
 
-router.use(function (req: IApiRequest, res, next) {
+router.use(function (req: IApiRequest, res: Response, next: NextFunction) {
   const token = req.apiKeyToken;
   if (!token.scopes) {
     return next(jsonError('The key is not authorized for specific APIs', 401));
@@ -37,11 +37,11 @@ router.use(function (req: IApiRequest, res, next) {
   return next();
 });
 
-router.post('/', asyncHandler(postLinkApi));
+router.post('/', asyncHandler(postLinkApi as VoidedExpressRoute));
 
 router.get(
   '/',
-  asyncHandler(async (req: IApiRequest, res, next) => {
+  asyncHandler(async (req: IApiRequest, res: Response, next: NextFunction) => {
     const { operations } = getProviders(req);
     const skipOrganizations = req.query.showOrganizations !== undefined && !!req.query.showOrganizations;
     const showTimestamps = req.query.showTimestamps !== undefined && req.query.showTimestamps === 'true';
@@ -54,9 +54,11 @@ router.get(
 
 router.get(
   '/:linkid',
-  asyncHandler(async (req: IApiRequest, res, next) => {
+  asyncHandler(async (req: IApiRequest, res: Response, next: NextFunction) => {
     if (unsupportedApiVersions.includes(req.apiVersion)) {
-      return next(jsonError('This API is not supported by the API version you are using.', 400));
+      return next(
+        CreateError.InvalidParameters('This API is not supported by the API version you are using.')
+      );
     }
     const linkid = req.params.linkid.toLowerCase();
     const { operations } = getProviders(req);
@@ -81,31 +83,33 @@ router.get(
         );
       } catch (error) {
         if (ErrorHelper.IsNotFound(error)) {
-          return next(jsonError('Could not find the link', 404));
+          return next(CreateError.NotFound('Could not find the link'));
         } else {
-          return next(jsonError(error, 500));
+          return next(CreateError.ServerError(error));
         }
       }
       req.insights.trackMetric({ name: 'ApiRequestLinkByLinkId', value: 1 });
-      return res.json(entry);
+      return res.json(entry) as unknown as void;
     }
     const results = await getAllUsers(req.apiVersion, operations, skipOrganizations, showTimestamps, true);
     for (let i = 0; i < results.length; i++) {
       const entry = results[i];
       if (entry && entry.id === linkid) {
         req.insights.trackMetric({ name: 'ApiRequestLinkByLinkId', value: 1 });
-        return res.json(entry);
+        return res.json(entry) as unknown as void;
       }
     }
-    return next(jsonError('Could not find the link', 404));
+    return next(CreateError.NotFound('Could not find the link'));
   })
 );
 
 router.get(
   '/github/:username',
-  asyncHandler(async (req: IApiRequest, res, next) => {
+  asyncHandler(async (req: IApiRequest, res: Response, next: NextFunction) => {
     if (unsupportedApiVersions.includes(req.apiVersion)) {
-      return next(jsonError('This API is not supported by the API version you are using.', 400));
+      return next(
+        CreateError.InvalidParameters('This API is not supported by the API version you are using.')
+      );
     }
     const username = req.params.username.toLowerCase();
     const { operations } = getProviders(req);
@@ -118,9 +122,9 @@ router.get(
         account = await operations.getAccountByUsername(username);
       } catch (getAccountError) {
         if (ErrorHelper.IsNotFound(account)) {
-          return next(jsonError('Could not find a link for the user', 404));
+          return next(CreateError.NotFound('Could not find a link for the user'));
         }
-        return next(jsonError(getAccountError, 500));
+        return next(CreateError.ServerError(getAccountError));
       }
       try {
         const entry = await getByThirdPartyId(
@@ -131,7 +135,7 @@ router.get(
           showTimestamps
         );
         req.insights.trackMetric({ name: 'ApiRequestLinkByGitHubUsername', value: 1 });
-        return res.json(entry);
+        return res.json(entry) as unknown as void;
       } catch (entryError) {
         return next(jsonError(entryError, ErrorHelper.GetStatus(entryError) || 500));
       }
@@ -141,16 +145,16 @@ router.get(
       const entry = results[i];
       if (entry && entry.github && entry.github.login.toLowerCase() === username) {
         req.insights.trackMetric({ name: 'ApiRequestLinkByGitHubUsername', value: 1 });
-        return res.json(entry);
+        return res.json(entry) as unknown as void;
       }
     }
-    return next(jsonError('Could not find a link for the user', 404));
+    return next(CreateError.NotFound('Could not find a link for the user'));
   })
 );
 
 router.get(
   '/aad/userPrincipalName/:upn',
-  asyncHandler(async (req: IApiRequest, res, next) => {
+  asyncHandler(async (req: IApiRequest, res: Response, next: NextFunction) => {
     const upn = req.params.upn;
     const { operations } = getProviders(req);
     const skipOrganizations = req.query.showOrganizations !== undefined && !!req.query.showOrganizations;
@@ -185,7 +189,7 @@ router.get(
           userPrincipalName: upn,
         },
       });
-      return res.json(r);
+      return res.json(r) as unknown as void;
     }
     const results = await getAllUsers(req.apiVersion, operations, skipOrganizations, showTimestamps);
     const r = [];
@@ -203,18 +207,20 @@ router.get(
       },
     });
     if (r.length === 0) {
-      return next(jsonError('Could not find a link for the user', 404));
+      return next(CreateError.NotFound('Could not find a link for the user'));
     }
     req.insights.trackMetric({ name: 'ApiRequestLinkByAadUpn', value: 1 });
-    return res.json(r);
+    return res.json(r) as unknown as void;
   })
 );
 
 router.get(
   '/aad/:id',
-  asyncHandler(async (req: IApiRequest, res, next) => {
+  asyncHandler(async (req: IApiRequest, res: Response, next: NextFunction) => {
     if (req.apiVersion == '2016-12-01') {
-      return next(jsonError('This API is not supported by the API version you are using.', 400));
+      return next(
+        CreateError.InvalidParameters('This API is not supported by the API version you are using.')
+      );
     }
     const id = req.params.id;
     const skipOrganizations = req.query.showOrganizations !== undefined && !!req.query.showOrganizations;
@@ -244,7 +250,7 @@ router.get(
         }
       }
       req.insights.trackMetric({ name: 'ApiRequestLinkByAadId', value: 1 });
-      return res.json(r);
+      return res.json(r) as unknown as void;
     }
     const results = await getAllUsers(req.apiVersion, operations, skipOrganizations, showTimestamps);
     const r = [];
@@ -258,7 +264,7 @@ router.get(
       return next(jsonError('Could not find a link for the user', 404));
     }
     req.insights.trackMetric({ name: 'ApiRequestLinkByAadId', value: 1 });
-    return res.json(r);
+    return res.json(r) as unknown as void;
   })
 );
 
@@ -271,7 +277,6 @@ async function getByThirdPartyId(
   showLinkIds?: boolean
 ): Promise<any> {
   const providers = operations.providers;
-  const { graphProvider } = providers;
   let link: ICorporateLink = null;
   try {
     link = await providers.linkProvider.getByThirdPartyId(thirdPartyId);
@@ -346,7 +351,7 @@ async function getByThirdPartyId(
 }
 
 async function getAllUsers(
-  apiVersion,
+  apiVersion: string,
   operations: Operations,
   skipOrganizations: boolean,
   showTimestamps: boolean,

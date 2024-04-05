@@ -3,9 +3,10 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { getProviders } from '../transitional';
+import { NextFunction, Response } from 'express';
+import { getProviders } from '../lib/transitional';
 
-export default function JsonErrorHandler(err, req, res, next) {
+export default function JsonErrorHandler(err, req, res: Response, next: NextFunction) {
   if (err && err['json']) {
     // jsonError objects should bubble up like before
     return next(err);

@@ -3,12 +3,12 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Router } from 'express';
+import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
-import { getProviders } from '../../transitional';
-import { wrapError } from '../../utils';
+import { getProviders } from '../../lib/transitional';
+import { wrapError } from '../../lib/utils';
 import { Organization } from '../../business';
 import { OrganizationMembershipState, ReposAppRequest, UserAlertType } from '../../interfaces';
 
@@ -25,7 +25,7 @@ interface ILocalLeaveRequest extends ReposAppRequest {
 }
 
 router.use(
-  asyncHandler(async (req: ILocalLeaveRequest, res, next) => {
+  asyncHandler(async (req: ILocalLeaveRequest, res: Response, next: NextFunction) => {
     const organization = req.organization as Organization;
     req.orgLeave = {
       state: null,
@@ -58,7 +58,7 @@ router.get('/', function (req: ILocalLeaveRequest, res) {
 
 router.post(
   '/',
-  asyncHandler(async function (req: ReposAppRequest, res, next) {
+  asyncHandler(async function (req: ReposAppRequest, res: Response, next: NextFunction) {
     const organization = req.organization;
     const providers = getProviders(req);
     const operations = providers.operations;

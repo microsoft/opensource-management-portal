@@ -3,41 +3,41 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Router } from 'express';
+import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
+import throat from 'throat';
 
-import memoryCache from 'memory-cache';
-
-import { jsonError } from '../../middleware';
-import { CreateError, ErrorHelper, getProviders } from '../../transitional';
+import { getIsCorporateAdministrator, jsonError } from '../../middleware';
+import { CreateError, getProviders } from '../../lib/transitional';
 import { ReposAppRequest } from '../../interfaces';
 
 import RouteOrganization from './organization';
+import { apiMiddlewareOrganizationsToOrganization } from '../../middleware/business/organization';
+import type { GitHubOrganizationResponseSanitized } from '../../business';
 import {
-  IReposAppRequestWithOrganizationManagementType,
-  OrganizationManagementType,
-} from '../../middleware/business/organization';
-
-import { IGitHubOrganizationResponse } from '../../business';
-import { OrganizationAnnotation } from '../../entities/organizationAnnotation';
+  OrganizationAnnotation,
+  OrganizationAnnotationProperty,
+  getOrganizationAnnotationRestrictedPropertyNames,
+} from '../../business/entities/organizationAnnotation';
+import { getOrganizationProfileViaMemoryCache } from '../../middleware/github/ensureOrganizationProfile';
 
 const router: Router = Router();
 
-type HighlightedOrganization = {
-  profile: IGitHubOrganizationResponse;
+export type OrganizationAnnotationPair = {
+  profile: GitHubOrganizationResponseSanitized;
   annotations: OrganizationAnnotation;
 };
 
 router.get(
   '/',
-  asyncHandler(async (req: ReposAppRequest, res, next) => {
+  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
     const { operations } = getProviders(req);
     try {
       const orgs = operations.getOrganizations();
       const dd = orgs.map((org) => {
         return org.asClientJson();
       });
-      return res.json(dd);
+      return res.json(dd) as unknown as void;
     } catch (error) {
       throw jsonError(error, 400);
     }
@@ -46,39 +46,86 @@ router.get(
 
 router.get(
   '/annotations',
-  asyncHandler(async (req: ReposAppRequest, res, next) => {
-    const { operations, organizationAnnotationsProvider } = getProviders(req);
-    const cacheTimeMs = 1000 * 60 * 60 * 24;
+  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
+    const providers = getProviders(req);
+    const { organizationAnnotationsProvider } = providers;
+    const projectionQuery = typeof req.query.projection === 'string' ? req.query.projection : undefined;
+    const isSystemAdministrator = await getIsCorporateAdministrator(req);
+    // governance filter: a specific value or unset cohort
+    const governance =
+      typeof req.query.governance === 'string' ? req.query.governance?.toLowerCase() : undefined;
+    const filterByGovernance = governance !== undefined;
     try {
-      const highlights: HighlightedOrganization[] = [];
-      const annotations = await organizationAnnotationsProvider.getAllAnnotations();
-      for (const annotation of annotations) {
+      const highlights: OrganizationAnnotationPair[] = [];
+      let annotations = await organizationAnnotationsProvider.getAllAnnotations();
+      if (filterByGovernance) {
+        annotations = annotations.filter((annotation) => {
+          const value = annotation?.getProperty(OrganizationAnnotationProperty.Governance);
+          return governance ? value === governance : !value;
+        });
+      }
+      const getAnnotationProfile = async (annotation: OrganizationAnnotation) => {
         try {
-          const key = `org:profile:${annotation.organizationId}`;
-          let profile = memoryCache.get(key) as IGitHubOrganizationResponse;
-          if (!profile) {
-            const details = await operations.getOrganizationProfileById(Number(annotation.organizationId));
-            details.cost && delete details.cost;
-            details.headers && delete details.headers;
-            profile = details;
-            memoryCache.put(key, details, cacheTimeMs);
-          }
-          const scrubbedAnnotations = { ...annotation };
-          delete scrubbedAnnotations.administratorNotes;
-          delete scrubbedAnnotations.history;
+          const profile = await getOrganizationProfileViaMemoryCache(providers, annotation.organizationId);
           highlights.push({
             profile,
-            annotations: scrubbedAnnotations as OrganizationAnnotation,
+            annotations: annotation,
           });
         } catch (error) {
           // we ignore any individual resolution error
         }
+      };
+      const projections = projectionQuery?.split(',');
+      if (projections?.length > 0) {
+        const propertiesToRedact = getOrganizationAnnotationRestrictedPropertyNames(isSystemAdministrator);
+        if (projections.some((p) => propertiesToRedact.includes(p))) {
+          throw CreateError.InvalidParameters(
+            `One or more of the requested projections are not authorized for the current user`
+          );
+        }
+      }
+      const parallelRequests = 6;
+      const throttle = throat(parallelRequests);
+      await Promise.all(annotations.map((annotation) => throttle(() => getAnnotationProfile(annotation))));
+      if (projectionQuery) {
+        if (projections.length > 1 && !projections.includes('login')) {
+          throw CreateError.InvalidParameters('When using multiple projections, login must be included');
+        }
+        let projected = highlights.map((highlight) => {
+          const profile = highlight.profile;
+          const annotations = highlight.annotations;
+          const result = {};
+          for (const p of projections) {
+            let value = null;
+            if (profile[p]) {
+              value = result[p] = profile[p];
+            } else if (annotations?.getProperty(p)) {
+              value = result[p] = annotations.getProperty(p);
+            } else if (annotations?.hasFeature(p)) {
+              value = result[p] = true;
+            }
+            if (projections.length === 1) {
+              return value;
+            }
+          }
+          return result;
+        });
+        if (projections.length === 1 && projected.length >= 1 && typeof projected[0] === 'string') {
+          projected = projected.sort((a, b) => {
+            return a.localeCompare(b);
+          });
+        } else if (projections.length > 1) {
+          projected = projected.sort((a, b) => {
+            return a['login'].localeCompare(b['login']);
+          });
+        }
+        return res.json(projected) as unknown as void;
       }
       return res.json({
         highlights: highlights.sort((a, b) => {
           return a.profile.login.localeCompare(b.profile.login);
         }),
-      });
+      }) as unknown as void;
     } catch (error) {
       throw jsonError(error, 400);
     }
@@ -87,7 +134,7 @@ router.get(
 
 router.get(
   '/list.txt',
-  asyncHandler(async (req: ReposAppRequest, res, next) => {
+  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
     const { operations } = getProviders(req);
     try {
       const orgs = operations.getOrganizations();
@@ -102,46 +149,10 @@ router.get(
   })
 );
 
-router.use(
-  '/:orgName',
-  asyncHandler(async (req: IReposAppRequestWithOrganizationManagementType, res, next) => {
-    const { operations } = getProviders(req);
-    const { orgName } = req.params;
-    req.organizationName = orgName;
-    try {
-      const org = operations.getOrganization(orgName);
-      if (org) {
-        req.organizationManagementType = OrganizationManagementType.Managed;
-        req.organization = org;
-        return next();
-      }
-    } catch (orgNotFoundError) {
-      if (!ErrorHelper.IsNotFound(orgNotFoundError)) {
-        return next(orgNotFoundError);
-      }
-    }
-    try {
-      const org = operations.getUncontrolledOrganization(orgName);
-      const details = await org.getDetails();
-      details.cost && delete details.cost;
-      details.headers && delete details.headers;
-      req.organizationProfile = details;
-    } catch (orgProfileError) {
-      if (ErrorHelper.IsNotFound(orgProfileError)) {
-        return next(CreateError.NotFound(`The organization ${orgName} does not exist`));
-      } else {
-        return next(orgProfileError);
-      }
-    }
-    req.organizationManagementType = OrganizationManagementType.Unmanaged;
-    return next();
-  })
-);
+router.use('/:orgName', asyncHandler(apiMiddlewareOrganizationsToOrganization), RouteOrganization);
 
-router.use('/:orgName', RouteOrganization);
-
-router.use('*', (req: ReposAppRequest, res, next) => {
-  return next(jsonError('orgs API not found', 404));
+router.use('*', (req: ReposAppRequest, res: Response, next: NextFunction) => {
+  return next(CreateError.NotFound('orgs API not found'));
 });
 
 export default router;

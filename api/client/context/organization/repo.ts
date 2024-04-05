@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Router } from 'express';
+import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 
 import {
@@ -21,9 +21,9 @@ const router: Router = Router();
 router.get(
   '/permissions',
   AddRepositoryPermissionsToRequest,
-  asyncHandler(async (req: ReposAppRequest, res, next) => {
+  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
     const permissions = getContextualRepositoryPermissions(req);
-    return res.json(permissions);
+    return res.json(permissions) as unknown as void;
   })
 );
 
@@ -33,7 +33,7 @@ const deployment = getCompanySpecificDeployment();
 deployment?.routes?.api?.context?.organization?.repo &&
   deployment?.routes?.api?.context?.organization?.repo(router);
 
-router.use('*', (req, res, next) => {
+router.use('*', (req, res: Response, next: NextFunction) => {
   return next(jsonError(`no API or ${req.method} function available for repo`, 404));
 });
 

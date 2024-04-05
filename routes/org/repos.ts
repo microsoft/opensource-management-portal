@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Router } from 'express';
+import { NextFunction, Response, Router } from 'express';
 import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
@@ -13,13 +13,13 @@ import moment from 'moment';
 import lowercaser from '../../middleware/lowercaser';
 
 import routeAdministrativeLock from './repoAdministrativeLock';
-import NewRepositoryLockdownSystem from '../../features/newRepositories/newRepositoryLockdown';
+import NewRepositoryLockdownSystem from '../../business/features/newRepositories/newRepositoryLockdown';
 import { IGraphEntry } from '../../lib/graphProvider';
 import { IMail } from '../../lib/mailProvider';
 import { IndividualContext } from '../../business/user';
 
 import { Repository, Collaborator, TeamPermission, Organization, OrganizationMember } from '../../business';
-import { RepositoryMetadataEntity } from '../../entities/repositoryMetadata/repositoryMetadata';
+import { RepositoryMetadataEntity } from '../../business/entities/repositoryMetadata/repositoryMetadata';
 import {
   ReposAppRequest,
   GitHubCollaboratorAffiliationQuery,
@@ -35,7 +35,7 @@ import {
   getContextualRepositoryPermissions,
   IContextualRepositoryPermissions,
 } from '../../middleware/github/repoPermissions';
-import { getProviders, CreateError, ErrorHelper } from '../../transitional';
+import { getProviders, CreateError, ErrorHelper } from '../../lib/transitional';
 
 import RouteReposPager from '../reposPager';
 
@@ -60,7 +60,7 @@ const teamsFilterType = {
   systemTeamsOnly: 'systemTeamsOnly',
 };
 
-router.use(function (req: ReposAppRequest, res, next) {
+router.use(function (req: ReposAppRequest, res: Response, next: NextFunction) {
   req.individualContext.webContext.pushBreadcrumb('Repositories');
   req.reposContext = {
     section: 'repos',
@@ -85,10 +85,10 @@ function sliceCollaboratorsForView(collaborators) {
     const destination = permission.admin
       ? collabView.administrators
       : permission.push
-      ? collabView.writers
-      : permission.pull
-      ? collabView.readers
-      : null;
+        ? collabView.writers
+        : permission.pull
+          ? collabView.readers
+          : null;
     if (destination) {
       destination.push(collab);
     }
@@ -160,7 +160,7 @@ export async function findRepoCollaboratorsExcludingOwners(
 
 router.use(
   '/:repoName',
-  asyncHandler(async function (req: ILocalRequest, res, next) {
+  asyncHandler(async function (req: ILocalRequest, res: Response, next: NextFunction) {
     const repoName = req.params.repoName;
     const organization = req.organization;
     const repository = organization.repository(repoName);
@@ -175,7 +175,7 @@ router.use('/:repoName/administrativeLock', routeAdministrativeLock);
 
 router.use(
   '/:repoName/delete',
-  asyncHandler(async function (req: ILocalRequest, res, next) {
+  asyncHandler(async function (req: ILocalRequest, res: Response, next: NextFunction) {
     const individualContext = req.individualContext;
     const repository = req.repository;
     const organization = req.organization;
@@ -205,7 +205,7 @@ router.use(
 
 router.get(
   '/:repoName/delete',
-  asyncHandler(async function (req: ILocalRequest, res, next) {
+  asyncHandler(async function (req: ILocalRequest, res: Response, next: NextFunction) {
     return req.individualContext.webContext.render({
       title: 'Delete the repo you created',
       view: 'repos/delete',
@@ -218,13 +218,14 @@ router.get(
 
 router.post(
   '/:repoName/delete',
-  asyncHandler(async function (req: ILocalRequest, res, next) {
+  asyncHandler(async function (req: ILocalRequest, res: Response, next: NextFunction) {
     // NOTE: this code is also duplicated for now in the client/internal/* folder
     // CONSIDER: de-duplicate
-    const { operations } = getProviders(req);
+    const { insights, operations } = getProviders(req);
     const { organization, repository } = req;
     const repositoryMetadataProvider = getRepositoryMetadataProvider(operations);
     const lockdownSystem = new NewRepositoryLockdownSystem({
+      insights,
       operations,
       organization,
       repository,
@@ -249,121 +250,34 @@ export interface IRenameOutput {
 }
 
 router.post(
-  '/:repoName/defaultBranch',
+  '/:repoName',
   asyncHandler(AddRepositoryPermissionsToRequest),
-  asyncHandler(async function (req: ILocalRequest, res, next) {
-    try {
-      const targetBranchName = req.body.targetBranchName || 'main';
-      const providers = getProviders(req);
-      const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
-      const repoPermissions = getContextualRepositoryPermissions(req);
-      const repository = req.repository as Repository;
-      const outcome = await renameRepositoryDefaultBranchEndToEnd(
-        providers,
-        activeContext,
-        repoPermissions,
-        repository,
-        targetBranchName,
-        false
-      );
-      req.individualContext.webContext.render({
-        view: 'repos/repoBranchRenamed',
-        title: outcome.message,
-        state: {
-          output: outcome.output,
-          repository,
-        },
-      });
-    } catch (error) {
-      return next(error);
+  asyncHandler(async function (req: ILocalRequest, res: Response, next: NextFunction) {
+    const repoPermissions = req.repoPermissions;
+    if (!repoPermissions.allowAdministration) {
+      return next(new Error('You do not have administrative permission on this repository'));
     }
+    // only supporting the 'take public' operation now
+    const takePublic = req.body['make-repo-public'];
+    if (!takePublic) {
+      return next(new Error('Unsupported operation'));
+    }
+    const repository = req.repository as Repository;
+    await repository.editPublicPrivate({ private: false });
+    req.individualContext.webContext.saveUserAlert(
+      `${repository.full_name} is now public.`,
+      'Repository publish',
+      UserAlertType.Success
+    );
+    await repository.getDetails(NoCacheNoBackground);
+    return res.redirect(`/${repository.organization.name}/repos/${repository.name}?published`);
   })
 );
-
-export async function renameRepositoryDefaultBranchEndToEnd(
-  providers: IProviders,
-  activeContext: IndividualContext,
-  repoPermissions: IContextualRepositoryPermissions,
-  repository: Repository,
-  targetBranchName: string,
-  waitForRefresh: boolean
-): Promise<IRenameOutput> {
-  const corporateUsername = activeContext.corporateIdentity.username;
-  if (!corporateUsername) {
-    throw CreateError.InvalidParameters('no corporate username in the session');
-  }
-  if (!targetBranchName) {
-    throw CreateError.InvalidParameters('invalid target branch name');
-  }
-  if (!repoPermissions) {
-    throw CreateError.InvalidParameters('no repo permissions');
-  }
-  if (!repoPermissions.allowAdministration) {
-    throw CreateError.NotAuthorized('You do not have administrative permission on this repository');
-  }
-  await repository.getDetails();
-  function finishUp(): Promise<void> {
-    return new Promise((resolve) => {
-      triggerRenameNotification(providers, repository, corporateUsername, targetBranchName, output)
-        .then((ok) => {
-          /* ignore */
-        })
-        .catch((error) => {
-          console.error(`Notify rename trigger: ${error}`);
-        });
-      repository
-        .getDetails(NoCacheNoBackground)
-        .then((ok) => {
-          return resolve();
-        })
-        .catch((error) => {
-          console.error(`Background refresh error: ${error}`);
-          return resolve();
-        });
-    });
-  }
-  const output = await repository.renameDefaultBranch(targetBranchName);
-  if (waitForRefresh) {
-    await finishUp();
-  } else {
-    process.nextTick(() => {
-      finishUp()
-        .then((ok) => {
-          /* ignore */
-        })
-        .catch((error) => {
-          /* ignore */
-        });
-    });
-  }
-  return {
-    message: `Branch renamed to ${targetBranchName} for ${repository.name}`,
-    output,
-  };
-}
-
-// Disabling this function as it is high risk: uses GHEC enterprise admin PAT and makes repo public outside of Org owner involvement
-// router.post('/:repoName', asyncHandler(AddRepositoryPermissionsToRequest), asyncHandler(async function (req: ILocalRequest, res, next) {
-//   const repoPermissions = req.repoPermissions;
-//   if (!repoPermissions.allowAdministration) {
-//     return next(new Error('You do not have administrative permission on this repository'));
-//   }
-//   // only supporting the 'take public' operation now
-//   const takePublic = req.body['make-repo-public'];
-//   if (!takePublic) {
-//     return next(new Error('Unsupported operation'));
-//   }
-//   const repository = req.repository as Repository;
-//   await repository.editPublicPrivate({ private: false });
-//   req.individualContext.webContext.saveUserAlert(`${repository.full_name} is now public.`, 'Repository publish', UserAlertType.Success);
-//   await repository.getDetails(NoCacheNoBackground);
-//   return res.redirect(`/${repository.organization.name}/repos/${repository.name}?published`);
-// }));
 
 router.get(
   '/:repoName',
   asyncHandler(AddRepositoryPermissionsToRequest),
-  asyncHandler(async function (req: ILocalRequest, res, next) {
+  asyncHandler(async function (req: ILocalRequest, res: Response, next: NextFunction) {
     const { linkProvider, config, graphProvider } = getProviders(req);
     const repoPermissions = req.repoPermissions;
     const referer = req.headers.referer as string;
@@ -465,38 +379,6 @@ router.get(
   })
 );
 
-router.get(
-  '/:repoName/defaultBranch',
-  asyncHandler(AddRepositoryPermissionsToRequest),
-  asyncHandler(async function (req: ILocalRequest, res, next) {
-    const referer = req.headers.referer as string;
-    const fromReposPage = referer && (referer.endsWith('repos') || referer.endsWith('repos/'));
-    const organization = req.organization;
-    const repoPermissions = req.repoPermissions;
-    const repository = req.repository;
-    const repositoryMetadataEntity = req.repositoryMetadata;
-    await repository.getDetails();
-    const title = `${repository.name} - Default Branch Name`;
-    const details = await repository.organization.getDetails();
-    const organizationSupportsUpdatesApp = await organization.supportsUpdatesApp();
-    organization.id = details.id;
-    req.individualContext.webContext.render({
-      view: 'repos/defaultBranch',
-      title,
-      state: {
-        organization,
-        organizationSupportsUpdatesApp,
-        repo: decorateRepoForView(repository),
-        reposSubView: 'defaultBranch',
-        repository,
-        fromReposPage,
-        repoPermissions,
-        repositoryMetadataEntity,
-      },
-    });
-  })
-);
-
 export interface IRepositoryPermissionsView {}
 
 export async function calculateGroupedPermissionsViewForRepository(repository: Repository): Promise<any> {
@@ -506,7 +388,7 @@ export async function calculateGroupedPermissionsViewForRepository(repository: R
     collaborators, // Collaborator[]
     outsideCollaborators, // Collaborator[]
   } = await calculateRepoPermissions(organization, repository);
-  const systemTeams = combineAllTeams(organization.specialRepositoryPermissionTeams); // number[]
+  const systemTeams = combineAllTeams(organization.specialSystemTeams); // number[]
   const teamBasedPermissions = consolidateTeamPermissions(permissions, systemTeams); // busted?
   const groupedPermissions = slicePermissionsForView(
     filterSystemTeams(teamsFilterType.systemTeamsExcluded, systemTeams, permissions)
@@ -549,7 +431,7 @@ export async function calculateGroupedPermissionsViewForRepository(repository: R
 router.get(
   '/:repoName/permissions',
   asyncHandler(AddRepositoryPermissionsToRequest),
-  asyncHandler(async function (req: ILocalRequest, res, next) {
+  asyncHandler(async function (req: ILocalRequest, res: Response, next: NextFunction) {
     const referer = req.headers.referer as string;
     const fromReposPage = referer && (referer.endsWith('repos') || referer.endsWith('repos/'));
     const organization = req.organization;
@@ -563,7 +445,7 @@ router.get(
       organization,
       repository
     );
-    const systemTeams = combineAllTeams(organization.specialRepositoryPermissionTeams);
+    const systemTeams = combineAllTeams(organization.specialSystemTeams);
     const teamBasedPermissions = consolidateTeamPermissions(permissions, systemTeams);
     const title = `${repository.name} - Repository`;
     const details = await repository.organization.getDetails();
@@ -599,7 +481,7 @@ router.get(
 
 router.get(
   '/:repoName/history',
-  asyncHandler(async function (req: ILocalRequest, res, next) {
+  asyncHandler(async function (req: ILocalRequest, res: Response, next: NextFunction) {
     const { auditLogRecordProvider } = getProviders(req);
     const referer = req.headers.referer as string;
     const fromReposPage = referer && (referer.endsWith('repos') || referer.endsWith('repos/'));
@@ -754,7 +636,7 @@ function teamsToSet(teams) {
   return set;
 }
 
-// function requireAdministration(req, res, next) {
+// function requireAdministration(req, res: Response, next: NextFunction) {
 //   const repoPermissions = req.repoPermissions;
 //   if (!repoPermissions) {
 //     return next(new Error('Not configured for repo permissions'));
@@ -764,56 +646,5 @@ function teamsToSet(teams) {
 //   }
 //   return next(new Error('You are not authorized to administer this repository.'));
 // }
-
-async function triggerRenameNotification(
-  providers: IProviders,
-  repository: Repository,
-  corporateUsername: string,
-  targetBranchName: string,
-  output: ITemporaryCommandOutput[]
-): Promise<void> {
-  const { config, insights, operations, mailAddressProvider, viewServices } = providers;
-  insights.trackMetric({ name: 'RenameDefaultBranches', value: 1 });
-  insights.trackEvent({
-    name: 'RenameDefaultBranch',
-    properties: {
-      orgName: repository.organization.name,
-      repoName: repository.name,
-      targetBranchName,
-    },
-  });
-  const mailAddress = await mailAddressProvider.getAddressFromUpn(corporateUsername);
-  const emailTemplate = 'repoDefaultBranchRenamed';
-  const mail: IMail = {
-    to: [mailAddress],
-    cc: [operations.getInfrastructureNotificationsMail()],
-    subject: `${repository.organization.name}/${repository.name} default branch is now ${targetBranchName}`,
-    content: undefined,
-  };
-  const contentOptions = {
-    reason: `You are receiving this e-mail as a transaction record from your action to rename the default branch of this repository you administer.`,
-    headline: `${targetBranchName} branch`,
-    notification: 'information',
-    app: config.brand?.companyName ? `${config.brand.companyName} GitHub` : 'GitHub',
-    output,
-    repository,
-    organization: repository.organization,
-    viewServices,
-  };
-  try {
-    mail.content = await operations.emailRender(emailTemplate, contentOptions);
-    await operations.sendMail(mail);
-  } catch (mailError) {
-    console.warn(mailError);
-    insights.trackException({
-      exception: mailError,
-      properties: {
-        repositoryName: repository.full_name,
-        organizationName: repository.organization.name,
-        eventName: 'SendRenameDefaultBranchMail',
-      },
-    });
-  }
-}
 
 export default router;

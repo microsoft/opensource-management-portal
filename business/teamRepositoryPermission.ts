@@ -5,29 +5,48 @@
 
 import { Team } from './team';
 import { Repository } from './repository';
-import { IOperationsInstance } from '../interfaces';
+
+import type { GitHubRepositoryPermission, IOperationsInstance } from '../interfaces';
+import { isStandardGitHubTeamPermission, type ITeamRepositoryPermission } from './teamPermission';
+import { projectCollaboratorPermissionsObjectToGitHubRepositoryPermission } from '../lib/transitional';
+
+// this is used when a team returns the repositories it can work with;
+// the GitHub API is pretty inconsistent. The actual entities are a combination of
+// repository AND permission here.
+
+type RepositoryWithTeamPermissionsEntity = {
+  id: number;
+  name: string;
+  full_name: string;
+  private: boolean;
+  description: string;
+  fork: boolean;
+  permissions: ITeamRepositoryPermission;
+  role_name: string;
+};
 
 export class TeamRepositoryPermission {
+  // private _operations: IOperationsInstance;
+
+  private _entity: RepositoryWithTeamPermissionsEntity;
+
   private _team: Team;
-  private _operations: IOperationsInstance;
-  private _permissions: any;
   private _repository: Repository;
   private _id: number;
 
-  constructor(team: Team, entity: any, operations: IOperationsInstance) {
+  constructor(team: Team, entity: RepositoryWithTeamPermissionsEntity, operations: IOperationsInstance) {
     this._team = team;
     if (!entity) {
       throw new Error('TeamRepositoryPermission: requires entity');
     }
-    this._permissions = entity.permissions;
+    this._entity = entity;
     this._repository = team.organization.repositoryFromEntity(entity);
     this._id = this._repository.id;
-    this._operations = operations;
   }
 
   asJson() {
     const repo = this._repository.asJson();
-    const permissions = this._permissions;
+    const permissions = this.permissions;
     const combined = { ...repo, permissions };
     return combined;
   }
@@ -44,8 +63,18 @@ export class TeamRepositoryPermission {
     return this._id;
   }
 
-  get permissions(): any {
-    return this._permissions;
+  get customRoleName() {
+    if (!isStandardGitHubTeamPermission(this._entity.role_name)) {
+      return this._entity.role_name;
+    }
+  }
+
+  get permissions(): ITeamRepositoryPermission {
+    return this._entity.permissions;
+  }
+
+  getAsPermission(): GitHubRepositoryPermission {
+    return projectCollaboratorPermissionsObjectToGitHubRepositoryPermission(this._entity.permissions);
   }
 
   get name(): string {

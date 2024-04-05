@@ -3,6 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+import { getSafeCosmosResourceKey } from './transitional';
 import CosmosHelper from './cosmosHelper';
 
 export interface ICampaignUserState {
@@ -160,9 +161,9 @@ export class StatefulCampaignProvider implements ICampaignHelper {
   }
 
   private key(corporateId: string, campaignGroupId: string, campaignId?: string) {
-    return campaignId
-      ? `${campaignGroupId}-${campaignId}-${corporateId}`
-      : `${campaignGroupId}-${corporateId}`;
+    return getSafeCosmosResourceKey(
+      campaignId ? `${campaignGroupId}-${campaignId}-${corporateId}` : `${campaignGroupId}-${corporateId}`
+    );
   }
 
   private baseObject(corporateId: string, campaignGroupId: string, campaignId?: string) {

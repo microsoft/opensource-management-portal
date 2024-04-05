@@ -3,24 +3,16 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-async function go(providers: IProviders): Promise<void> {
-  const { config } = providers;
-  for (const key of Object.getOwnPropertyNames(config)) {
-    console.log(`${key}\n`);
-    console.dir(config[key]);
-    console.log();
-  }
-}
+import job from '../job';
 
-import app from '../app';
-import { IProviders, IReposJob } from '../interfaces';
-
-app.runJob(
-  async function ({ providers }: IReposJob) {
-    await go(providers);
-    return {};
+job.run(
+  async (providers) => {
+    const { config } = providers;
+    for (const key of Object.getOwnPropertyNames(config)) {
+      console.log(`${key}\n`);
+      console.dir(config[key]);
+      console.log();
+    }
   },
-  {
-    enableAllGitHubApps: true,
-  }
+  { name: 'Script: View configuration' }
 );
