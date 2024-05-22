@@ -248,6 +248,7 @@ const safeEntityFieldsForJsonSend = [
   'stargazers_count',
   'open_issues_count',
   'id',
+  'visibility'
 ];
 
 const sortByLogin = (list) => {
