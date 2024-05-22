@@ -213,7 +213,7 @@ export default asyncHandler(async function (req: IReposAppWithTeam, res: Respons
 
   await search.search(page, req.query.sort as string);
 
-  // await Promise.all(search.repos.map(repo => repo.getDetails()));
+  await Promise.all(search.repos.map(repo => repo.getDetails()));
 
   req.individualContext.webContext.render({
     view: 'repos/',
