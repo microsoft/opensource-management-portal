@@ -75,9 +75,12 @@ block content
         - var hugeHeading = repo.name.length < 33
         h1(class={huge: hugeHeading})
           a(href='https://github.com/' + repo.full_name, target="_blank")= repo.name
-          if repo.private === true
+          if repo.visibility
             | &nbsp;
-            .label.label-warning(class={shrink66: !hugeHeading, shrink50: hugeHeading}) Private
+            .label.label-warning(class={shrink66: !hugeHeading, shrink50: hugeHeading}) #{repo.visibility}
+          if repo.has_pages 
+            | &nbsp;
+            .label.label-warning(class={shrink66: !hugeHeading, shrink50: hugeHeading}) pages
         h6= repo.full_name.replace('/' + repo.name, '') + ' organization'
         if repo.fork
           h6
