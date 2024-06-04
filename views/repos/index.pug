@@ -225,9 +225,12 @@ block content
                 if showIds
                   = repo.id + ' '
                 a(href='/' + localOrgName + '/repos/' + repo.name)= repo.name
-                if repo.private === true
+                if repo.visibility
                   | &nbsp;
-                  .label.label-warning.shrink66(title='This is a private repository and not open source.') Private
+                  .label.label-warning(class={shrink66: !hugeHeading, shrink50: hugeHeading}) #{repo.visibility}
+                if repo.has_pages 
+                  | &nbsp;
+                  .label.label-warning(class={shrink66: !hugeHeading, shrink50: hugeHeading}) pages
                 if repo.permissions && specificTeam
                   = ' '
                   if repo.permissions.admin
