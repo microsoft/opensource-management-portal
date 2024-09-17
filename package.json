@@ -78,7 +78,7 @@
     "@octokit/rest": "20.0.2",
     "@primer/octicons": "19.8.0",
     "app-root-path": "3.1.0",
-    "applicationinsights": "2.9.2",
+    "applicationinsights": "3.3.0",
     "async-prompt": "1.0.1",
     "axios": "1.6.5",
     "basic-auth": "2.0.1",
