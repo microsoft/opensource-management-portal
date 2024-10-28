@@ -65,7 +65,7 @@
   "_end_microsoft_internal_": 0,
   "//...": "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - ",
   "dependencies": {
-    "@azure/cosmos": "4.0.0",
+    "@azure/cosmos": "4.1.1",
     "@azure/data-tables": "13.2.2",
     "@azure/identity": "4.0.0",
     "@azure/keyvault-secrets": "4.7.0",
