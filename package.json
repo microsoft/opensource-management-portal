@@ -73,7 +73,7 @@
     "@azure/storage-blob": "12.17.0",
     "@azure/storage-queue": "12.16.0",
     "@octokit/plugin-paginate-graphql": "4.0.0",
-    "@octokit/request": "8.1.6",
+    "@octokit/request": "9.2.3",
     "@octokit/auth-app": "6.0.3",
     "@octokit/rest": "20.0.2",
     "@primer/octicons": "19.8.0",
