@@ -469,6 +469,7 @@ Microsoft-required fields and components:
   - SmallLibrariesToolsSamples: the repo meets the corporate standard for small libraries, tools, and samples
   - Migrate: the repo is being migrated from an old public location such as CodePlex or SourceForge
   - Exempt: the repo is exempt from needing an approval type. The justification will be required in a separate field.
+  - ExistingReleaseReview: The repo has been issued pre-approval by the business owner. The link to the existing devops work item containing that approval is required in ms.approval-url.
 
 Other fields:
 
@@ -478,3 +479,10 @@ Other fields:
 - ms.notify: a comma-separated list of e-mail address to notify about the creation of the repo if successful
 - ms.onBehalfOf: the GitHub username this operation is performed on behalf of. Providing this is a good call as it will redirect questions about the repo to the individual if needed rather than the service account.
 - ms.project-type: product code, sample code, documentation, sdk, utility library / tool, other (new as of apiVersion=2017-07-27)
+- ms.maintainers: github accounts of individuals who should be granted maintain role.
+- ms.readme-moniker: Automation supports replacing placeholder strings in the readme with specific values.  This value is the placeholder string.
+- ms.readme-moniker-replace: Automation supports replacing placeholders strings in the readme with specific values.  This is the value that will replace the placeholder.
+- ms-homepage: set the homepage of the repository (in the about section of the repo).
+- template_repo: Create the new repo from an existing template repo in the same github organization
+- template_owner: set it to "microsoft".  
+
