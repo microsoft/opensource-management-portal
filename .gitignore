@@ -2,16 +2,22 @@ dist/
 node_modules/
 .DS_Store
 reports/
+/.vs
 
-# Potential local development environment scripts
 app.yaml
 env.json
 .env
+.env-prod*
+.env-dev*
 env-orgs.json
-.secrets.env
 .gdn
 feedscan
 feedscan*
 ..prettierignore.swp
 scripts/localCodespace.ts
 junit.xml
+
+# Prevent mistakes
+DO_NOT_COMMIT*
+.secrets.env
+secrets/
