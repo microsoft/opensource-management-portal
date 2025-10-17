@@ -7,7 +7,7 @@ import {
   IEntityMetadataProvider,
   IEntityMetadataSerializationHelper,
   IEntityMetadataDeserializationHelper,
-} from './entityMetadataProvider';
+} from './entityMetadataProvider.js';
 
 export class EntityMetadataType {
   constructor(public readonly typeName: string) {
@@ -58,14 +58,16 @@ export abstract class EntityMetadataBase {
     return metadata;
   }
 
-  protected deserialize<T>(type: EntityMetadataType, metadata: IEntityMetadata) {
+  protected deserialize<T>(type: EntityMetadataType, metadata: IEntityMetadata, options?: unknown) {
     this.ensureHelpers(type);
-    const entity = this._deserialize.get(type)(metadata) as T;
+    const entity = this._deserialize.get(type)(metadata, options) as T;
     return entity;
   }
 
   protected deserializeArray<T>(type: EntityMetadataType, array: IEntityMetadata[]): T[] {
-    return array.map((metadata) => this.deserialize(type, metadata));
+    return array.map((metadata) =>
+      this.deserialize(type, metadata, array /* as options present on the array */)
+    );
   }
 
   protected ensureHelpers(type: EntityMetadataType) {

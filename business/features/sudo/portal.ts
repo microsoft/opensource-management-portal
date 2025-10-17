@@ -3,11 +3,11 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { IPortalSudo } from '.';
-import { Organization } from '../..';
-import { IProviders, ICorporateLink } from '../../../interfaces';
-import getCompanySpecificDeployment from '../../../middleware/companySpecificDeployment';
-import { ErrorHelper } from '../../../lib/transitional';
+import { IPortalSudo } from './index.js';
+import { Organization } from '../../index.js';
+import { IProviders, ICorporateLink } from '../../../interfaces/index.js';
+import getCompanySpecificDeployment from '../../../middleware/companySpecificDeployment.js';
+import { ErrorHelper } from '../../../lib/transitional.js';
 
 abstract class PortalSudoBase {
   constructor(private providers: IProviders) {}

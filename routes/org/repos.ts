@@ -4,22 +4,26 @@
 //
 
 import { NextFunction, Response, Router } from 'express';
-import asyncHandler from 'express-async-handler';
+
 const router: Router = Router();
 
 import _ from 'lodash';
 import moment from 'moment';
 
-import lowercaser from '../../middleware/lowercaser';
+import lowercaser from '../../middleware/lowercaser.js';
 
-import routeAdministrativeLock from './repoAdministrativeLock';
-import NewRepositoryLockdownSystem from '../../business/features/newRepositories/newRepositoryLockdown';
-import { IGraphEntry } from '../../lib/graphProvider';
-import { IMail } from '../../lib/mailProvider';
-import { IndividualContext } from '../../business/user';
+import routeAdministrativeLock from './repoAdministrativeLock.js';
+import NewRepositoryLockdownSystem from '../../business/features/newRepositories/newRepositoryLockdown.js';
+import { IGraphEntry } from '../../lib/graphProvider/index.js';
 
-import { Repository, Collaborator, TeamPermission, Organization, OrganizationMember } from '../../business';
-import { RepositoryMetadataEntity } from '../../business/entities/repositoryMetadata/repositoryMetadata';
+import {
+  Repository,
+  Collaborator,
+  TeamPermission,
+  Organization,
+  OrganizationMember,
+} from '../../business/index.js';
+import { RepositoryMetadataEntity } from '../../business/entities/repositoryMetadata/repositoryMetadata.js';
 import {
   ReposAppRequest,
   GitHubCollaboratorAffiliationQuery,
@@ -29,15 +33,15 @@ import {
   NoCacheNoBackground,
   ICorporateLink,
   getRepositoryMetadataProvider,
-} from '../../interfaces';
+} from '../../interfaces/index.js';
 import {
   AddRepositoryPermissionsToRequest,
   getContextualRepositoryPermissions,
   IContextualRepositoryPermissions,
-} from '../../middleware/github/repoPermissions';
-import { getProviders, CreateError, ErrorHelper } from '../../lib/transitional';
+} from '../../middleware/github/repoPermissions.js';
+import { getProviders, CreateError, ErrorHelper } from '../../lib/transitional.js';
 
-import RouteReposPager from '../reposPager';
+import RouteReposPager from '../reposPager.js';
 
 interface ILocalRequest extends ReposAppRequest {
   repository?: Repository;
@@ -158,91 +162,79 @@ export async function findRepoCollaboratorsExcludingOwners(
   };
 }
 
-router.use(
-  '/:repoName',
-  asyncHandler(async function (req: ILocalRequest, res: Response, next: NextFunction) {
-    const repoName = req.params.repoName;
-    const organization = req.organization;
-    const repository = organization.repository(repoName);
-    await repository.getDetails();
-    req.repository = repository;
-    req.repositoryMetadata = await repository.getRepositoryMetadata();
-    return next();
-  })
-);
+router.use('/:repoName', async function (req: ILocalRequest, res: Response, next: NextFunction) {
+  const repoName = req.params.repoName;
+  const organization = req.organization;
+  const repository = organization.repository(repoName);
+  await repository.getDetails();
+  req.repository = repository;
+  req.repositoryMetadata = await repository.getRepositoryMetadata();
+  return next();
+});
 
 router.use('/:repoName/administrativeLock', routeAdministrativeLock);
 
-router.use(
-  '/:repoName/delete',
-  asyncHandler(async function (req: ILocalRequest, res: Response, next: NextFunction) {
-    const individualContext = req.individualContext;
-    const repository = req.repository;
-    const organization = req.organization;
-    if (!organization.isNewRepositoryLockdownSystemEnabled) {
-      return next(new Error('This endpoint is not available as configured in this app.'));
-    }
-    const daysAfterCreateToAllowSelfDelete = 21; // could be a config setting if anyone cares
-    try {
-      const metadata = await repository.getRepositoryMetadata();
-      await NewRepositoryLockdownSystem.Statics.ValidateUserCanSelfDeleteRepository(
-        repository,
-        metadata,
-        individualContext,
-        daysAfterCreateToAllowSelfDelete
-      );
-    } catch (noExistingMetadata) {
-      if (noExistingMetadata.status === 404) {
-        throw new Error(
-          'This repository does not have any metadata available regarding who can setup it up. No further actions available.'
-        );
-      }
-      throw noExistingMetadata;
-    }
-    return next();
-  })
-);
-
-router.get(
-  '/:repoName/delete',
-  asyncHandler(async function (req: ILocalRequest, res: Response, next: NextFunction) {
-    return req.individualContext.webContext.render({
-      title: 'Delete the repo you created',
-      view: 'repos/delete',
-      state: {
-        repo: req.repository,
-      },
-    });
-  })
-);
-
-router.post(
-  '/:repoName/delete',
-  asyncHandler(async function (req: ILocalRequest, res: Response, next: NextFunction) {
-    // NOTE: this code is also duplicated for now in the client/internal/* folder
-    // CONSIDER: de-duplicate
-    const { insights, operations } = getProviders(req);
-    const { organization, repository } = req;
-    const repositoryMetadataProvider = getRepositoryMetadataProvider(operations);
-    const lockdownSystem = new NewRepositoryLockdownSystem({
-      insights,
-      operations,
-      organization,
+router.use('/:repoName/delete', async function (req: ILocalRequest, res: Response, next: NextFunction) {
+  const individualContext = req.individualContext;
+  const repository = req.repository;
+  const organization = req.organization;
+  if (!organization.isNewRepositoryLockdownSystemEnabled) {
+    return next(new Error('This endpoint is not available as configured in this app.'));
+  }
+  const daysAfterCreateToAllowSelfDelete = 21; // could be a config setting if anyone cares
+  try {
+    const metadata = await repository.getRepositoryMetadata();
+    await NewRepositoryLockdownSystem.Statics.ValidateUserCanSelfDeleteRepository(
       repository,
-      repositoryMetadataProvider,
-    });
-    await lockdownSystem.deleteLockedRepository(
-      false /* delete for any reason */,
-      true /* deleted by the original user instead of ops */
+      metadata,
+      individualContext,
+      daysAfterCreateToAllowSelfDelete
     );
-    req.individualContext.webContext.saveUserAlert(
-      `You deleted your repo, ${repository.full_name}.`,
-      'Repo deleted',
-      UserAlertType.Success
-    );
-    return res.redirect(organization.baseUrl);
-  })
-);
+  } catch (noExistingMetadata) {
+    if (noExistingMetadata.status === 404) {
+      throw new Error(
+        'This repository does not have any metadata available regarding who can setup it up. No further actions available.'
+      );
+    }
+    throw noExistingMetadata;
+  }
+  return next();
+});
+
+router.get('/:repoName/delete', async function (req: ILocalRequest, res: Response, next: NextFunction) {
+  return req.individualContext.webContext.render({
+    title: 'Delete the repo you created',
+    view: 'repos/delete',
+    state: {
+      repo: req.repository,
+    },
+  });
+});
+
+router.post('/:repoName/delete', async function (req: ILocalRequest, res: Response, next: NextFunction) {
+  // NOTE: this code is also duplicated for now in the client/internal/* folder
+  // CONSIDER: de-duplicate
+  const { insights, operations } = getProviders(req);
+  const { organization, repository } = req;
+  const repositoryMetadataProvider = getRepositoryMetadataProvider(operations);
+  const lockdownSystem = new NewRepositoryLockdownSystem({
+    insights,
+    operations,
+    organization,
+    repository,
+    repositoryMetadataProvider,
+  });
+  await lockdownSystem.deleteLockedRepository(
+    false /* delete for any reason */,
+    true /* deleted by the original user instead of ops */
+  );
+  req.individualContext.webContext.saveUserAlert(
+    `You deleted your repo, ${repository.full_name}.`,
+    'Repo deleted',
+    UserAlertType.Success
+  );
+  return res.redirect(organization.baseUrl);
+});
 
 export interface IRenameOutput {
   message: string;
@@ -251,8 +243,8 @@ export interface IRenameOutput {
 
 router.post(
   '/:repoName',
-  asyncHandler(AddRepositoryPermissionsToRequest),
-  asyncHandler(async function (req: ILocalRequest, res: Response, next: NextFunction) {
+  AddRepositoryPermissionsToRequest,
+  async function (req: ILocalRequest, res: Response, next: NextFunction) {
     const repoPermissions = req.repoPermissions;
     if (!repoPermissions.allowAdministration) {
       return next(new Error('You do not have administrative permission on this repository'));
@@ -271,13 +263,13 @@ router.post(
     );
     await repository.getDetails(NoCacheNoBackground);
     return res.redirect(`/${repository.organization.name}/repos/${repository.name}?published`);
-  })
+  }
 );
 
 router.get(
   '/:repoName',
-  asyncHandler(AddRepositoryPermissionsToRequest),
-  asyncHandler(async function (req: ILocalRequest, res: Response, next: NextFunction) {
+  AddRepositoryPermissionsToRequest,
+  async function (req: ILocalRequest, res: Response, next: NextFunction) {
     const { linkProvider, config, graphProvider } = getProviders(req);
     const repoPermissions = req.repoPermissions;
     const referer = req.headers.referer as string;
@@ -375,10 +367,8 @@ router.get(
         repositoryMetadataEntity,
       },
     });
-  })
+  }
 );
-
-export interface IRepositoryPermissionsView {}
 
 export async function calculateGroupedPermissionsViewForRepository(repository: Repository): Promise<any> {
   const organization = repository.organization;
@@ -429,8 +419,8 @@ export async function calculateGroupedPermissionsViewForRepository(repository: R
 
 router.get(
   '/:repoName/permissions',
-  asyncHandler(AddRepositoryPermissionsToRequest),
-  asyncHandler(async function (req: ILocalRequest, res: Response, next: NextFunction) {
+  AddRepositoryPermissionsToRequest,
+  async function (req: ILocalRequest, res: Response, next: NextFunction) {
     const referer = req.headers.referer as string;
     const fromReposPage = referer && (referer.endsWith('repos') || referer.endsWith('repos/'));
     const organization = req.organization;
@@ -475,38 +465,33 @@ router.get(
         repositoryMetadataEntity,
       },
     });
-  })
+  }
 );
 
-router.get(
-  '/:repoName/history',
-  asyncHandler(async function (req: ILocalRequest, res: Response, next: NextFunction) {
-    const { auditLogRecordProvider } = getProviders(req);
-    const referer = req.headers.referer as string;
-    const fromReposPage = referer && (referer.endsWith('repos') || referer.endsWith('repos/'));
-    const organization = req.organization;
-    const repository = req.repository;
-    const repositoryMetadataEntity = req.repositoryMetadata;
-    await repository.getDetails();
-    const history = await auditLogRecordProvider.queryAuditLogForRepositoryOperations(
-      repository.id.toString()
-    );
-    const title = `${repository.name} - History`;
-    req.individualContext.webContext.render({
-      view: 'repos/history',
-      title,
-      state: {
-        organization,
-        repo: decorateRepoForView(repository),
-        reposSubView: 'history',
-        repository,
-        fromReposPage,
-        repositoryMetadataEntity,
-        history,
-      },
-    });
-  })
-);
+router.get('/:repoName/history', async function (req: ILocalRequest, res: Response, next: NextFunction) {
+  const { auditLogRecordProvider } = getProviders(req);
+  const referer = req.headers.referer as string;
+  const fromReposPage = referer && (referer.endsWith('repos') || referer.endsWith('repos/'));
+  const organization = req.organization;
+  const repository = req.repository;
+  const repositoryMetadataEntity = req.repositoryMetadata;
+  await repository.getDetails();
+  const history = await auditLogRecordProvider.queryAuditLogForRepositoryOperations(repository.id.toString());
+  const title = `${repository.name} - History`;
+  req.individualContext.webContext.render({
+    view: 'repos/history',
+    title,
+    state: {
+      organization,
+      repo: decorateRepoForView(repository),
+      reposSubView: 'history',
+      repository,
+      fromReposPage,
+      repositoryMetadataEntity,
+      history,
+    },
+  });
+});
 
 function consolidateTeamPermissions(permissions, systemTeams) {
   const systemTeamsSet = new Set(systemTeams);

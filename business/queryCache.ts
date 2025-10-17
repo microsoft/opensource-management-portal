@@ -16,16 +16,16 @@
 
 import Debug from 'debug';
 
-import { projectCollaboratorPermissionToGitHubRepositoryPermission } from '../lib/transitional';
-import { OrganizationMemberCacheEntity } from './entities/organizationMemberCache/organizationMemberCache';
-import { Operations } from './operations';
-import { TeamMemberCacheEntity } from './entities/teamMemberCache/teamMemberCache';
+import { projectCollaboratorPermissionToGitHubRepositoryPermission } from '../lib/transitional.js';
+import { OrganizationMemberCacheEntity } from './entities/organizationMemberCache/organizationMemberCache.js';
+import { Operations } from './operations/index.js';
+import { TeamMemberCacheEntity } from './entities/teamMemberCache/teamMemberCache.js';
 
-import { TeamCacheEntity } from './entities/teamCache/teamCache';
-import { RepositoryTeamCacheEntity } from './entities/repositoryTeamCache/repositoryTeamCache';
-import { RepositoryCacheEntity } from './entities/repositoryCache/repositoryCache';
-import { RepositoryCollaboratorCacheEntity } from './entities/repositoryCollaboratorCache/repositoryCollaboratorCache';
-import { Repository } from '.';
+import { TeamCacheEntity } from './entities/teamCache/teamCache.js';
+import { RepositoryTeamCacheEntity } from './entities/repositoryTeamCache/repositoryTeamCache.js';
+import { RepositoryCacheEntity } from './entities/repositoryCache/repositoryCache.js';
+import { RepositoryCollaboratorCacheEntity } from './entities/repositoryCollaboratorCache/repositoryCollaboratorCache.js';
+import { Repository } from './index.js';
 import {
   IProviders,
   IQueryCacheTeamMembership,
@@ -39,7 +39,7 @@ import {
   OrganizationMembershipRole,
   IQueryCacheOrganizationMembership,
   GitHubRepositoryPermission,
-} from '../interfaces';
+} from '../interfaces/index.js';
 
 const debug = Debug.debug('querycache');
 

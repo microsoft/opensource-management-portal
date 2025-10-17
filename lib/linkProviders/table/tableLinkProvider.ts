@@ -22,15 +22,15 @@ import {
   ICorporateLinkProperties,
   IProviders,
   IReposError,
-} from '../../../interfaces';
-import { CorporatePropertyNames } from '../../../business/corporateLink';
-import { CorporateTableLink } from './tableLink';
-import { ILinkProvider } from '..';
+} from '../../../interfaces/index.js';
+import { CorporatePropertyNames } from '../../../business/corporateLink.js';
+import { CorporateTableLink } from './tableLink.js';
+import { ILinkProvider } from '../index.js';
 
-import tableEntity from '../../tableEntity';
-import { ErrorHelper } from '../../transitional';
-import { decryptEntityAsync, encryptEntityAsync, IEncryptionOptions } from '../../encryption';
-import { IKeyVaultSecretResolver } from '../../keyVaultResolver';
+import tableEntity from '../../tableEntity.js';
+import { ErrorHelper } from '../../transitional.js';
+import { decryptEntityAsync, encryptEntityAsync, IEncryptionOptions } from '../../encryption.js';
+import { IKeyVaultSecretResolver } from '../../keyVaultResolver.js';
 
 const defaultThirdPartyType = 'github';
 // const defaultPageSize = 500;

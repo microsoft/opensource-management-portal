@@ -3,10 +3,10 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import type { ICacheOptions, IPagedCacheOptions } from '.';
-import type { ICorporateLink } from '..';
-import { OrganizationMember } from '../../business';
-import { Repository } from '../../business/repository';
+import type { ICacheOptions, IPagedCacheOptions } from './index.js';
+import type { ICorporateLink } from '../index.js';
+import { OrganizationMember } from '../../business/index.js';
+import { Repository } from '../../business/repository.js';
 
 export interface ICreateRepositoryResult {
   response: any;
@@ -42,20 +42,32 @@ export enum GitHubAuditLogInclude {
 
 export interface GitHubAuditLogEntry {
   '@timestamp': number;
+  _document_id: string;
   action: string;
   actor: string;
+  actor_id: number;
+  actor_is_bot: boolean;
+  actor_location: unknown;
+  business: string;
+  business_id: number;
   created_at: number;
+  external_identity_nameid: string; // @cspell:ignore nameid
+  external_identity_username: string;
+  operation_type: string;
   event: string;
   head_branch?: string;
   head_sha?: string;
   name?: string;
   org: string;
+  org_id: number;
   repo: string;
+  repo_id: number;
   started_at: string;
   trigger_id?: string;
   workflow_id?: number;
   workflow_run_id?: number;
   user?: string;
+  user_agent: string;
 }
 
 export interface GitHubAuditLogFormattedEntryMvp {
@@ -68,7 +80,7 @@ export enum GitHubAuditLogOrder {
   Descending = 'desc',
 }
 
-export interface IGetOrganizationAuditLogOptions extends ICacheOptions {
+export interface IGetAuditLogOptions extends ICacheOptions {
   phrase?: string;
   include?: GitHubAuditLogInclude;
   after?: string;
@@ -77,10 +89,12 @@ export interface IGetOrganizationAuditLogOptions extends ICacheOptions {
   per_page?: number;
 }
 
-export interface IGetOrganizationMembersOptions extends IPagedCacheOptions {
+export type GetOrganizationMembersOptions = IPagedCacheOptions & {
   filter?: OrganizationMembershipTwoFactorFilter;
   role?: OrganizationMembershipRoleQuery;
-}
+
+  doNotProjectEntities?: boolean;
+};
 
 export interface IAddOrganizationMembershipOptions extends ICacheOptions {
   role?: OrganizationMembershipRole;
@@ -102,6 +116,13 @@ export type GitHubSimpleAccount = {
   login: string;
   avatar_url: string;
   id: number;
+};
+
+export type GitHubOrganizationEntity = GitHubSimpleAccount & {
+  description: string;
+  name: string;
+  node_id: string;
+  url: string;
 };
 
 export type GitHubOrganizationInvite = {

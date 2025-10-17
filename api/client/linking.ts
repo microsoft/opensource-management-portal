@@ -4,14 +4,14 @@
 //
 
 import { NextFunction, Response, Router } from 'express';
-import asyncHandler from 'express-async-handler';
 
-import { IndividualContext } from '../../business/user';
-import { jsonError } from '../../middleware';
-import { ErrorHelper, getProviders } from '../../lib/transitional';
-import { unlinkInteractive } from '../../routes/unlink';
-import { interactiveLinkUser } from '../../routes/link';
-import { ReposAppRequest } from '../../interfaces';
+import { IndividualContext } from '../../business/user/index.js';
+import { jsonError } from '../../middleware/index.js';
+import { CreateError, ErrorHelper, getProviders } from '../../lib/transitional.js';
+import { unlinkInteractive } from '../../routes/unlink.js';
+import { interactiveLinkUser } from '../../routes/link.js';
+import type { ReposAppRequest } from '../../interfaces/index.js';
+import getCompanySpecificDeployment from '../../middleware/companySpecificDeployment.js';
 
 const router: Router = Router();
 
@@ -21,7 +21,7 @@ async function validateLinkOk(req: ReposAppRequest, res: Response, next: NextFun
   const insights = providers.insights;
   const config = providers.config;
   let validateAndBlockGuests = false;
-  if (config && config.activeDirectory && config.activeDirectory.blockGuestUserTypes) {
+  if (config && config.activeDirectory && config.activeDirectory.authentication.blockGuestUserTypes) {
     validateAndBlockGuests = true;
   }
   // If the app has not been configured to check whether a user is a guest before linking, continue:
@@ -46,6 +46,27 @@ async function validateLinkOk(req: ReposAppRequest, res: Response, next: NextFun
     const userType = details.userType;
     const displayName = details.displayName;
     const userPrincipalName = details.userPrincipalName;
+    const companySpecific = getCompanySpecificDeployment();
+    if (companySpecific?.features?.linking?.confirmLinkingAuthorized) {
+      try {
+        await companySpecific.features.linking.confirmLinkingAuthorized(providers, activeContext);
+      } catch (err) {
+        insights?.trackException({
+          exception: err,
+          properties: {
+            name: 'api.link.company_validation.denied',
+          },
+        });
+        insights?.trackMetric({
+          name: 'api.link.company_validation.denials',
+          value: 1,
+        });
+        return next(
+          CreateError.NotAuthorized(err?.message || 'You are not authorized to link your account.')
+        );
+      }
+    }
+    // If the user is a guest, block the link:
     const block = (userType as string) === 'Guest';
     const blockedRecord = block ? 'BLOCKED' : 'not blocked';
     insights.trackEvent({
@@ -94,27 +115,20 @@ async function validateLinkOk(req: ReposAppRequest, res: Response, next: NextFun
 router.get('/banner', (req: ReposAppRequest, res: Response, next: NextFunction) => {
   const { config } = getProviders(req);
   const offline = config?.github?.links?.provider?.linkingOfflineMessage;
-  return res.json({ offline });
+  return res.json({ offline }) as unknown as void;
 });
 
-router.delete(
-  '/',
-  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
-    const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
-    return unlinkInteractive(true, activeContext, req, res, next);
-  })
-);
+router.delete('/', async (req: ReposAppRequest, res: Response, next: NextFunction) => {
+  const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
+  return unlinkInteractive(true, activeContext, req, res, next);
+});
 
-router.post(
-  '/',
-  validateLinkOk,
-  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
-    const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
-    return interactiveLinkUser(true, activeContext, req, res, next);
-  })
-);
+router.post('/', validateLinkOk, async (req: ReposAppRequest, res: Response, next: NextFunction) => {
+  const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
+  return interactiveLinkUser(true, activeContext, req, res, next);
+});
 
-router.use('*', (req: ReposAppRequest, res: Response, next: NextFunction) => {
+router.use('/*splat', (req: ReposAppRequest, res: Response, next: NextFunction) => {
   return next(jsonError('API or route not found', 404));
 });
 

@@ -3,11 +3,10 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import asyncHandler from 'express-async-handler';
 import { NextFunction, Response } from 'express';
 import _ from 'lodash';
 
-import { daysInMilliseconds } from '../lib/utils';
+import { daysInMilliseconds } from '../lib/utils.js';
 import {
   Repository,
   IPersonalizedUserAggregateRepositoryPermission,
@@ -16,12 +15,12 @@ import {
   Team,
   Organization,
   RepositorySearch,
-} from '../business';
-import QueryCache from '../business/queryCache';
-import { GitHubRepositoryType, IReposAppWithTeam } from '../interfaces';
-import { IRequestTeamPermissions } from '../middleware/github/teamPermissions';
-import { getProviders } from '../lib/transitional';
-import { UserContext } from '../business/user/aggregate';
+} from '../business/index.js';
+import QueryCache from '../business/queryCache.js';
+import { GitHubRepositoryType, IReposAppWithTeam } from '../interfaces/index.js';
+import { IRequestTeamPermissions } from '../middleware/github/teamPermissions.js';
+import { CreateError, getProviders } from '../lib/transitional.js';
+import { UserContext } from '../business/user/aggregate.js';
 
 interface IGetReposAndOptionalTeamPermissionsResponse {
   reposData: Repository[];
@@ -82,7 +81,7 @@ async function getReposAndOptionalTeamPermissions(
   return { reposData, userRepos };
 }
 
-export default asyncHandler(async function (req: IReposAppWithTeam, res: Response, next: NextFunction) {
+export default async function (req: IReposAppWithTeam, res: Response, next: NextFunction) {
   const providers = getProviders(req);
   const operations = providers.operations;
   const queryCache = providers.queryCache;
@@ -105,22 +104,40 @@ export default asyncHandler(async function (req: IReposAppWithTeam, res: Respons
     individualContext.aggregations
   );
 
-  const page = req.query.page_number ? Number(req.query.page_number) : 1;
+  let page = 1;
+  if (req.query.page_number !== undefined) {
+    if (typeof req.query.page_number !== 'string') {
+      return next(CreateError.InvalidParameters('page_number must be a string'));
+    }
+    page = parseInt(req.query.page_number, 10);
+    if (isNaN(page) || page <= 0) {
+      return next(CreateError.InvalidParameters('page_number must be a positive number'));
+    }
+  }
 
+  if (req.query.q !== undefined && typeof req.query.q !== 'string') {
+    return next(CreateError.InvalidParameters('q must be a string'));
+  }
   const phrase = req.query.q as string;
-
-  // TODO: Validate the type
-  let type = req.query.type as string;
+  if (req.query.sort && typeof req.query.sort !== 'string') {
+    return next(CreateError.InvalidParameters('sort must be a string'));
+  }
+  const sort = typeof req.query.sort === 'string' ? req.query.sort : null;
+  if (req.query.type && typeof req.query.type !== 'string') {
+    return next(CreateError.InvalidParameters('type must be a string'));
+  }
+  const type = typeof req.query.type === 'string' ? req.query.type : null;
   if (
+    type &&
     type !== 'public' &&
     type !== 'private' &&
     type !== 'source' &&
     type !== 'fork' /*&& type !== 'mirrors' - we do not do mirror stuff */
   ) {
-    type = null;
+    return next(CreateError.InvalidParameters('type must be one of: public, private, source, fork'));
   }
 
-  let metadataType = req.query.mt as string;
+  let metadataType = typeof req.query.mt === 'string' ? req.query.mt : null;
   if (
     metadataType !== 'with-metadata' &&
     metadataType !== 'without-metadata' &&
@@ -131,7 +148,7 @@ export default asyncHandler(async function (req: IReposAppWithTeam, res: Respons
     metadataType = null;
   }
 
-  const createdSinceValue = req.query.cs ? Number(req.query.cs) : null;
+  const createdSinceValue = typeof req.query.cs === 'string' ? Number(req.query.cs) : null;
   let createdSince = null;
   if (createdSinceValue) {
     createdSince = new Date(new Date().getTime() - daysInMilliseconds(createdSinceValue));
@@ -145,6 +162,9 @@ export default asyncHandler(async function (req: IReposAppWithTeam, res: Respons
   } else if (teamsType === 'myread' || teamsType === 'mywrite' || teamsType === 'myadmin') {
     teamsSubType = teamsType.substr(2);
     teamsType = 'my';
+  }
+  if (req.query.language !== undefined && typeof req.query.language !== 'string') {
+    return next(CreateError.InvalidParameters('language must be a string'));
   }
   // TODO: Validate the language value is in the Linguist list
   const language = req.query.language as string;
@@ -211,7 +231,7 @@ export default asyncHandler(async function (req: IReposAppWithTeam, res: Respons
     repositoryMetadataProvider: operations.repositoryMetadataProvider,
   });
 
-  await search.search(page, req.query.sort as string);
+  await search.search(page, sort);
 
   // await Promise.all(search.repos.map(repo => repo.getDetails()));
 
@@ -238,4 +258,4 @@ export default asyncHandler(async function (req: IReposAppWithTeam, res: Respons
       showIds,
     },
   });
-});
+}

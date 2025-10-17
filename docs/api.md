@@ -180,6 +180,21 @@ Response body:
 }
 ```
 
+#### by AAD attributes
+
+If you want to query by _user principal name_, or _mail nickname_, or _mail address_, these are also supported; these
+use the graph to correlate an AAD ID before querying by that.
+
+While users will have 0 or 1 links, these APIs are designed for a world where users could have more than 1 link; in
+production this is blocked these days. You should expect an array of links to be returned but typically with just 1
+item.
+
+APIs are:
+
+- `/api/people/links/aad/mail/MAIL`
+- `/api/people/links/aad/mailNickname/NICKNAME`
+- `/api/people/links/aad/userPrincipalName/UPN`
+
 #### by Azure Active Directory ID
 
 This API returns an array if there is at least one matching account or accounts. To support scenarios with other account types or even multiple accounts such as service accounts, it is up to your application to determine how to handle more than one account. Order is not guaranteed.
@@ -464,11 +479,11 @@ Microsoft-required fields and components:
 
 - ms.license: either 'MIT' or '(MIT AND CC-BY-4.0)' are supported at this time, all others rejected
 - ms.approval-type: as of 2016_12_01, there are 4 supported values as follows. Please select just one:
-
   - ReleaseReview: the repo has been reviewed and approved for open source using the release tooling (Palamida, etc.) - the approval URL must be provided in a separate value when using this approval type
   - SmallLibrariesToolsSamples: the repo meets the corporate standard for small libraries, tools, and samples
   - Migrate: the repo is being migrated from an old public location such as CodePlex or SourceForge
   - Exempt: the repo is exempt from needing an approval type. The justification will be required in a separate field.
+  - ExistingReleaseReview: The repo has been issued pre-approval by the business owner. The link to the existing devops work item containing that approval is required in ms.approval-url.
 
 Other fields:
 
@@ -478,3 +493,12 @@ Other fields:
 - ms.notify: a comma-separated list of e-mail address to notify about the creation of the repo if successful
 - ms.onBehalfOf: the GitHub username this operation is performed on behalf of. Providing this is a good call as it will redirect questions about the repo to the individual if needed rather than the service account.
 - ms.project-type: product code, sample code, documentation, sdk, utility library / tool, other (new as of apiVersion=2017-07-27)
+- ms.maintainers: github accounts of individuals who should be granted maintain role.
+- ms.readme-moniker: Automation supports replacing placeholder strings in the readme with specific values.  This value is the placeholder string.
+- ms.readme-moniker-replace: Automation supports replacing placeholders strings in the readme with specific values.  This is the value that will replace the elements of the root readme.md where the string in ms.readme-moniker appears.
+- ms-homepage: set the homepage of the repository (in the about section of the repo).
+- template_repo: Create the new repo from an existing template repo in the same github organization
+- template_owner: set it to "microsoft".
+- "ms-just-in-time-rule-id" - If you have created a Jitv2 rule in the opensource portal (see [Jit](https://docs.opensource.microsoft.com/github/opensource/repos/jit/), you can pass the `Rule ID` of the rule and your new repo will get created with your shared rule applied.
+
+<!-- @cspell: ignore jitv -->

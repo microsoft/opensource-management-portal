@@ -5,20 +5,22 @@
 
 // Job: Consistency: Deleted repos (7)
 
-import job from '../job';
-import { Organization } from '../business/organization';
-import { RepositoryCollaboratorCacheEntity } from '../business/entities/repositoryCollaboratorCache/repositoryCollaboratorCache';
-import { RepositoryTeamCacheEntity } from '../business/entities/repositoryTeamCache/repositoryTeamCache';
-import { IProviders, IReposJobResult } from '../interfaces';
-import { ErrorHelper } from '../lib/transitional';
-import { sleep } from '../lib/utils';
+import job from '../job.js';
+import { Organization } from '../business/organization.js';
+import { RepositoryCollaboratorCacheEntity } from '../business/entities/repositoryCollaboratorCache/repositoryCollaboratorCache.js';
+import { RepositoryTeamCacheEntity } from '../business/entities/repositoryTeamCache/repositoryTeamCache.js';
+import { IProviders, IReposJobResult } from '../interfaces/index.js';
+import { ErrorHelper } from '../lib/transitional.js';
+import { sleep } from '../lib/utils.js';
 
 const killBitHours = 8;
+
+const INSIGHTS_PREFIX = 'JobRefreshUserQC';
 
 job.runBackgroundJob(byUserJob, {
   defaultDebugOutput: 'qcuser',
   timeoutMinutes: 60 * killBitHours,
-  insightsPrefix: 'JobRefreshUserQC',
+  insightsPrefix: INSIGHTS_PREFIX,
 });
 
 const successDelayMilliseconds = 120;
@@ -210,13 +212,26 @@ async function processDeletedRepositories(providers: IProviders): Promise<void> 
 }
 
 async function byUserJob(providers: IProviders): Promise<IReposJobResult> {
-  const { config } = providers;
+  const { config, insights } = providers;
+  insights?.trackEvent({
+    name: `${INSIGHTS_PREFIX}Start`,
+    properties: {
+      time: new Date(),
+    },
+  });
   if (config?.jobs?.refreshWrites !== true) {
     console.log('job is currently disabled to avoid metadata refresh/rewrites');
     return;
   }
 
   await processDeletedRepositories(providers);
+
+  insights?.trackEvent({
+    name: `${INSIGHTS_PREFIX}End`,
+    properties: {
+      time: new Date(),
+    },
+  });
 
   return {};
 }

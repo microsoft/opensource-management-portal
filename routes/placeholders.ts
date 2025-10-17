@@ -6,8 +6,8 @@
 import { NextFunction, Response, Router } from 'express';
 const router: Router = Router();
 
-import { ReposAppRequest } from '../interfaces';
-import { getProviders } from '../lib/transitional';
+import { ReposAppRequest } from '../interfaces/index.js';
+import { getProviders } from '../lib/transitional.js';
 
 // These are Microsoft-specific, we'll remove these eventually.
 // TODO: remove from open source version since not helpful having random routes in place

@@ -14,8 +14,9 @@ export type ConfigCampaigns = {
 
   cosmosdb: {
     endpoint: string;
-    key: string;
     database: string;
     collection: string;
+    key?: string;
+    useManagedIdentity: boolean;
   };
 };

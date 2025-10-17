@@ -4,28 +4,24 @@
 //
 
 import { NextFunction, Response, Router } from 'express';
-import asyncHandler from 'express-async-handler';
 
-import { ReposAppRequest } from '../../../../../interfaces';
-import { jsonError } from '../../../../../middleware';
+import { ReposAppRequest } from '../../../../../interfaces/index.js';
+import { jsonError } from '../../../../../middleware/index.js';
 
-import routeSettings from './settings';
+import routeSettings from './settings.js';
 
 const router: Router = Router();
 
 router.use('/settings', routeSettings);
 
-router.get(
-  '/',
-  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
-    const { organization } = req;
-    return res.json({
-      organization: organization.asClientJson(),
-    }) as unknown as void;
-  })
-);
+router.get('/', async (req: ReposAppRequest, res: Response, next: NextFunction) => {
+  const { organization } = req;
+  return res.json({
+    organization: organization.asClientJson(),
+  }) as unknown as void;
+});
 
-router.use('*', (req, res: Response, next: NextFunction) => {
+router.use('/*splat', (req, res: Response, next: NextFunction) => {
   return next(jsonError('no API or function available in administration - organization', 404));
 });
 

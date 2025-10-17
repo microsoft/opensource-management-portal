@@ -7,17 +7,15 @@ import {
   IEntityMetadata,
   EntityMetadataBase,
   IEntityMetadataBaseOptions,
-} from '../../../lib/entityMetadataProvider/entityMetadata';
+} from '../../../lib/entityMetadataProvider/entityMetadata.js';
 import {
   RepositoryMetadataEntity,
   RepositoryMetadataFixedQueryAll,
   RepositoryMetadataFixedQueryByRepositoryId,
-} from './repositoryMetadata';
-import { EntityImplementation } from './repositoryMetadata';
+} from './repositoryMetadata.js';
+import { EntityImplementation } from './repositoryMetadata.js';
 
 const thisProviderType = EntityImplementation.Type;
-
-export interface IRepositoryMetadataCreateOptions extends IEntityMetadataBaseOptions {}
 
 export interface IRepositoryMetadataProvider {
   initialize(): Promise<void>;
@@ -30,7 +28,7 @@ export interface IRepositoryMetadataProvider {
 }
 
 export class RepositoryMetadataProvider extends EntityMetadataBase implements IRepositoryMetadataProvider {
-  constructor(options: IRepositoryMetadataCreateOptions) {
+  constructor(options: IEntityMetadataBaseOptions) {
     super(thisProviderType, options);
     EntityImplementation.EnsureDefinitions();
   }

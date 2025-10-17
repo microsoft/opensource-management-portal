@@ -17,6 +17,9 @@
     },
     "aad": {
       "enabled": "env://CODESPACES_AAD_AUTHENTICATION_ENABLED?default=1"
+    },
+    "entra-id": {
+      "enabled": "env://CODESPACES_AAD_AUTHENTICATION_ENABLED?default=1"
     }
   }
 }

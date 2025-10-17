@@ -3,7 +3,7 @@
 //
 
 import { randomUUID } from 'crypto';
-import { IMail, IMailProvider } from '.';
+import { IMail, IMailProvider } from './index.js';
 
 export default class MockMailService implements IMailProvider {
   html: true;

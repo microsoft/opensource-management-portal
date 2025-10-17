@@ -3,8 +3,9 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { IProviders } from '../../interfaces';
-import { ErrorHelper } from '../../lib/transitional';
+import { ErrorHelper } from '../../lib/transitional.js';
+
+import type { IProviders } from '../../interfaces/index.js';
 
 export async function isAuthorizedSystemAdministrator(
   providers: IProviders,
@@ -13,6 +14,17 @@ export async function isAuthorizedSystemAdministrator(
 ): Promise<boolean> {
   const { insights, config } = providers;
   const insightsPrefix = 'SystemAdministrator';
+  if (corporateId && !corporateUsername) {
+    try {
+      const { graphProvider } = providers;
+      const info = await graphProvider.getUserById(corporateId);
+      if (info?.userPrincipalName) {
+        corporateUsername = info.userPrincipalName;
+      }
+    } catch (error) {
+      console.warn(error);
+    }
+  }
   if (!corporateId && !corporateUsername) {
     return false;
   }

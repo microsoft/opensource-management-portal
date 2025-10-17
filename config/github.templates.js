@@ -3,13 +3,13 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
+import fs from 'fs';
+import path from 'path';
 
-const fs = require('fs');
-const path = require('path');
+import { pathToFileURL } from 'url';
 
-const typescriptConfig = require('./typescript');
-const arrayFromString = require('./utils/arrayFromString');
+import typescriptConfig from './typescript.js';
+import arrayFromString from './utils/arrayFromString.js';
 
 // GITHUB_ORGANIZATIONS_TEMPLATES_TYPE: 'npm' or 'fs', 'fs' default
 // GITHUB_ORGANIZATIONS_TEMPLATES_RELATIVE_DIRECTORY: relative to app dir, defaults to 'data/templates'
@@ -17,7 +17,18 @@ const arrayFromString = require('./utils/arrayFromString');
 
 // GITHUB_ORGANIZATIONS_DEFAULT_TEMPLATES
 
-module.exports = (graphApi) => {
+const isWindows = process.platform === 'win32';
+
+function importPathSchemeChangeIfWindows(npmName) {
+  if (isWindows && path.isAbsolute(npmName)) {
+    const normalized = path.normalize(npmName);
+    const fileUrl = pathToFileURL(normalized);
+    return fileUrl.href;
+  }
+  return npmName;
+}
+
+export default async (graphApi) => {
   const environmentProvider = graphApi.environment;
   const configurationEnvironmentName = environmentProvider.get('CONFIGURATION_ENVIRONMENT');
   const defaultDirectory = path.join('data', 'templates');
@@ -53,14 +64,17 @@ module.exports = (graphApi) => {
       throw notFound;
     }
   } else if (templateSourceType === 'npm') {
-    const npmName = environmentProvider.get('GITHUB_ORGANIZATIONS_TEMPLATES_PACKAGE_NAME');
+    let npmName = environmentProvider.get('GITHUB_ORGANIZATIONS_TEMPLATES_PACKAGE_NAME');
     if (!npmName) {
       throw new Error(
         "When GITHUB_ORGANIZATIONS_TEMPLATES_TYPE is set to 'npm', GITHUB_ORGANIZATIONS_TEMPLATES_PACKAGE_NAME must be set"
       );
     }
     try {
-      const templatePackageData = require(npmName);
+      npmName = importPathSchemeChangeIfWindows(npmName);
+      const imported = await import(npmName);
+      const inc = imported.default || imported;
+      const templatePackageData = inc;
       if (!templatePackageData || typeof templatePackageData !== 'object') {
         throw new Error(`${npmName} did not return data or an object`);
       }

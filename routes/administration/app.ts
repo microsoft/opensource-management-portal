@@ -4,18 +4,18 @@
 //
 
 import { NextFunction, Response, Router } from 'express';
-import asyncHandler from 'express-async-handler';
+
 const router: Router = Router();
 
-import { getProviders } from '../../lib/transitional';
+import { getProviders } from '../../lib/transitional.js';
 import {
   OrganizationSetting,
-  IBasicGitHubAppInstallation,
+  BasicGitHubAppInstallation,
   SystemTeam,
-} from '../../business/entities/organizationSettings/organizationSetting';
-import { IndividualContext } from '../../business/user';
-import { Operations, Organization } from '../../business';
-import GitHubApplication, { isInstallationConfigured } from '../../business/application';
+} from '../../business/entities/organizationSettings/organizationSetting.js';
+import { IndividualContext } from '../../business/user/index.js';
+import { Operations, Organization } from '../../business/index.js';
+import GitHubApplication, { isInstallationConfigured } from '../../business/application.js';
 import {
   ReposAppRequest,
   IGitHubAppInstallation,
@@ -23,55 +23,49 @@ import {
   OrganizationMembershipState,
   NoCacheNoBackground,
   UserAlertType,
-} from '../../interfaces';
+} from '../../interfaces/index.js';
 
-router.use(
-  '/:appId',
-  asyncHandler(async function (req: ReposAppRequest, res: Response, next: NextFunction) {
-    const providers = getProviders(req);
-    const appId = Number(req.params.appId);
-    const app = providers.operations.getApplicationById(appId);
-    if (app) {
-      req['githubApplication'] = app;
-      return next();
-    }
-    const notFound = new Error(`App ${req.params.appId} is not configured`);
-    notFound['status'] = 404;
-    return next(notFound);
-  })
-);
+router.use('/:appId', async function (req: ReposAppRequest, res: Response, next: NextFunction) {
+  const providers = getProviders(req);
+  const appId = Number(req.params.appId);
+  const app = providers.operations.getApplicationById(appId);
+  if (app) {
+    req['githubApplication'] = app;
+    return next();
+  }
+  const notFound = new Error(`App ${req.params.appId} is not configured`);
+  notFound['status'] = 404;
+  return next(notFound);
+});
 
-router.get(
-  '/:appId',
-  asyncHandler(async function (req: ReposAppRequest, res: Response, next: NextFunction) {
-    const githubApplication = req['githubApplication'] as GitHubApplication;
-    const installationIdString = req.query.installation_id;
-    const setupAction = req.query.setup_action;
-    if (installationIdString && setupAction) {
-      return res.redirect(
-        `./${githubApplication.id}/installations/${installationIdString}?setup_action=${setupAction}`
-      );
-    }
-    const individualContext = req.individualContext;
-    const allInstalls = await githubApplication.getInstallations({ maxAgeSeconds: 5 });
-    const { valid, invalid } = GitHubApplication.filterInstallations(allInstalls);
-    individualContext.webContext.render({
-      view: 'administration/setup/app',
-      title: `Application ${githubApplication.friendlyName}`,
-      state: {
-        installations: {
-          valid,
-          invalid,
-        },
-        app: githubApplication,
+router.get('/:appId', async function (req: ReposAppRequest, res: Response, next: NextFunction) {
+  const githubApplication = req['githubApplication'] as GitHubApplication;
+  const installationIdString = req.query.installation_id;
+  const setupAction = req.query.setup_action;
+  if (installationIdString && setupAction) {
+    return res.redirect(
+      `./${githubApplication.id}/installations/${installationIdString}?setup_action=${setupAction}`
+    );
+  }
+  const individualContext = req.individualContext;
+  const allInstalls = await githubApplication.getInstallations({ maxAgeSeconds: 5 });
+  const { valid, invalid } = GitHubApplication.filterInstallations(allInstalls);
+  individualContext.webContext.render({
+    view: 'administration/setup/app',
+    title: `Application ${githubApplication.friendlyName}`,
+    state: {
+      installations: {
+        valid,
+        invalid,
       },
-    });
-  })
-);
+      app: githubApplication,
+    },
+  });
+});
 
 router.use(
   '/:appId/installations/:installationId',
-  asyncHandler(async function (req: ReposAppRequest, res: Response, next: NextFunction) {
+  async function (req: ReposAppRequest, res: Response, next: NextFunction) {
     const githubApplication = req['githubApplication'] as GitHubApplication;
     const installationIdString = req.params.installationId;
     const { operations, organizationSettingsProvider } = getProviders(req);
@@ -90,7 +84,7 @@ router.use(
     } catch (notFound) {
       /* ignored */
     }
-    const staticSettings = operations.getOrganizationSettings(organizationName);
+    const staticSettings = operations.getOrganizationSettingsInstance(organizationName);
 
     req['installationConfiguration'] = {
       staticSettings,
@@ -98,7 +92,7 @@ router.use(
       installation,
     };
     return next();
-  })
+  }
 );
 
 async function getDynamicSettingsFromLegacySettings(
@@ -115,7 +109,7 @@ async function getDynamicSettingsFromLegacySettings(
   settings.organizationName = installation.account.login;
   settings.organizationId = installation.account.id;
 
-  const thisInstallation: IBasicGitHubAppInstallation = {
+  const thisInstallation: BasicGitHubAppInstallation = {
     appId: installation.app_id,
     installationId: installation.id,
   };
@@ -151,7 +145,7 @@ async function getDynamicSettingsFromLegacySettings(
 
 router.post(
   '/:appId/installations/:installationId',
-  asyncHandler(async function (req: ReposAppRequest, res: Response, next: NextFunction) {
+  async function (req: ReposAppRequest, res: Response, next: NextFunction) {
     const hasBurnButtonClicked = req.body['burn-org-app'];
     const hasImportButtonClicked = req.body['adopt-import-settings'];
     const hasCreateButtonClicked = req.body['adopt-new-org'];
@@ -358,12 +352,12 @@ router.post(
         installationConfigured: isInstallationConfigured(dynamicSettings, installation),
       },
     });
-  })
+  }
 );
 
 router.get(
   '/:appId/installations/:installationId',
-  asyncHandler(async function (req: ReposAppRequest, res: Response, next: NextFunction) {
+  async function (req: ReposAppRequest, res: Response, next: NextFunction) {
     const githubApplication = req['githubApplication'] as GitHubApplication;
     const providers = getProviders(req);
     const individualContext = req.individualContext;
@@ -409,7 +403,7 @@ router.get(
         installationConfigured,
       },
     });
-  })
+  }
 );
 
 export default router;

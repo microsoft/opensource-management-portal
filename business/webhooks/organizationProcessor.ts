@@ -6,13 +6,13 @@
 import crypto from 'crypto';
 import secureCompare from 'secure-compare';
 
-import { Organization } from '..';
+import { Organization } from '../index.js';
 
-import { sleep } from '../../lib/utils';
-import { type IProviders } from '../../interfaces';
+import { sleep } from '../../lib/utils.js';
+import { type IProviders } from '../../interfaces/index.js';
 
-import defaultWebhookTasks from './tasks';
-import getCompanySpecificDeployment from '../../middleware/companySpecificDeployment';
+import defaultWebhookTasks from './tasks/index.js';
+import getCompanySpecificDeployment from '../../middleware/companySpecificDeployment.js';
 
 interface IValidationError extends Error {
   statusCode?: number;
@@ -26,28 +26,28 @@ export abstract class WebhookProcessor {
   abstract run(providers: IProviders, organization: Organization, data: any): Promise<boolean>;
 }
 
-export interface IOrganizationWebhookEvent {
-  body: any;
+export type OrganizationWebhookEvent<T = any> = {
+  body: T;
   rawBody?: any;
-  properties: IGitHubWebhookProperties;
-}
+  properties: GitHubWebhookProperties;
+};
 
-export interface IGitHubWebhookProperties {
+export type GitHubWebhookProperties = {
   delivery: string;
   signature: string;
   event: string;
   started: string; // Date UTC string
-}
+};
 
-export interface IProcessOrganizationWebhookOptions {
+export type ProcessOrganizationWebhookOptions = {
   providers: IProviders;
   organization: Organization;
-  event: IOrganizationWebhookEvent;
+  event: OrganizationWebhookEvent;
   acknowledgeValidEvent?: any;
-}
+};
 
 export default async function ProcessOrganizationWebhook(
-  options: IProcessOrganizationWebhookOptions
+  options: ProcessOrganizationWebhookOptions
 ): Promise<any> {
   const providers = options.providers;
   if (!providers) {
@@ -82,7 +82,8 @@ export default async function ProcessOrganizationWebhook(
   const body = event.body;
   const rawBody = event.rawBody || JSON.stringify(body);
   const properties = event.properties;
-  if (!properties || !properties.delivery || !properties.signature || !properties.event) {
+  // we used to also require properties.signature, but not needed now
+  if (!properties || !properties.delivery || !properties.event) {
     if (options.acknowledgeValidEvent) {
       options.acknowledgeValidEvent();
     }

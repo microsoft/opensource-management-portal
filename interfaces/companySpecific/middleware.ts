@@ -3,13 +3,17 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Repository, Team } from '../../business';
-import { IContextualRepositoryPermissions } from '../../middleware/github/repoPermissions';
-import { IProviders, ReposAppRequest } from '../../interfaces';
-import { IndividualContext } from '../../business/user';
-import { IRequestTeamPermissions } from '../../middleware/github/teamPermissions';
-import type { ApiClientGroupDisplay } from '../api';
-import { ITeamJoinRequestSubmitOutcome } from '../../routes/org/team';
+import type { Request } from 'express';
+import type { AuthenticationResult } from '@azure/msal-node';
+
+import type { Repository, Team } from '../../business/index.js';
+import type { EntraApiTokenValidationFunction } from '../../middleware/api/authentication/types.js';
+import type { IContextualRepositoryPermissions } from '../../middleware/github/repoPermissions.js';
+import type { IProviders, ReposAppRequest } from '../../interfaces/index.js';
+import type { IndividualContext } from '../../business/user/index.js';
+import type { IRequestTeamPermissions } from '../../middleware/github/teamPermissions.js';
+import type { ITeamJoinRequestSubmitOutcome } from '../../routes/org/team/index.js';
+import type { ApiClientGroupDisplay } from '../api.js';
 
 export interface ICompanySpecificRepoPermissionsMiddlewareCalls {
   afterPermissionsInitialized?: (
@@ -46,14 +50,27 @@ export interface ICompanySpecificTeamPermissionsMiddlewareCalls {
 
 export interface ICompanySpecificAuthenticationCalls {
   shouldRedirectToSignIn?: (providers: IProviders, req: ReposAppRequest) => Promise<boolean>;
-  getAadApiAuthenticationValidator?(providers: IProviders): IAadAuthenticationValidator;
+  getEntraApiAuthorizationValidator?(providers: IProviders): IEntraAuthorizationProperties;
+  getEntraApiTokenValidator?(providers: IProviders): EntraApiTokenValidationFunction;
+  validateWebAuthenticationBearerToken?(
+    providers: IProviders,
+    request: Request,
+    authenticationResponse: AuthenticationResult,
+    bearerToken: string
+  ): Promise<void>;
+  augmentEmuBlock?: (providers: IProviders, err: Error) => Promise<Error>;
 }
 
-export interface IAadAuthenticationValidator {
+export interface IEntraAuthorizationProperties {
   isAuthorizedTenant(tenantId: string): Promise<boolean>;
   getAudienceIdentities(): Promise<string[]>;
   getAuthorizedClientIdToken(clientId: string): Promise<unknown>;
   getAuthorizedObjectIdToken(objectId: string): Promise<unknown>;
+  getAuthorizedClientAndObjectIdTokenPairs(
+    tenantId: string,
+    clientId: string,
+    objectId: string
+  ): Promise<{ pairs: string[]; extraContext?: unknown }>;
   getScopes(tokenRepresentation: any): Promise<string[]>;
   getDisplayValues(tokenRepresentation: any): Promise<ApiClientGroupDisplay>;
 }

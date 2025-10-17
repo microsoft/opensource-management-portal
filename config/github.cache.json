@@ -2,6 +2,7 @@
   "provider": "env://GITHUB_CACHE_PROVIDER?default=redis",
   "cosmosdb": {
     "endpoint": "env://GITHUB_CACHE_COSMOSDB_ENDPOINT",
+    "useManagedIdentity": "env://GITHUB_CACHE_COSMOSDB_USE_MANAGED_IDENTITY?trueIf=1",
     "key": "env://GITHUB_CACHE_COSMOSDB_KEY",
     "database": "env://GITHUB_CACHE_COSMOSDB_DATABASE",
     "collection": "env://GITHUB_CACHE_COSMOSDB_COLLECTION",

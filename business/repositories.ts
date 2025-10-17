@@ -3,12 +3,19 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Repository } from './repository';
+import { Repository } from './repository.js';
 
 export function sortByRepositoryDate(a: Repository, b: Repository): number {
   // Inverted sort (newest first)
   const aa = getRecentDate(a);
   const bb = getRecentDate(b);
+  return aa == bb ? 0 : aa < bb ? 1 : -1;
+}
+
+export function sortByRepositoryCreatedDate(a: Repository, b: Repository): number {
+  // Inverted sort (newest first)
+  const aa = getAsDate(a, 'created_at');
+  const bb = getAsDate(b, 'created_at');
   return aa == bb ? 0 : aa < bb ? 1 : -1;
 }
 

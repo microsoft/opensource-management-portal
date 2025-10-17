@@ -5,7 +5,7 @@
 
 import { NextFunction, Response, Router } from 'express';
 
-import { IDictionary } from '../../interfaces';
+import { IDictionary } from '../../interfaces/index.js';
 
 export interface ICorporationAdministrationSection {
   urls: IDictionary<string>;

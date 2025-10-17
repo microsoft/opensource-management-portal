@@ -7,8 +7,8 @@ import {
   IEntityMetadata,
   EntityMetadataBase,
   IEntityMetadataBaseOptions,
-} from '../../../lib/entityMetadataProvider/entityMetadata';
-import { TeamMemberCacheEntity, EntityImplementation } from './teamMemberCache';
+} from '../../../lib/entityMetadataProvider/entityMetadata.js';
+import { TeamMemberCacheEntity, EntityImplementation } from './teamMemberCache.js';
 import {
   TeamMemberCacheFixedQueryAll,
   TeamMemberCacheFixedQueryByOrganizationId,
@@ -17,11 +17,9 @@ import {
   TeamMemberCacheFixedQueryByOrganizationIdAndUserId,
   TeamMemberCacheGetOrganizationIdsQuery,
   TeamMemberCacheDeleteByOrganizationId,
-} from '.';
+} from './index.js';
 
 const thisProviderType = EntityImplementation.Type;
-
-export interface ITeamMemberCacheCreateOptions extends IEntityMetadataBaseOptions {}
 
 export interface ITeamMemberCacheProvider {
   initialize(): Promise<void>;
@@ -48,7 +46,7 @@ export interface ITeamMemberCacheProvider {
 }
 
 export class TeamMemberCacheProvider extends EntityMetadataBase implements ITeamMemberCacheProvider {
-  constructor(options: ITeamMemberCacheCreateOptions) {
+  constructor(options: IEntityMetadataBaseOptions) {
     super(thisProviderType, options);
     EntityImplementation.EnsureDefinitions();
   }

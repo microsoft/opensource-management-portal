@@ -3,31 +3,55 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import environmentConfigurationResolver from './environmentConfigurationResolver';
-import multiGraphBuilder from './multiGraphBuilder';
-import keyVaultConfigurationResolver from './keyVaultConfigurationResolver';
-import volumeConfigurationResolver from './volumeConfigurationResolver';
-import painlessConfigAsCode from './painlessConfigAsCode';
+import environmentConfigurationResolver from './environmentConfigurationResolver.js';
+import multiGraphBuilder from './multiGraphBuilder.js';
+import keyVaultConfigurationResolver from './keyVaultConfigurationResolver.js';
+import volumeConfigurationResolver from './volumeConfigurationResolver.js';
+import painlessConfigAsCode from './painlessConfigAsCode.js';
+import {
+  ManagedIdentityKeyVaultConfigurationMethods,
+  managedIdentityKeyVaultConfigurationResolver,
+  ManagedIdentityKeyVaultTypes,
+} from './managedIdentityKeyVault.js';
+import { CreateError } from '../transitional.js';
+import {
+  AzureCliKeyVaultConfigurationMethods,
+  AzureCliKeyVaultConfigurationResolver,
+  azureCliKeyVaultConfigurationResolver,
+} from './azureCliKeyVault.js';
 
 const keyVaultClientIdFallbacks: string[] = [
   // 0: the value of the KEYVAULT_CLIENT_ID_KEY variable
   'KEYVAULT_CLIENT_ID',
-  'AAD_CLIENT_ID',
+  'ENTRA_APP_CLIENT_ID',
+  'ENTRA_ID_CLIENT_ID',
 ];
 
 const keyVaultClientSecretFallbacks: string[] = [
   // 0: the value of KEYVAULT_CLIENT_SECRET_KEY variable
   'KEYVAULT_CLIENT_SECRET',
-  'AAD_CLIENT_SECRET',
+  'ENTRA_APP_CLIENT_SECRET',
+  'ENTRA_ID_CLIENT_SECRET',
 ];
 
 const keyVaultTenantFallbacks: string[] = [
   // 0: the value of KEYVAULT_TENANT_ID_KEY variable
   'KEYVAULT_TENANT_ID',
-  'AAD_TENANT_ID',
+  'ENTRA_APP_TENANT_ID',
+  'ENTRA_ID_TENANT_ID',
 ];
 
+const userAssignedManagedIdentityKey = 'USER_ASSIGNED_MANAGED_IDENTITY_CLIENT_ID';
+const managedIdentityTypeKey = 'KEYVAULT_MANAGED_IDENTITY_TYPE';
+const tenantIdKey = 'KEYVAULT_MANAGED_IDENTITY_TENANT_ID';
+const clientIdKey = 'KEYVAULT_MANAGED_IDENTITY_CLIENT_ID';
+const clientSecretKey = 'KEYVAULT_MANAGED_IDENTITY_CLIENT_SECRET';
+const additionalTenantIds = 'KEY_VAULT_MANAGED_IDENTITY_ADDITIONAL_TENANTS';
+
+const KEYVAULT_AZURE_CLI_ENABLED_KEY = 'KEYVAULT_AZURE_CLI_ENABLED';
+
 export interface IPainlessConfigGet {
+  providerName: string;
   get(name: string): string | undefined;
 }
 
@@ -57,10 +81,11 @@ export interface IProviderOptions {
   graphProvider?: (opt?: any) => Promise<any>;
 }
 
-function createDefaultResolvers(libraryOptions: ILibraryOptions) {
+async function createDefaultResolvers(libraryOptions: ILibraryOptions) {
   // The core environment resolver is used to make sure that the
   // right variables are used for KeyVault or other bootstrapping
-  const environmentProvider = libraryOptions.environment || painlessConfigAsCode(libraryOptions?.options);
+  const environmentProvider =
+    libraryOptions.environment || (await painlessConfigAsCode(libraryOptions?.options));
 
   try {
     environmentProvider.get(null as any as string /* hacky */); // for init
@@ -71,6 +96,65 @@ function createDefaultResolvers(libraryOptions: ILibraryOptions) {
     provider: environmentProvider,
   };
   const volumeResolver = volumeConfigurationResolver(environmentOptions);
+  let azureCliResolver: AzureCliKeyVaultConfigurationResolver;
+  if (environmentProvider.get(KEYVAULT_AZURE_CLI_ENABLED_KEY)) {
+    const azureCliKeyVaultOptions: AzureCliKeyVaultConfigurationMethods = {
+      environmentProvider,
+      getAdditionalTenantIds: async () => {
+        const additionalTenants = await getEnvironmentOrVolumeValue([additionalTenantIds]);
+        return additionalTenants ? additionalTenants.split(',') : undefined;
+      },
+    };
+    azureCliResolver = azureCliKeyVaultConfigurationResolver(azureCliKeyVaultOptions);
+  }
+  const managedIdentityKeyVaultOptions: ManagedIdentityKeyVaultConfigurationMethods = {
+    environmentProvider,
+    getManagedIdentityClientId: async () => {
+      const clientId = await getEnvironmentOrVolumeValue([userAssignedManagedIdentityKey]);
+      return clientId;
+    },
+    getManagedIdentityResolutionType: async () => {
+      const resolutionType = await getEnvironmentOrVolumeValue([managedIdentityTypeKey]);
+      if (resolutionType && resolutionType !== 'managed-identity' && resolutionType !== 'client-assertions') {
+        throw CreateError.InvalidParameters(
+          `Invalid value for ${managedIdentityTypeKey} (${resolutionType}). Must be 'managed-identity' or 'client-assertions'.`
+        );
+      }
+      return (resolutionType || 'managed-identity') as ManagedIdentityKeyVaultTypes;
+    },
+    getAdditionalTenantIds: async () => {
+      const additionalTenants = await getEnvironmentOrVolumeValue([additionalTenantIds]);
+      return additionalTenants ? additionalTenants.split(',') : undefined;
+    },
+    getClientAssertionsIdentifier: async () => {
+      return {
+        tenantId: await getEnvironmentOrVolumeValue([tenantIdKey]),
+        clientId: await getEnvironmentOrVolumeValue([clientIdKey]),
+        clientSecret: await getEnvironmentOrVolumeValue([clientSecretKey]),
+      };
+    },
+  };
+  const managedIdentityResolver = managedIdentityKeyVaultConfigurationResolver(
+    managedIdentityKeyVaultOptions
+  );
+  async function getEnvironmentOrVolumeValue(fallbacks: string[]) {
+    let value = getEnvironmentValue(environmentProvider, fallbacks) as string;
+    const asVolumeFile = volumeResolver.isVolumeFile(value);
+    if (asVolumeFile) {
+      value = await volumeResolver.resolveVolumeFile(environmentProvider, asVolumeFile);
+    }
+    const asManagedIdentityPointer = managedIdentityResolver.isManagedIdentityPointer(value);
+    if (asManagedIdentityPointer) {
+      value = await managedIdentityResolver.getManagedIdentitySecretValue(value);
+    }
+    if (azureCliResolver) {
+      const asAzureCliPointer = azureCliResolver.isAzureCliPointer(value);
+      if (asAzureCliPointer) {
+        value = await azureCliResolver.getAzureCliSecretValue(value);
+      }
+    }
+    return value;
+  }
   const keyVaultOptions = {
     getClientCredentials: async () => {
       unshiftOptionalVariable(keyVaultClientIdFallbacks, environmentProvider, 'KEYVAULT_CLIENT_ID_KEY');
@@ -80,18 +164,19 @@ function createDefaultResolvers(libraryOptions: ILibraryOptions) {
         'KEYVAULT_CLIENT_SECRET_KEY'
       );
       unshiftOptionalVariable(keyVaultTenantFallbacks, environmentProvider, 'KEYVAULT_TENANT_ID_KEY');
-      async function getEnvironmentOrVolumeValue(fallbacks: string[]) {
-        let value = getEnvironmentValue(environmentProvider, fallbacks) as string;
-        const asVolumeFile = volumeResolver.isVolumeFile(value);
-        if (asVolumeFile) {
-          value = await volumeResolver.resolveVolumeFile(environmentProvider, asVolumeFile);
-        }
-        return value;
-      }
       const clientId = await getEnvironmentOrVolumeValue(keyVaultClientIdFallbacks);
+      if (!clientId) {
+        throw CreateError.ParameterRequired(keyVaultClientIdFallbacks.join(' | '));
+      }
       const clientSecret = await getEnvironmentOrVolumeValue(keyVaultClientSecretFallbacks);
+      // if (!clientSecret) {
+      //   throw CreateError.ParameterRequired(keyVaultClientSecretFallbacks.join(' | '));
+      // }
       const tenantId = await getEnvironmentOrVolumeValue(keyVaultTenantFallbacks);
-      if (clientId && clientSecret && tenantId) {
+      if (!tenantId) {
+        throw CreateError.ParameterRequired(keyVaultTenantFallbacks.join(' | '));
+      }
+      if (clientId && tenantId) {
         return {
           clientId,
           clientSecret,
@@ -100,12 +185,13 @@ function createDefaultResolvers(libraryOptions: ILibraryOptions) {
       }
     },
   };
-
   const resolvers: Resolvers = [
     environmentConfigurationResolver(environmentOptions).resolveObjectVariables,
     volumeResolver.resolveVolumeFiles,
+    managedIdentityResolver.getObjectSecrets,
+    azureCliResolver ? azureCliResolver.getObjectSecrets : undefined,
     keyVaultConfigurationResolver(keyVaultOptions).getObjectSecrets,
-  ];
+  ].filter((r) => r);
   resolvers.environment = environmentProvider;
   return resolvers;
 }
@@ -150,9 +236,9 @@ async function getConfigGraph(
   return graph;
 }
 
-function initialize(libraryOptions?: ILibraryOptions) {
+async function initialize(libraryOptions?: ILibraryOptions) {
   libraryOptions = libraryOptions || {};
-  const resolvers: Resolvers = libraryOptions.resolvers || createDefaultResolvers(libraryOptions);
+  const resolvers: Resolvers = libraryOptions.resolvers || (await createDefaultResolvers(libraryOptions));
   if (!resolvers) {
     throw new Error('No resolvers provided.');
   }
@@ -193,8 +279,8 @@ function initialize(libraryOptions?: ILibraryOptions) {
   };
 }
 
-initialize.resolve = function moduleWithoutInitialization(options: IProviderOptions) {
-  return initialize().resolve(options);
-};
+// initialize.resolve = function moduleWithoutInitialization(options: IProviderOptions) {
+//   return initialize().resolve(options);
+// };
 
 export default initialize;

@@ -12,34 +12,30 @@ import passport from 'passport';
 import Debug from 'debug';
 const debug = Debug.debug('startup');
 
-export * from './react';
-export * from './business/links';
-export * from './business';
-export * from './jsonError';
+export * from './react.js';
+export * from './business/links.js';
+export * from './business/index.js';
+export * from './jsonError.js';
 
-import { hasStaticReactClientApp, stripDistFolderName } from '../lib/transitional';
-import { StaticClientApp } from './staticClientApp';
-import { StaticReactClientApp } from './staticClientApp2';
-import { StaticSiteFavIcon, StaticSiteAssets } from './staticSiteAssets';
-import connectSession from './session';
-import passportConfig from './passportConfig';
-import onboard from './onboarding';
-import viewServices from '../lib/pugViewServices';
+import { hasStaticReactClientApp, stripDistFolderName } from '../lib/transitional.js';
+import { serveFrontendAppWithAssets } from './staticClientApp.js';
+import { configureStaticAssetHosting } from './staticSiteAssets.js';
+import connectSession from './session.js';
+import passportConfig from './passportConfig.js';
+import onboard from './onboarding.js';
 
-import campaign from './campaign';
-import officeHyperlinks from './officeHyperlinks';
-import rawBodyParser from './rawBodyParser';
+import campaign from './campaign.js';
+import { codespacesDevAssistant } from './codespaces.js';
+import officeHyperlinks from './officeHyperlinks.js';
+import rawBodyParser from './rawBodyParser.js';
 
-import routeScrubbedUrl from './scrubbedUrl';
-import routeLogger from './logger';
-import routeLocals from './locals';
-import routePassport from './passport-routes';
+import routeScrubbedUrl from './scrubbedUrl.js';
+import routeLogger from './logger.js';
+import routeLocals from './locals.js';
+import routePassport from './passport-routes.js';
 
-import routeApi from '../api';
-
-import type { IProviders, IReposApplication, SiteConfiguration } from '../interfaces';
-import { codespacesDevAssistant } from './codespaces';
-import { ExpressWithStatic } from './types';
+import type { IProviders, IReposApplication, SiteConfiguration } from '../interfaces/index.js';
+import type { ExpressWithStatic } from './types.js';
 
 export default async function initMiddleware(
   app: IReposApplication,
@@ -66,27 +62,33 @@ export default async function initMiddleware(
   app.set('view cache', config.node.isProduction);
   app.disable('x-powered-by');
 
-  app.set('viewServices', viewServices);
+  app.set('viewServices', providers.viewServices);
 
-  providers.viewServices = viewServices;
   if (applicationProfile.webServer) {
-    StaticSiteFavIcon(app);
+    const expressWithStatic = express as ExpressWithStatic;
+    const statics = await configureStaticAssetHosting(app, expressWithStatic);
+    statics.serveFavoriteIcon();
     app.use(rawBodyParser);
-    app.use(bodyParser.json());
+    const defaultBodyParser = bodyParser.json();
+    app.use((req, res, next) => {
+      // API routes in the main app deployment use a different body parser
+      if (!hasCustomRoutes) {
+        const isApiPath = req.path?.startsWith('/api/');
+        return isApiPath ? next() : defaultBodyParser(req, res, next);
+      } else {
+        return defaultBodyParser(req, res, next);
+      }
+    });
     app.use(bodyParser.urlencoded({ extended: false }));
     app.use(compression());
     if (!config.node.isProduction && config.github.codespaces.connected) {
       app.use(codespacesDevAssistant);
     }
     if (applicationProfile.serveStaticAssets) {
-      StaticSiteAssets(app, express);
+      statics.serveStaticAssets();
     }
-    const expressWithStatic = express as ExpressWithStatic;
-    if (hasStaticReactClientApp()) {
-      StaticReactClientApp(app, expressWithStatic, config);
-    }
-    if (applicationProfile.serveClientAssets) {
-      StaticClientApp(app, expressWithStatic);
+    if (applicationProfile.serveClientAssets && hasStaticReactClientApp()) {
+      serveFrontendAppWithAssets(app, expressWithStatic, config);
     }
     providers.campaign = campaign(app);
     let passport: passport.PassportStatic;
@@ -96,7 +98,8 @@ export default async function initMiddleware(
         debug('proxy: trusting reverse proxy');
       }
       if (!hasCustomRoutes) {
-        app.use('/api', routeApi);
+        const routeApi = await import('../api/index.js');
+        app.use('/api', /* will provide own body parser */ routeApi.default(config));
       }
       if (applicationProfile.sessions) {
         app.use(await connectSession(app, config, providers));

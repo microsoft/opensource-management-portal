@@ -3,25 +3,25 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { EntityField } from '../../../lib/entityMetadataProvider/entityMetadataProvider';
-import { EntityMetadataType, IEntityMetadata } from '../../../lib/entityMetadataProvider/entityMetadata';
-import { IEntityMetadataFixedQuery, FixedQueryType } from '../../../lib/entityMetadataProvider/query';
+import { EntityField } from '../../../lib/entityMetadataProvider/entityMetadataProvider.js';
+import { EntityMetadataType, IEntityMetadata } from '../../../lib/entityMetadataProvider/entityMetadata.js';
+import { IEntityMetadataFixedQuery, FixedQueryType } from '../../../lib/entityMetadataProvider/query.js';
 import {
   EntityMetadataMappings,
   MetadataMappingDefinition,
-} from '../../../lib/entityMetadataProvider/declarations';
-import { OrganizationMembershipRole } from '../../../interfaces';
-import { stringOrNumberAsString } from '../../../lib/utils';
+} from '../../../lib/entityMetadataProvider/declarations.js';
+import { OrganizationMembershipRole } from '../../../interfaces/index.js';
+import { stringOrNumberAsString } from '../../../lib/utils.js';
 import {
   PostgresJsonEntityQuery,
   PostgresGetAllEntities,
   PostgresSettings,
   PostgresConfiguration,
-} from '../../../lib/entityMetadataProvider/postgres';
-import { MemoryConfiguration, MemorySettings } from '../../../lib/entityMetadataProvider/memory';
-import { TableConfiguration, TableSettings } from '../../../lib/entityMetadataProvider';
+} from '../../../lib/entityMetadataProvider/postgres.js';
+import { MemoryConfiguration, MemorySettings } from '../../../lib/entityMetadataProvider/memory.js';
+import { TableConfiguration, TableSettings } from '../../../lib/entityMetadataProvider/index.js';
 import { odata, TableEntityQueryOptions } from '@azure/data-tables';
-import { CreateError } from '../../../lib/transitional';
+import { CreateError } from '../../../lib/transitional.js';
 
 const type = new EntityMetadataType('OrganizationMemberCache');
 

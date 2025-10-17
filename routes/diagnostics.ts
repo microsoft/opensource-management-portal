@@ -4,11 +4,10 @@
 //
 
 import { Request, Router } from 'express';
-import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
-import { IAppSession, ReposAppRequest } from '../interfaces';
-import { CreateError, getProviders } from '../lib/transitional';
+import { IAppSession, ReposAppRequest } from '../interfaces/index.js';
+import { CreateError, getProviders } from '../lib/transitional.js';
 
 const redacted = '*****';
 
@@ -39,7 +38,10 @@ router.get('/', (req: IRequestWithSession, res) => {
     sessionIndex,
     user: {},
   };
-  if (req.user && req.user.github) {
+  if (req.user?.lastAuthenticated) {
+    safeUserView.user.lastAuthenticated = req.user.lastAuthenticated;
+  }
+  if (req.user?.github) {
     const github = {};
     for (const key in req.user.github) {
       let val = req.user.github[key];
@@ -50,10 +52,7 @@ router.get('/', (req: IRequestWithSession, res) => {
     }
     safeUserView.user.github = github;
   }
-  if (
-    (req.user && req.user.githubIncreasedScope) ||
-    (req.user && req.user.github && req.user.github['scope'] === 'githubapp')
-  ) {
+  if (req.user?.githubIncreasedScope || (req.user?.github && req.user.github['scope'] === 'githubapp')) {
     const githubIncreasedScope = {};
     const source =
       req.user.github && req.user.github['scope'] === 'githubapp'
@@ -68,7 +67,7 @@ router.get('/', (req: IRequestWithSession, res) => {
     }
     safeUserView.user.githubIncreasedScope = githubIncreasedScope;
   }
-  if (req.user && req.user.azure) {
+  if (req.user?.azure) {
     const azure = {};
     for (const key in req.user.azure) {
       let val = req.user.azure[key];
@@ -97,15 +96,12 @@ router.get('/', (req: IRequestWithSession, res) => {
   });
 });
 
-router.get(
-  '/advanced',
-  asyncHandler(async (req: ReposAppRequest, res, next) => {
-    if (req.user?.azure?.oid !== 'b9f9877e-1cae-445e-bc28-3c943078c8e7') {
-      return next(CreateError.NotAuthorized('You are not authorized to view this page.'));
-    }
-    const obj: any = Object.assign({}, process.env);
-    return res.json(obj) as unknown as void;
-  })
-);
+router.get('/advanced', async (req: ReposAppRequest, res, next) => {
+  if (req.user?.azure?.oid !== 'b9f9877e-1cae-445e-bc28-3c943078c8e7') {
+    return next(CreateError.NotAuthorized('You are not authorized to view this page.'));
+  }
+  const obj: any = Object.assign({}, process.env);
+  return res.json(obj) as unknown as void;
+});
 
 export default router;

@@ -4,6 +4,7 @@
 //
 
 import { NextFunction, Response } from 'express';
+
 import {
   IndividualContext,
   IIndividualContextOptions,
@@ -11,9 +12,10 @@ import {
   WebContext,
   SessionUserProperties,
   WebApiContext,
-} from '../../business/user';
-import { ReposAppRequest } from '../../interfaces';
-import { getProviders } from '../../lib/transitional';
+} from '../../business/user/index.js';
+import { getProviders } from '../../lib/transitional.js';
+
+import type { ReposApiRequest, ReposAppRequest } from '../../interfaces/index.js';
 
 export function webContextMiddleware(req: ReposAppRequest, res: Response, next: NextFunction) {
   const { operations, insights } = getProviders(req);
@@ -48,7 +50,7 @@ export function webContextMiddleware(req: ReposAppRequest, res: Response, next: 
   return next();
 }
 
-export function apiContextMiddleware(req, res: Response, next: NextFunction) {
+export function apiContextMiddleware(req: ReposApiRequest, res: Response, next: NextFunction) {
   const { operations, insights } = getProviders(req);
   if (req.individualContext) {
     const msg = 'INVALID: API and web contexts should not be mixed';

@@ -3,15 +3,15 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import AuditLogRecorderWebhookProcessor from './auditLog';
-import AutomaticTeamsWebhookProcessor from './automaticTeams';
-import MembershipWebhookProcessor from './membership';
-import MemberWebhookProcessor from './member';
-import OrganizationWebhookProcessor from './organization';
-import RepositoryWebhookProcessor from './repository';
-import TeamWebhookProcessor from './team';
+import AuditLogRecorderWebhookProcessor from './auditLog.js';
+import AutomaticTeamsWebhookProcessor from './automaticTeams.js';
+import MembershipWebhookProcessor from './membership.js';
+import MemberWebhookProcessor from './member.js';
+import OrganizationWebhookProcessor from './organization.js';
+import RepositoryWebhookProcessor from './repository.js';
+import TeamWebhookProcessor from './team.js';
 
-import { WebhookProcessor } from '../organizationProcessor';
+import { WebhookProcessor } from '../organizationProcessor.js';
 
 const tasks: WebhookProcessor[] = [
   new AuditLogRecorderWebhookProcessor(),

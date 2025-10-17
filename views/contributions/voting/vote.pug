@@ -86,9 +86,9 @@ block content
               if vote && vote.nominationId == nomination.nominationId
                 p
                   if isWinning
-                    .label.label-primary You voted for this project.
+                    .label.label-primary(style='padding: 12px; color: black') You voted for this project! #[a(href='https://aka.ms/opensource/fossfund/oss-champ', target='_new', class='body-link', style='color: white; text-decoration: underline') Be an Open Source Champ for this project].
                   else
-                    .label.label-muted You voted for this project.
+                    .label.label-warning(style='padding: 12px') You voted for this project! #[a(href='https://aka.ms/opensource/fossfund/oss-champ', target='_new', class='body-link', style='color: black; text-decoration: underline') Be an Open Source Champ for this project].
               p= nomination.description
               if nomination.web
                 p:small Learn more about this project at #[a(href=nomination.web.trim(), target='_new')= nomination.web.trim()].

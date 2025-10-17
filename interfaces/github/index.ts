@@ -3,15 +3,15 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-export * from './account';
-export * from './apps';
-export * from './collaborators';
-export * from './issues';
-export * from './members';
-export * from './teams';
-export * from './operations';
-export * from './orgs';
-export * from './repoMetadata';
-export * from './repos';
-export * from './rest';
-export * from './secretScanning';
+export * from './account.js';
+export * from './apps.js';
+export * from './collaborators.js';
+export * from './issues.js';
+export * from './members.js';
+export * from './teams.js';
+export * from './linkEvents.js';
+export * from './orgs.js';
+export * from './repoMetadata.js';
+export * from './repos.js';
+export * from './rest.js';
+export * from './secretScanning.js';

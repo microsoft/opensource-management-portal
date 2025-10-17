@@ -3,9 +3,9 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { GitHubRepositoryPermission, IGitHubCollaboratorPermissions } from '../interfaces';
-import { projectCollaboratorPermissionsObjectToGitHubRepositoryPermission } from '../lib/transitional';
-import * as common from './common';
+import { GitHubRepositoryPermission, IGitHubCollaboratorPermissions } from '../interfaces/index.js';
+import { projectCollaboratorPermissionsObjectToGitHubRepositoryPermission } from '../lib/transitional.js';
+import * as common from './common.js';
 
 // prettier-ignore
 const memberPrimaryProperties = [

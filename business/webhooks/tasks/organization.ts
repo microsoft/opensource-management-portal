@@ -5,14 +5,14 @@
 
 // ORGANIZATION membership and ownership
 
-import { Organization } from '../..';
+import { Organization } from '../../index.js';
 import {
   OrganizationMembershipRole,
   type IProviders,
   NoCacheNoBackground,
   OrganizationMembershipState,
-} from '../../../interfaces';
-import { WebhookProcessor } from '../organizationProcessor';
+} from '../../../interfaces/index.js';
+import { WebhookProcessor } from '../organizationProcessor.js';
 
 // NOTE: unfortunately role changes from admin->member or member->admin do not fire GitHub hooks
 

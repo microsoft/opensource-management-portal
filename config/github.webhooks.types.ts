@@ -17,13 +17,16 @@ export type ConfigGitHubWebhooks = {
   provider: string;
 
   serviceBus: {
-    connectionString: string;
+    connectionString?: string;
+    endpoint?: string;
+    useEntraAuthentication?: boolean;
     queue: string;
   };
 
   azureQueues: {
     account: string;
-    sas: string;
+    sas?: string;
     queue: string;
+    useEntraAuthentication: boolean;
   };
 };

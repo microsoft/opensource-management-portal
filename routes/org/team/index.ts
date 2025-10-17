@@ -4,27 +4,27 @@
 //
 
 import { NextFunction, Response, Router } from 'express';
-import asyncHandler from 'express-async-handler';
+
 const router: Router = Router();
 
-import throat from 'throat';
+import { throat } from '../../../vendor/throat/index.js';
 
-import { getProviders } from '../../../lib/transitional';
-import { sortRepositoriesByNameCaseInsensitive, wrapError } from '../../../lib/utils';
-import { TeamJoinApprovalEntity } from '../../../business/entities/teamJoinApproval/teamJoinApproval';
-import SelfServiceTeamMemberToMaintainerUpgrades from '../../../business/features/teamMemberToMaintainerUpgrade';
-import RouteMembers from './members';
-import RouteReposPager from '../../reposPager';
-import RouteDelete from './delete';
-import RouteProperties from './properties';
-import RouteMaintainers from './maintainers';
-import RouteLeave from './leave';
+import { getProviders } from '../../../lib/transitional.js';
+import { sortRepositoriesByNameCaseInsensitive, wrapError } from '../../../lib/utils.js';
+import { TeamJoinApprovalEntity } from '../../../business/entities/teamJoinApproval/teamJoinApproval.js';
+import SelfServiceTeamMemberToMaintainerUpgrades from '../../../business/features/teamMemberToMaintainerUpgrade.js';
+import RouteMembers from './members.js';
+import RouteReposPager from '../../reposPager.js';
+import RouteDelete from './delete.js';
+import RouteProperties from './properties.js';
+import RouteMaintainers from './maintainers.js';
+import RouteLeave from './leave.js';
 
-import lowercaser from '../../../middleware/lowercaser';
+import lowercaser from '../../../middleware/lowercaser.js';
 
-import RouteMaintainer from './index-maintainer';
-import { Operations, Organization, Repository, Team, TeamMember } from '../../../business';
-import { IndividualContext } from '../../../business/user';
+import RouteMaintainer from './index-maintainer.js';
+import { Operations, Organization, Repository, Team, TeamMember } from '../../../business/index.js';
+import { IndividualContext } from '../../../business/user/index.js';
 import {
   ReposAppRequest,
   GitHubTeamRole,
@@ -33,16 +33,16 @@ import {
   IProviders,
   ICorporateLink,
   GitHubRepositoryType,
-} from '../../../interfaces';
+} from '../../../interfaces/index.js';
 import {
   AddOrganizationPermissionsToRequest,
   GetOrganizationPermissionsFromRequest,
-} from '../../../middleware/github/orgPermissions';
+} from '../../../middleware/github/orgPermissions.js';
 import {
   AddTeamPermissionsToRequest,
   IRequestTeamPermissions,
-} from '../../../middleware/github/teamPermissions';
-import { IGraphEntry } from '../../../lib/graphProvider';
+} from '../../../middleware/github/teamPermissions.js';
+import { IGraphEntry } from '../../../lib/graphProvider/index.js';
 
 const FirstPageMembersCap = 25;
 const ParallelMailAddressLookups = 4;
@@ -64,58 +64,54 @@ interface ILocalRequest extends ReposAppRequest {
   selfServiceTeamMemberToMaintainerUpgrades?: SelfServiceTeamMemberToMaintainerUpgrades;
 }
 
-router.use(
-  asyncHandler(async (req: ILocalRequest, res: Response, next: NextFunction) => {
-    const { operations } = getProviders(req);
-    const login = req.individualContext.getGitHubIdentity().username;
-    const team2 = req.team2 as Team;
-    try {
-      const statusResult = await team2.getMembershipEfficiently(login);
-      req.membershipStatus =
-        statusResult && (statusResult as ITeamMembershipRoleState).role
-          ? (statusResult as ITeamMembershipRoleState).role
-          : null;
-      req.membershipState =
-        statusResult && (statusResult as ITeamMembershipRoleState).state
-          ? (statusResult as ITeamMembershipRoleState).state
-          : null;
-    } catch (problem) {
-      console.dir(problem);
-    }
-    if (operations.allowSelfServiceTeamMemberToMaintainerUpgrades()) {
-      req.selfServiceTeamMemberToMaintainerUpgrades = new SelfServiceTeamMemberToMaintainerUpgrades({
-        operations,
-        team: team2,
-      });
-    }
-    return next();
-  })
-);
+router.use(async (req: ILocalRequest, res: Response, next: NextFunction) => {
+  const { operations } = getProviders(req);
+  const login = req.individualContext.getGitHubIdentity().username;
+  const team2 = req.team2 as Team;
+  try {
+    const statusResult = await team2.getMembershipEfficiently(login);
+    req.membershipStatus =
+      statusResult && (statusResult as ITeamMembershipRoleState).role
+        ? (statusResult as ITeamMembershipRoleState).role
+        : null;
+    req.membershipState =
+      statusResult && (statusResult as ITeamMembershipRoleState).state
+        ? (statusResult as ITeamMembershipRoleState).state
+        : null;
+  } catch (problem) {
+    console.dir(problem);
+  }
+  if (operations.allowSelfServiceTeamMemberToMaintainerUpgrades()) {
+    req.selfServiceTeamMemberToMaintainerUpgrades = new SelfServiceTeamMemberToMaintainerUpgrades({
+      operations,
+      team: team2,
+    });
+  }
+  return next();
+});
 
-router.use(
-  asyncHandler(async (req: ILocalRequest, res: Response, next: NextFunction) => {
-    const { approvalProvider } = getProviders(req);
-    const team2 = req.team2 as Team;
-    if (!approvalProvider) {
-      return next(new Error('No approval provider instance available'));
+router.use(async (req: ILocalRequest, res: Response, next: NextFunction) => {
+  const { approvalProvider } = getProviders(req);
+  const team2 = req.team2 as Team;
+  if (!approvalProvider) {
+    return next(new Error('No approval provider instance available'));
+  }
+  const pendingApprovals = await approvalProvider.queryPendingApprovalsForTeam(team2.id.toString());
+  const id = req.individualContext.getGitHubIdentity().id;
+  req.otherApprovals = [];
+  for (let i = 0; i < pendingApprovals.length; i++) {
+    const approval = pendingApprovals[i];
+    if (approval.thirdPartyId === id) {
+      req.existingRequest = approval;
     }
-    const pendingApprovals = await approvalProvider.queryPendingApprovalsForTeam(team2.id.toString());
-    const id = req.individualContext.getGitHubIdentity().id;
-    req.otherApprovals = [];
-    for (let i = 0; i < pendingApprovals.length; i++) {
-      const approval = pendingApprovals[i];
-      if (approval.thirdPartyId === id) {
-        req.existingRequest = approval;
-      }
-      req.otherApprovals.push(approval);
-    }
-    return next();
-  })
-);
+    req.otherApprovals.push(approval);
+  }
+  return next();
+});
 
 router.use(
   '/join',
-  asyncHandler(AddOrganizationPermissionsToRequest),
+  AddOrganizationPermissionsToRequest,
   (req: ILocalRequest, res: Response, next: NextFunction) => {
     const organization = req.organization;
     const team2 = req.team2;
@@ -150,43 +146,40 @@ router.use(
   }
 );
 
-router.get(
-  '/join',
-  asyncHandler(async function (req: ILocalRequest, res: Response, next: NextFunction) {
-    const team2 = req.team2 as Team;
-    const organization = req.organization as Organization;
-    // The broad access "all members" team and any "easy access" teams are
-    // always open for automatic joining without approval. This short circuit
-    // is to show that option.
-    const allowSelfJoinTeams = new Set([...organization.broadAccessTeams, ...organization.openAccessTeams]);
-    if (allowSelfJoinTeams.has(team2.id)) {
-      req.individualContext.webContext.render({
-        view: 'org/team/join',
-        title: `Join ${team2.name}`,
-        state: {
-          team: team2,
-          allowSelfJoin: true,
-        },
-      });
-    }
-    const maintainers = (await team2.getOfficialMaintainers()).filter((maintainer) => {
-      return maintainer && maintainer.login && maintainer.link;
-    });
+router.get('/join', async function (req: ILocalRequest, res: Response, next: NextFunction) {
+  const team2 = req.team2 as Team;
+  const organization = req.organization as Organization;
+  // The broad access "all members" team and any "easy access" teams are
+  // always open for automatic joining without approval. This short circuit
+  // is to show that option.
+  const allowSelfJoinTeams = new Set([...organization.broadAccessTeams, ...organization.openAccessTeams]);
+  if (allowSelfJoinTeams.has(team2.id)) {
     req.individualContext.webContext.render({
       view: 'org/team/join',
       title: `Join ${team2.name}`,
       state: {
-        existingTeamJoinRequest: req.existingRequest,
         team: team2,
-        teamMaintainers: maintainers,
+        allowSelfJoin: true,
       },
     });
-  })
-);
+  }
+  const maintainers = (await team2.getOfficialMaintainers()).filter((maintainer) => {
+    return maintainer && maintainer.login && maintainer.link;
+  });
+  req.individualContext.webContext.render({
+    view: 'org/team/join',
+    title: `Join ${team2.name}`,
+    state: {
+      existingTeamJoinRequest: req.existingRequest,
+      team: team2,
+      teamMaintainers: maintainers,
+    },
+  });
+});
 
 router.post(
   '/selfServiceMaintainerUpgrade',
-  asyncHandler(async (req: ILocalRequest, res: Response, next: NextFunction) => {
+  async (req: ILocalRequest, res: Response, next: NextFunction) => {
     const { selfServiceTeamMemberToMaintainerUpgrades } = req;
     if (!selfServiceTeamMemberToMaintainerUpgrades) {
       throw new Error('System not available');
@@ -208,7 +201,7 @@ router.post(
       UserAlertType.Success
     );
     return res.redirect(req.team2.baseUrl);
-  })
+  }
 );
 
 export interface ITeamJoinRequestSubmitOutcome {
@@ -217,34 +210,31 @@ export interface ITeamJoinRequestSubmitOutcome {
   redirect?: string;
 }
 
-router.post(
-  '/join',
-  asyncHandler(async (req: ILocalRequest, res: Response, next: NextFunction) => {
-    if (req.existingRequest) {
-      throw new Error('You have already created a team join request that is pending a decision.');
-    }
-    const activeContext = req.individualContext;
-    const team2 = req.team2 as Team;
-    const providers = getProviders(req);
-    const justification = req.body.justification as string;
-    const hostname = req.hostname;
-    const outcome = await submitTeamJoinRequest(
-      providers,
-      activeContext,
-      team2,
-      justification,
-      activeContext.webContext.correlationId,
-      hostname
-    );
-    if (outcome.error) {
-      return next(outcome.error);
-    }
-    if (outcome.message) {
-      activeContext.webContext.saveUserAlert(outcome.message, 'Team Join', UserAlertType.Success);
-    }
-    return res.redirect(outcome.redirect || `${team2.baseUrl}`);
-  })
-);
+router.post('/join', async (req: ILocalRequest, res: Response, next: NextFunction) => {
+  if (req.existingRequest) {
+    throw new Error('You have already created a team join request that is pending a decision.');
+  }
+  const activeContext = req.individualContext;
+  const team2 = req.team2 as Team;
+  const providers = getProviders(req);
+  const justification = req.body.justification as string;
+  const hostname = req.hostname;
+  const outcome = await submitTeamJoinRequest(
+    providers,
+    activeContext,
+    team2,
+    justification,
+    activeContext.webContext.correlationId,
+    hostname
+  );
+  if (outcome.error) {
+    return next(outcome.error);
+  }
+  if (outcome.message) {
+    activeContext.webContext.saveUserAlert(outcome.message, 'Team Join', UserAlertType.Success);
+  }
+  return res.redirect(outcome.redirect || `${team2.baseUrl}`);
+});
 
 export async function submitTeamJoinRequest(
   providers: IProviders,
@@ -409,7 +399,7 @@ export async function submitTeamJoinRequest(
             data: JSON.stringify(contentOptions),
           },
         });
-        mail.content = await operations.emailRender('membershipApprovals/pleaseApprove', contentOptions);
+        await operations.emailTestRender('membershipApprovals/pleaseApprove', contentOptions);
       } catch (renderError) {
         insights?.trackException({
           exception: renderError,
@@ -428,7 +418,11 @@ export async function submitTeamJoinRequest(
             mail: JSON.stringify(mail),
           },
         });
-        const mailResult = await operations.sendMail(mail);
+        const mailResult = await operations.emailRenderSend(
+          'membershipApprovals/pleaseApprove',
+          mail,
+          contentOptions
+        );
         customData = {
           content: contentOptions,
           receipt: mailResult,
@@ -476,7 +470,7 @@ export async function submitTeamJoinRequest(
             data: JSON.stringify(contentOptions),
           },
         });
-        mail.content = await operations.emailRender('membershipApprovals/requestSubmitted', contentOptions);
+        await operations.emailTestRender('membershipApprovals/requestSubmitted', contentOptions);
       } catch (renderError) {
         insights?.trackException({
           exception: renderError,
@@ -495,7 +489,11 @@ export async function submitTeamJoinRequest(
             mail: JSON.stringify(mail),
           },
         });
-        const mailResult = await operations.sendMail(mail);
+        const mailResult = await operations.emailRenderSend(
+          'membershipApprovals/requestSubmitted',
+          mail,
+          contentOptions
+        );
         customData = {
           content: contentOptions,
           receipt: mailResult,
@@ -514,7 +512,7 @@ export async function submitTeamJoinRequest(
 }
 
 // Adds "req.teamPermissions", "req.teamMaintainers" middleware
-router.use(asyncHandler(AddTeamPermissionsToRequest));
+router.use(AddTeamPermissionsToRequest);
 
 // The view uses this information today to show the sudo banner
 router.use((req: ILocalRequest, res: Response, next: NextFunction) => {
@@ -709,7 +707,7 @@ async function basicTeamsView(req: ILocalRequest, display: BasicTeamViewPage) {
 
 router.get(
   '/',
-  asyncHandler(AddOrganizationPermissionsToRequest),
+  AddOrganizationPermissionsToRequest,
   async (req: ILocalRequest, res: Response, next: NextFunction) => {
     await basicTeamsView(req, BasicTeamViewPage.Default);
   }
@@ -717,7 +715,7 @@ router.get(
 
 router.get(
   '/history',
-  asyncHandler(AddOrganizationPermissionsToRequest),
+  AddOrganizationPermissionsToRequest,
   async (req: ILocalRequest, res: Response, next: NextFunction) => {
     await basicTeamsView(req, BasicTeamViewPage.History);
   }
@@ -725,7 +723,7 @@ router.get(
 
 router.get(
   '/repositories',
-  asyncHandler(AddOrganizationPermissionsToRequest),
+  AddOrganizationPermissionsToRequest,
   async (req: ILocalRequest, res: Response, next: NextFunction) => {
     await basicTeamsView(req, BasicTeamViewPage.Repositories);
   }

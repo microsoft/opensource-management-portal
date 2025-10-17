@@ -3,8 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { ICorporateLinkExtended, ICorporateLinkExtendedDirectMethods } from '../../../interfaces';
-import { MemoryLinkProvider } from './memoryLinkProvider';
+import { ICorporateLinkExtended, ICorporateLinkExtendedDirectMethods } from '../../../interfaces/index.js';
+import { MemoryLinkProvider } from './memoryLinkProvider.js';
 
 export interface IInternalMemoryLinkOptions {
   provider: MemoryLinkProvider;

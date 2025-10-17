@@ -5,16 +5,18 @@
 
 // Job 15: System Team Permissions
 
-import { shuffle } from 'lodash';
-import throat from 'throat';
+import lodash from 'lodash';
+const { shuffle } = lodash;
 
-import job from '../job';
-import { TeamPermission } from '../business/teamPermission';
-import { GitHubRepositoryPermission, IProviders, IReposJobResult } from '../interfaces';
-import AutomaticTeamsWebhookProcessor from '../business/webhooks/tasks/automaticTeams';
-import { sleep } from '../lib/utils';
-import { ErrorHelper } from '../lib/transitional';
-import { Organization } from '../business';
+import { throat } from '../vendor/throat/index.js';
+
+import job from '../job.js';
+import { TeamPermission } from '../business/teamPermission.js';
+import { GitHubRepositoryPermission, IProviders, IReposJobResult } from '../interfaces/index.js';
+import AutomaticTeamsWebhookProcessor from '../business/webhooks/tasks/automaticTeams.js';
+import { sleep } from '../lib/utils.js';
+import { ErrorHelper } from '../lib/transitional.js';
+import { Organization } from '../business/index.js';
 
 // Permissions processing: visit all repos and make sure that any designated read, write, admin
 // teams for the organization are present on every repo. This job is designed to be run relatively
@@ -32,12 +34,20 @@ let updatedRepos = 0;
 
 const missingTeams = new Set<number>();
 
+const INSIGHTS_PREFIX = 'JobPermissions';
+
 job.runBackgroundJob(permissionsRun, {
-  insightsPrefix: 'JobPermissions',
+  insightsPrefix: INSIGHTS_PREFIX,
 });
 
 async function permissionsRun(providers: IProviders): Promise<IReposJobResult> {
   const { config, insights, operations } = providers;
+  insights?.trackEvent({
+    name: `${INSIGHTS_PREFIX}Start`,
+    properties: {
+      time: new Date(),
+    },
+  });
   if (config?.jobs?.refreshWrites !== true) {
     console.log('job is currently disabled to avoid metadata refresh/rewrites');
     return;
@@ -60,6 +70,13 @@ async function permissionsRun(providers: IProviders): Promise<IReposJobResult> {
 
   console.log(`Updated ${updatedRepos} repos across ${organizations.length} organizations`);
   insights?.trackMetric({ name: 'JobSystemTeamsUpdatedRepos', value: updatedRepos });
+
+  insights?.trackEvent({
+    name: `${INSIGHTS_PREFIX}End`,
+    properties: {
+      time: new Date(),
+    },
+  });
 
   return {};
 }

@@ -3,9 +3,9 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import GitHubApplication, { type GitHubAppDefinition } from '../../../../business/application';
-import { OrganizationSetting } from '../../../../business/entities/organizationSettings/organizationSetting';
-import type { IGitHubAppInstallation, ReposAppRequest } from '../../../../interfaces';
+import GitHubApplication, { type GitHubAppDefinition } from '../../../../business/application.js';
+import { OrganizationSetting } from '../../../../business/entities/organizationSettings/organizationSetting.js';
+import type { IGitHubAppInstallation, ReposAppRequest } from '../../../../interfaces/index.js';
 
 export type ApiRequestWithGitHubApplication = ReposAppRequest & {
   gitHubApplication: GitHubApplication;
@@ -40,5 +40,6 @@ export type RequestWithInstallation = ApiRequestWithGitHubApplication & {
 export type AdministrativeGitHubAppInstallationResponse = {
   app: GitHubAppDefinition;
   installationId: number;
+  installation?: IGitHubAppInstallation;
   dynamicSettings: OrganizationSetting;
 };

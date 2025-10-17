@@ -13,6 +13,5 @@ export type ConfigClientFallback = {
 
 export type ConfigClientFallbackBlob = {
   account: string;
-  key: string;
   container: string;
 };

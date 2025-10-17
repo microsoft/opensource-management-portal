@@ -20,8 +20,9 @@
     }
   },
   "directoryMailService": {
-    "clientId": "env://DIRECTORY_MAIL_SERVICE_CLIENTID",
-    "clientSecret": "env://DIRECTORY_MAIL_SERVICE_CLIENTSECRET",
+    "entraApplication": {
+      "tenantId": "env://IRIS_APP_TENANT_ID"
+    },
     "authority": "env://DIRECTORY_MAIL_SERVICE_AUTHORITY",
     "resource": "env://DIRECTORY_MAIL_SERVICE_RESOURCE",
     "publisherName": "env://DIRECTORY_MAIL_SERVICE_PUBLISHERNAME",

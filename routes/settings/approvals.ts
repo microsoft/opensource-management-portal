@@ -4,18 +4,17 @@
 //
 
 import { NextFunction, Response, Router } from 'express';
-import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
-import { IApprovalProvider } from '../../business/entities/teamJoinApproval/approvalProvider';
-import { TeamJoinApprovalEntity } from '../../business/entities/teamJoinApproval/teamJoinApproval';
-import { safeLocalRedirectUrl } from '../../lib/utils';
-import { Operations } from '../../business';
-import { Team } from '../../business';
-import { Organization } from '../../business';
-import { IAggregateUserTeams } from '../../business/user/aggregate';
-import { ReposAppRequest, IReposError, UserAlertType } from '../../interfaces';
-import { getProviders } from '../../lib/transitional';
+import { IApprovalProvider } from '../../business/entities/teamJoinApproval/approvalProvider.js';
+import { TeamJoinApprovalEntity } from '../../business/entities/teamJoinApproval/teamJoinApproval.js';
+import { safeLocalRedirectUrl } from '../../lib/utils.js';
+import { Operations } from '../../business/index.js';
+import { Team } from '../../business/index.js';
+import { Organization } from '../../business/index.js';
+import { IAggregateUserTeams } from '../../business/user/aggregate.js';
+import { ReposAppRequest, IReposError, UserAlertType } from '../../interfaces/index.js';
+import { getProviders } from '../../lib/transitional.js';
 
 export interface ApprovalPair {
   team: Team;
@@ -80,32 +79,29 @@ export async function Approvals_getUserRequests(
   return pairs;
 }
 
-router.get(
-  '/',
-  asyncHandler(async function (req: ReposAppRequest, res: Response, next: NextFunction) {
-    const { approvalProvider, operations } = getProviders(req);
-    if (!approvalProvider) {
-      return next(new Error('No approval provider instance available'));
-    }
-    req.individualContext.webContext.pushBreadcrumb('Requests');
-    // CONSIDER: Requests on GitHub.com should be shown, too, now that that's integrated in many cases
-    const id = req.individualContext.getGitHubIdentity().id;
-    const aggregateTeams = await req.individualContext.aggregations.teams();
-    const state = {
-      teamResponsibilities: await Approvals_getTeamMaintainerApprovals(
-        operations,
-        aggregateTeams,
-        approvalProvider
-      ),
-      usersRequests: await Approvals_getUserRequests(operations, id.toString(), approvalProvider),
-    };
-    req.individualContext.webContext.render({
-      view: 'settings/approvals',
-      title: 'Review My Approvals',
-      state,
-    });
-  })
-);
+router.get('/', async function (req: ReposAppRequest, res: Response, next: NextFunction) {
+  const { approvalProvider, operations } = getProviders(req);
+  if (!approvalProvider) {
+    return next(new Error('No approval provider instance available'));
+  }
+  req.individualContext.webContext.pushBreadcrumb('Requests');
+  // CONSIDER: Requests on GitHub.com should be shown, too, now that that's integrated in many cases
+  const id = req.individualContext.getGitHubIdentity().id;
+  const aggregateTeams = await req.individualContext.aggregations.teams();
+  const state = {
+    teamResponsibilities: await Approvals_getTeamMaintainerApprovals(
+      operations,
+      aggregateTeams,
+      approvalProvider
+    ),
+    usersRequests: await Approvals_getUserRequests(operations, id.toString(), approvalProvider),
+  };
+  req.individualContext.webContext.render({
+    view: 'settings/approvals',
+    title: 'Review My Approvals',
+    state,
+  });
+});
 
 router.post('/:requestid/cancel', function (req: ReposAppRequest, res: Response, next: NextFunction) {
   const { approvalProvider } = getProviders(req);
@@ -141,65 +137,62 @@ router.post('/:requestid/cancel', function (req: ReposAppRequest, res: Response,
     });
 });
 
-router.get(
-  '/:requestid',
-  asyncHandler(async function (req: ReposAppRequest, res: Response, next: NextFunction) {
-    const requestid = req.params.requestid;
-    const { approvalProvider, operations } = getProviders(req);
-    req.individualContext.webContext.pushBreadcrumb('Your Request');
-    let isMaintainer = false;
-    let pendingRequest: TeamJoinApprovalEntity = null;
-    let team2: Team = null;
-    const maintainers = null;
-    const username = req.individualContext.getGitHubIdentity().username;
-    const id = req.individualContext.getGitHubIdentity().id;
-    let organization: Organization = null;
-    try {
-      pendingRequest = await approvalProvider.getApprovalEntity(requestid);
-      organization = operations.getOrganization(pendingRequest.organizationName);
-      team2 = organization.team(Number(pendingRequest.teamId));
-      await team2.getDetails();
-      const isOrgSudoer = await organization.isSudoer(username, req.individualContext?.link);
-      isMaintainer = isOrgSudoer;
-      const maintainers = await team2.getOfficialMaintainers();
-      if (!isMaintainer) {
-        for (let i = 0; i < maintainers.length; i++) {
-          if (String(maintainers[i].id) == String(id)) {
-            isMaintainer = true;
-          }
+router.get('/:requestid', async function (req: ReposAppRequest, res: Response, next: NextFunction) {
+  const requestid = req.params.requestid;
+  const { approvalProvider, operations } = getProviders(req);
+  req.individualContext.webContext.pushBreadcrumb('Your Request');
+  let isMaintainer = false;
+  let pendingRequest: TeamJoinApprovalEntity = null;
+  let team2: Team = null;
+  const maintainers = null;
+  const username = req.individualContext.getGitHubIdentity().username;
+  const id = req.individualContext.getGitHubIdentity().id;
+  let organization: Organization = null;
+  try {
+    pendingRequest = await approvalProvider.getApprovalEntity(requestid);
+    organization = operations.getOrganization(pendingRequest.organizationName);
+    team2 = organization.team(Number(pendingRequest.teamId));
+    await team2.getDetails();
+    const isOrgSudoer = await organization.isSudoer(username, req.individualContext?.link);
+    isMaintainer = isOrgSudoer;
+    const maintainers = await team2.getOfficialMaintainers();
+    if (!isMaintainer) {
+      for (let i = 0; i < maintainers.length; i++) {
+        if (String(maintainers[i].id) == String(id)) {
+          isMaintainer = true;
         }
       }
-      if (isMaintainer) {
-        const err: IReposError = new Error('Redirecting to the admin experience to approve');
-        const slugPreferred = team2.slug || team2.name;
-        err.redirect = '/' + organization.name + '/teams/' + slugPreferred + '/approvals/' + requestid;
-        throw err;
-      }
-      if (pendingRequest.thirdPartyId != /* loose */ id) {
-        const msg: IReposError = new Error('This request does not exist or was created by another user.');
-        msg.skipLog = true;
-        throw msg;
-      }
-    } catch (error) {
-      if (error.redirect) {
-        return res.redirect(error.redirect);
-      }
-      // Edge case: the team no longer exists.
-      if (error?.cause?.statusCode === 404 || error.cause?.cause?.statusCode === 404) {
-        return closeOldRequest(false /* not a JSON client app */, pendingRequest, req, res, next);
-      }
-      return next(error);
     }
-    req.individualContext.webContext.render({
-      view: 'org/userApprovalStatus',
-      title: 'Review your request',
-      state: {
-        entry: pendingRequest,
-        team: team2,
-      },
-    });
-  })
-);
+    if (isMaintainer) {
+      const err: IReposError = new Error('Redirecting to the admin experience to approve');
+      const slugPreferred = team2.slug || team2.name;
+      err.redirect = '/' + organization.name + '/teams/' + slugPreferred + '/approvals/' + requestid;
+      throw err;
+    }
+    if (pendingRequest.thirdPartyId != /* loose */ id) {
+      const msg: IReposError = new Error('This request does not exist or was created by another user.');
+      msg.skipLog = true;
+      throw msg;
+    }
+  } catch (error) {
+    if (error.redirect) {
+      return res.redirect(error.redirect);
+    }
+    // Edge case: the team no longer exists.
+    if (error?.cause?.statusCode === 404 || error.cause?.cause?.statusCode === 404) {
+      return closeOldRequest(false /* not a JSON client app */, pendingRequest, req, res, next);
+    }
+    return next(error);
+  }
+  req.individualContext.webContext.render({
+    view: 'org/userApprovalStatus',
+    title: 'Review your request',
+    state: {
+      entry: pendingRequest,
+      team: team2,
+    },
+  });
+});
 
 export function closeOldRequest(
   isJsonClient: boolean,

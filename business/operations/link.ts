@@ -3,16 +3,16 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Operations } from '.';
+import { Operations } from './index.js';
 import {
   ICreateLinkOptions,
   ICreatedLinkOutcome,
   LinkOperationSource,
   SupportedLinkType,
   ICorporateLink,
-} from '../../interfaces';
-import getCompanySpecificDeployment from '../../middleware/companySpecificDeployment';
-import { CreateError, ErrorHelper, setImmediateAsync } from '../../lib/transitional';
+} from '../../interfaces/index.js';
+import getCompanySpecificDeployment from '../../middleware/companySpecificDeployment.js';
+import { CreateError, ErrorHelper, setImmediateAsync } from '../../lib/transitional.js';
 
 export async function linkAccounts(
   operations: Operations,
@@ -167,10 +167,15 @@ export async function sendLinkedAccountMail(
   }
   const to = [mailAddress];
   const toAsString = to.join(', ');
+  const siteBaseUrlClear = config?.webServer?.baseUrl?.replace('https://', '');
+  const environmentSubjectPrefix =
+    config?.environment?.configuration === 'production'
+      ? ''
+      : `[${siteBaseUrlClear || config?.environment?.configuration || 'unknown'}] `;
   const mail = {
     to,
     bcc: operations.getLinksNotificationMailAddress(),
-    subject: `${link.corporateUsername} linked to ${link.thirdPartyUsername}`,
+    subject: `${environmentSubjectPrefix}${link.corporateUsername} linked to ${link.thirdPartyUsername}`,
     correlationId,
     content: undefined,
   };
@@ -189,28 +194,13 @@ export async function sendLinkedAccountMail(
     customStrings: companySpecificStrings,
     link,
   };
-  try {
-    mail.content = await operations.emailRender(viewName, contentOptions);
-  } catch (renderError) {
-    insights.trackException({
-      exception: renderError,
-      properties: {
-        content: contentOptions,
-        eventName: 'LinkMailRenderFailure',
-      } as any as { [key: string]: string },
-    });
-    if (throwIfError) {
-      throw renderError;
-    }
-    return;
-  }
   const customData = {
     content: contentOptions,
     receipt: null,
     eventName: undefined,
   };
   try {
-    const receipt = await operations.sendMail(mail);
+    const receipt = await operations.emailRenderSend(viewName, mail, contentOptions);
     insights.trackEvent({
       name: 'LinkMailSuccess',
       properties: customData as any as { [key: string]: string },

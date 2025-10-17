@@ -5,12 +5,17 @@
 
 import type { Response, NextFunction } from 'express';
 
-import { redirectToReferrer, storeReferrer } from '../lib/utils';
-import { getProviders } from '../lib/transitional';
-import type { ReposAppRequest, IAppSession } from '../interfaces';
-import getCompanySpecificDeployment from './companySpecificDeployment';
-import { attachAadPassportRoutes } from './passport/aadRoutes';
-import { attachGitHubPassportRoutes } from './passport/githubRoutes';
+import { redirectToReferrer, storeReferrer } from '../lib/utils.js';
+import { CreateError, getProviders } from '../lib/transitional.js';
+import type {
+  ReposAppRequest,
+  IAppSession,
+  IReposApplication,
+  SiteConfiguration,
+} from '../interfaces/index.js';
+import getCompanySpecificDeployment from './companySpecificDeployment.js';
+import { attachGitHubPassportRoutes } from './passport/githubRoutes.js';
+import { attachEntraPassportRoutes } from './passport/entra/routes.js';
 
 export interface IAuthenticationHelperMethods {
   afterAuthentication: (
@@ -68,11 +73,13 @@ function newSessionAfterAuthentication(req: ReposAppRequest, res: Response, next
       const value = preserve[key];
       req.session[key] = value;
     }
+    // Start the new session
+    (req.session as any).passport.user.lastAuthenticated = new Date().toISOString();
     return req.session.save(next);
   });
 }
 
-export default function configurePassport(app, passport, config) {
+export default function configurePassport(app: IReposApplication, passport, config: SiteConfiguration) {
   const authenticationHelperMethods: IPrimaryAuthenticationHelperMethods = {
     newSessionAfterAuthentication,
     afterAuthentication,
@@ -86,8 +93,13 @@ export default function configurePassport(app, passport, config) {
   app.get('/signout', signoutPage);
   app.get('/signout/goodbye', signoutPage);
 
-  // The /signin routes are stored inside the AAD passport routes, since the site requires AAD for primary auth today.
-  attachAadPassportRoutes(app, config, passport, authenticationHelperMethods);
+  // The /signin routes are stored inside the AAD passport routes, since the site requires Entra for primary auth today.
+  if (config.authentication.scheme === 'aad') {
+    throw CreateError.InvalidParameters('AAD is no longer supported. Please select "entra-id" instead.');
+  }
+  if (config.authentication.scheme === 'entra-id') {
+    attachEntraPassportRoutes(app, config, passport, authenticationHelperMethods);
+  }
   attachGitHubPassportRoutes(app, config, passport, authenticationHelperMethods);
 
   // helper methods follow
@@ -113,12 +125,6 @@ export default function configurePassport(app, passport, config) {
       return hoistAccountToSession(req, (req as any).account, accountPropertyToPromoteToSession, (error) => {
         return error ? next(error) : after(req, res);
       });
-    }
-
-    if ((req.session as any).additionalAuthRedirect) {
-      const tmpAdditionalAuthRedirect = (req.session as any).additionalAuthRedirect;
-      delete (req.session as any).additionalAuthRedirect;
-      return res.redirect(tmpAdditionalAuthRedirect);
     }
 
     return after(req, res);

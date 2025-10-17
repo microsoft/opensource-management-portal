@@ -3,8 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { IGitHubAppInstallation, IGitHubWebhookEnterprise, IProviders } from '../../../interfaces';
-import type { WebhookProcessor } from '../../../business/webhooks/organizationProcessor';
+import { IGitHubAppInstallation, IGitHubWebhookEnterprise, IProviders } from '../../../interfaces/index.js';
+import type { WebhookProcessor } from '../../../business/webhooks/organizationProcessor.js';
 
 export interface ICompanySpecificFeatureFirehose {
   processWebhook?: (

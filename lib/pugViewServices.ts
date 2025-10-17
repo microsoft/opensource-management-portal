@@ -7,19 +7,12 @@ import _ from 'lodash';
 import moment from 'moment';
 import octicons from '@primer/octicons';
 import fileSize from 'file-size';
-import languageMap from 'language-map';
 import validator from 'validator';
 
 export default {
   _,
   fileSize: function (bytes) {
     return fileSize(bytes).human();
-  },
-  languageColor: function (name) {
-    const language = languageMap[name];
-    if (language) {
-      return language.color;
-    }
   },
   moment,
   octicon: function (name, optionalWidth, classes, optionalAria) {

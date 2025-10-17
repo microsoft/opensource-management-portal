@@ -4,53 +4,75 @@
 //
 
 import { CosmosClient, Database, Container } from '@azure/cosmos';
-
 import Debug from 'debug';
+
+import { CreateError } from './transitional.js';
+import { getOrCreateCosmosClient } from '../middleware/cosmos.js';
+import type { IProviders } from '../interfaces/providers.js';
+
 const debug = Debug.debug('cosmosdb');
 
-export interface ICosmosHelperOptions {
+export type CosmosHelperOptions = {
   endpoint: string;
-  key: string;
   database?: string;
+
   collection?: string;
+  createCollectionIfNotExist?: boolean;
+
+  key?: string;
+  useManagedIdentity: boolean;
+  tenantId?: string;
+};
+
+type AlmostAnything = string | number | boolean;
+
+export interface ISimplifiedCosmosHelper {
+  initialize(): Promise<void>;
+  delete(partitionKey: string, documentId: string): Promise<void>;
+  getObject<T>(partitionKey: string, documentId: string): Promise<T>;
+  setObject<T extends Record<string, AlmostAnything>>(object: T): Promise<void>;
 }
 
-export default class CosmosHelper {
-  // Simplified subset
-  private _options: ICosmosHelperOptions;
+export class SimplifiedCosmosHelper implements ISimplifiedCosmosHelper {
   private _client: CosmosClient;
   private _initialized: boolean;
   private _database: Database;
   private _collection: Container;
 
-  constructor(options: ICosmosHelperOptions) {
-    this._options = options;
-  }
+  constructor(
+    private providers: IProviders,
+    private options: CosmosHelperOptions
+  ) {}
 
   async initialize() {
     if (this._initialized) {
       return;
     }
-    const { endpoint, key } = this._options;
+    const { createCollectionIfNotExist, endpoint, key, useManagedIdentity } = this.options;
     if (!endpoint) {
-      throw new Error('options.endpoint required');
+      throw CreateError.InvalidParameters('options.endpoint required');
     }
-    if (!key) {
-      throw new Error('options.key required');
+    if (!useManagedIdentity && !key) {
+      throw CreateError.InvalidParameters('options.key required');
     }
-    if (!this._options.collection) {
-      throw new Error('options.collection required');
+    if (!this.options.collection) {
+      throw CreateError.InvalidParameters('options.collection required');
     }
-    if (!this._options.database) {
-      throw new Error('options.database required');
+    if (!this.options.database) {
+      throw CreateError.InvalidParameters('options.database required');
     }
-    this._client = new CosmosClient({ endpoint, key });
-    this._database = (
-      await this._client.databases.createIfNotExists({ id: this._options.database })
-    ).database;
-    this._collection = (
-      await this._database.containers.createIfNotExists({ id: this._options.collection })
-    ).container;
+    this._client = await getOrCreateCosmosClient(this.providers, this.options);
+    if (createCollectionIfNotExist) {
+      this._database = (
+        await this._client.databases.createIfNotExists({ id: this.options.database })
+      ).database;
+      this._collection = (
+        await this._database.containers.createIfNotExists({ id: this.options.collection })
+      ).container;
+    } else {
+      this._database = this._client.database(this.options.database);
+      this._collection = this._database.container(this.options.collection);
+    }
     this._initialized = true;
   }
 
@@ -84,7 +106,7 @@ export default class CosmosHelper {
     }
   }
 
-  async delete(partitionKey, documentId: string): Promise<void> {
+  async delete(partitionKey: string, documentId: string): Promise<void> {
     await this._collection.item(documentId, partitionKey).delete();
   }
 

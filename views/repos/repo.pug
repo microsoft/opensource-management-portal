@@ -45,7 +45,6 @@ mixin teamsList(teams, hideJoinOption)
 block content
 
   //- Services
-  - var languageColor = viewServices.languageColor
   - var octicon = viewServices.octicon
   - var fileSize = viewServices.fileSize
   - var moment = viewServices.moment
@@ -101,7 +100,7 @@ block content
 
             if repo.language
               li
-                span(style={color: languageColor(repo.language)})
+                span
                   != octicon('primitive-dot', 10)
                 = ' ' + repo.language
             if repo.license && repo.license.featured && repo.license.name

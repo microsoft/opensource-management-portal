@@ -6,11 +6,11 @@
 import querystring from 'querystring';
 import { AxiosError } from 'axios';
 
-import { wrapError } from '../lib/utils';
-import { getProviders } from '../lib/transitional';
-import { isJsonError } from '.';
+import { wrapError } from '../lib/utils.js';
+import { getProviders } from '../lib/transitional.js';
+import { isJsonError } from './index.js';
 import { NextFunction, Response } from 'express';
-import { ReposAppRequest } from '../interfaces';
+import { ReposAppRequest } from '../interfaces/index.js';
 
 function redactRootPathsFromString(string, path) {
   if (typeof string === 'string' && string.includes && string.split) {
@@ -100,18 +100,21 @@ export default function SiteErrorHandler(
     if (config.authentication.scheme !== 'github') {
       primaryUserInstance = req.user ? req.user.azure : null;
     }
-    const version = config && config.logging && config.logging.version ? config.logging.version : '?';
     if (config.logging.errors && err.status !== 403 && err.skipLog !== true) {
       let appSource = 'unknown';
       if (process.argv.length > 1) {
         appSource = process.argv.slice(1).join(' ');
       }
-      const insightsProperties = {
-        url: req.scrubbedUrl || req.originalUrl || req.url,
-        entrypoint: appSource,
-        stk: undefined,
-        message: undefined,
+      const properties: any = {
+        ...((err as any)?.insightsProperties || {}),
+        ...{
+          url: req.scrubbedUrl || req.originalUrl || req.url,
+          entrypoint: appSource,
+          stk: undefined,
+          message: undefined,
+        },
       };
+      const insightsProperties = properties;
       if (insights?.trackException) {
         for (let i = 0; err && i < exceptionFieldsOfInterest.length; i++) {
           const key = exceptionFieldsOfInterest[i];
@@ -140,7 +143,7 @@ export default function SiteErrorHandler(
           });
         } else {
           if (err && err['json']) {
-            // not tracking jsonErrors for now, they pollute app insights
+            // not tracking jsonErrors or certain regular outcomes, they pollute app insights
           } else {
             insights?.trackException({ exception: err, properties: insightsProperties });
           }
@@ -156,7 +159,9 @@ export default function SiteErrorHandler(
     const cause = err.cause;
     if (cause) {
       console.log('Cause: ' + cause.message);
-      cause.stack && console.log(cause.stack);
+      if (cause.stack) {
+        console.log(cause.stack);
+      }
     }
   }
   // Bubble OAuth errors to the forefront... this is the rate limit scenario.

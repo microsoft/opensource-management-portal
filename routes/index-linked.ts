@@ -4,27 +4,24 @@
 //
 
 import { NextFunction, Response, Router } from 'express';
-import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
-import { CreateError, hasStaticReactClientApp, getProviders } from '../lib/transitional';
-import { IndividualContext } from '../business/user';
-import { storeOriginalUrlAsVariable } from '../lib/utils';
-import { AuthorizeOnlyCorporateAdministrators } from '../middleware/business/corporateAdministrators';
+import { hasStaticReactClientApp } from '../lib/transitional.js';
+import { storeOriginalUrlAsVariable } from '../lib/utils.js';
+import { AuthorizeOnlyCorporateAdministrators } from '../middleware/business/corporateAdministrators.js';
+import { injectReactClient } from '../middleware/index.js';
 
-import RouteAdministration from './administration';
-import RouteUndo from './undo';
-import RouteTeams from './teams';
-import RoutePeople from './people';
-import RouteRepos from './repos';
-import RouteLegacyOrganizationAdministration from './orgAdmin';
+import type { IndividualContext } from '../business/user/index.js';
+import type { ReposAppRequest } from '../interfaces/index.js';
 
-import unlinkRoute from './unlink';
-import { Organization, Repository } from '../business';
-
-import orgsRoute from './orgs';
-import { injectReactClient } from '../middleware';
-import { ReposAppRequest } from '../interfaces';
+import routeAdministration from './administration/index.js';
+import routeLegacyOrganizationAdministration from './orgAdmin.js';
+import routeOrgs from './orgs.js';
+import routePeople from './people.js';
+import routeRepos from './repos.js';
+import routeTeams from './teams.js';
+import routeUndo from './undo.js';
+import routeUnlink from './unlink.js';
 
 const hasReactApp = hasStaticReactClientApp();
 const reactRoute = hasReactApp ? injectReactClient() : undefined;
@@ -51,47 +48,16 @@ if (!hasReactApp) {
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 
-router.use('/unlink', unlinkRoute);
+router.use('/administration', AuthorizeOnlyCorporateAdministrators, reactRoute || routeAdministration);
+router.use('/organization', routeLegacyOrganizationAdministration); // admin UI, not in React
+router.use('/people', reactRoute || routePeople);
+router.use('/repos', reactRoute || routeRepos);
+router.use('/teams', reactRoute || routeTeams);
+router.use('/unlink', routeUnlink);
 
-router.use('/organization', RouteLegacyOrganizationAdministration); // admin UI, not in React
+// routes not in the frontend
+router.use('/undo', routeUndo);
 
-router.use('/teams', reactRoute || RouteTeams);
-router.use('/people', reactRoute || RoutePeople);
-router.use('/repos', reactRoute || RouteRepos);
-
-// Routes not yet available in the client
-router.use('/undo', RouteUndo);
-router.use('/administration', asyncHandler(AuthorizeOnlyCorporateAdministrators), RouteAdministration);
-
-router.use(
-  '/https?*github.com/:org/:repo',
-  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
-    // Helper method to allow pasting a GitHub URL into the app to go to a repo
-    const { org, repo } = req.params;
-    const { operations } = getProviders(req);
-    if (org && repo) {
-      let organization: Organization = null;
-      try {
-        organization = operations.getOrganization(org);
-      } catch (error) {
-        return next(CreateError.InvalidParameters(`Organization ${org} not managed by this system`));
-      }
-      let repository: Repository = null;
-      try {
-        repository = organization.repository(repo);
-        await repository.getDetails();
-      } catch (error) {
-        return next(CreateError.NotFound(`The repository ${org}/${repo} no longer exists.`));
-      }
-      if (hasReactApp) {
-        return res.redirect(`/orgs/${repository.organization.name}/repos/${repository.name}`);
-      }
-      return res.redirect(repository.baseUrl);
-    }
-    return next();
-  })
-);
-
-router.use('/', orgsRoute);
+router.use('/', routeOrgs);
 
 export default router;

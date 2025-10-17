@@ -7,7 +7,7 @@
 
 import { NextFunction, Response } from 'express';
 
-import { ReposAppRequest } from '../../interfaces';
+import { ReposAppRequest } from '../../interfaces/index.js';
 
 export function AuthorizeOnlyFullTimeEmployeesAndInterns(
   req: ReposAppRequest,

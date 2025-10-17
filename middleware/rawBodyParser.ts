@@ -4,8 +4,8 @@
 //
 
 import { NextFunction, Response } from 'express';
-import { ReposAppRequest } from '../interfaces';
-import { isWebhookIngestionEndpointEnabled } from '../lib/transitional';
+import { ReposAppRequest } from '../interfaces/index.js';
+import { isWebhookIngestionEndpointEnabled } from '../lib/transitional.js';
 
 export default function rawBodyParser(req: ReposAppRequest, res: Response, next: NextFunction) {
   if (!isWebhookIngestionEndpointEnabled(req)) {

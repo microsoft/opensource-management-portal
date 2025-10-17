@@ -4,7 +4,7 @@
 //
 
 import { URL } from 'url';
-import { IGetKeyVaultSecretClient } from '../middleware/keyVault';
+import { IGetKeyVaultSecretClient } from '../middleware/keyVault.js';
 
 const cachedKeys = new Map<string, string>();
 const cacheKeysInMemory = true;
@@ -23,7 +23,7 @@ async function keyVaultSecretResolver(keyVaultClient: IGetKeyVaultSecretClient, 
   const secretClient = keyVaultClient.getSecretClientForVault(vaultBaseUrl);
   const i = secretUrl.pathname.indexOf(secretsPath);
   if (i < 0) {
-    throw new Error('The requested resource must be a KeyVault secret');
+    throw new Error(`The requested resource must be a KeyVault secret: ${secretUrl}`);
   }
   let secretName = secretUrl.pathname.substr(i + secretsPath.length);
   let version = '';

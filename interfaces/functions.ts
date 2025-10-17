@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { IReposError } from './errors';
+import { IReposError } from './errors.js';
 
 export interface ICallback<T> {
   (error: IReposError, result?: T): void;

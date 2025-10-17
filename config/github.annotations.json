@@ -1,0 +1,7 @@
+{
+  "enabled": "env://GITHUB_ANNOTATIONS_ENABLED?trueIf=1",
+  "securityGroups": {
+    "writers": "env://GITHUB_ANNOTATIONS_SG_WRITERS",
+    "readers": "env://GITHUB_ANNOTATIONS_SG_READERS"
+  }
+}

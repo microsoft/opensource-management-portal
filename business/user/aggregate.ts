@@ -10,17 +10,17 @@ import {
   Repository,
   Team,
   TeamRepositoryPermission,
-} from '..';
-import QueryCache from '../queryCache';
+} from '../index.js';
+import QueryCache from '../queryCache.js';
 import {
   IQueryCacheTeamRepositoryPermission,
   OrganizationMembershipRole,
   GitHubTeamRole,
   OrganizationMembershipRoleQuery,
   GitHubRepositoryPermission,
-} from '../../interfaces';
-import { SettleToStateValue, isPermissionBetterThan, ErrorHelper } from '../../lib/transitional';
-import LinkManager from './linkManager';
+} from '../../interfaces/index.js';
+import { SettleToStateValue, isPermissionBetterThan, ErrorHelper } from '../../lib/transitional.js';
+import LinkManager from './linkManager.js';
 
 // PLANNING once consolidated
 // TODO: expose a combined 'teams in' which is maint + member
@@ -212,12 +212,12 @@ export class UserContext {
     };
   }
 
-  async getRepoCollaborators(): Promise<any> {
-    const operations = this._operations;
-    const options = {};
-    const repos = await operations.graphManager.getReposWithCollaborators(options);
-    return repos;
-  }
+  // async getRepoCollaborators(): Promise<any> {
+  //   const operations = this._operations;
+  //   const options = {};
+  //   const repos = await operations.graphManager.getReposWithCollaborators(options);
+  //   return repos;
+  // }
 
   // newer query cache optimized methods
 
@@ -315,7 +315,6 @@ export class UserContext {
     const member: Team[] = [];
     const userIdString = this.id.toString();
     const teams = await this._queryCache.userTeams(userIdString);
-    const awaits: Promise<any>[] = [];
     for (const { role, team } of teams) {
       try {
         if (role !== GitHubTeamRole.Maintainer && role !== GitHubTeamRole.Member) {

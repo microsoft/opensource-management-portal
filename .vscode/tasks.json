@@ -11,7 +11,79 @@
       "group": {
         "kind": "build",
         "isDefault": true
+      },
+      "options": {
+        "cwd": "${workspaceFolder}"
       }
+    },
+    {
+      "label": "tsbuild:oss",
+      "type": "typescript",
+      "tsconfig": "tsconfig.oss.json",
+      "problemMatcher": ["$tsc"],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "options": {
+        "cwd": "${workspaceFolder}"
+      }
+    },
+    {
+      "label": "react:build",
+      "type": "shell",
+      "command": "npm run build",
+      "options": {
+        "cwd": "${workspaceFolder}/frontend"
+      }
+    },
+    {
+      "label": "tsbuild+react:build",
+      "dependsOn": ["tsbuild", "react:build"],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "vite:oss",
+      "type": "shell",
+      "command": "npm run start-oss",
+      "options": {
+        "cwd": "${workspaceFolder}/frontend"
+      },
+      "isBackground": false,
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "vite",
+      "type": "shell",
+      "command": "npm run dev",
+      "options": {
+        "cwd": "${workspaceFolder}/frontend"
+      },
+      "isBackground": false,
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+      // "problemMatcher": {
+      //   "owner": "vite",
+      //   "pattern": {
+      //     "regexp": ".*", // Use a regex pattern that matches Vite's ready output
+      //     "file": 1,
+      //     "location": 2,
+      //     "message": 3
+      //   },
+      //   "background": {
+      //     "activeOnStart": true,
+      //     "beginsPattern": "^.*Ready.*$", // Regex pattern that matches the startup message of Vite
+      //     "endsPattern": "^.*Exiting.*$" // Regex pattern that matches the shutdown message of Vite
+      //   }
+      // },
     }
   ]
 }

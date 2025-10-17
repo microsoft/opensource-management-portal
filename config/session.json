@@ -3,13 +3,13 @@
   "salt": "env://SESSION_SALT?default=session-salt-not-set-warning",
   "name": "env://SESSION_NAME?default=sid",
   "domain": "env://SESSION_COOKIE_DOMAIN",
-  "encryption": "env://SESSION_ENCRYPTION?trueIf=encrypt",
-  "encryptionKeyId": "env://SESSION_ENCRYPTION_KEY_ID",
   "cosmosdb": {
+    "useManagedIdentity": "env://SESSION_COSMOSDB_USE_MANAGED_IDENTITY?trueIf=1",
     "endpoint": "env://SESSION_COSMOSDB_ENDPOINT",
     "key": "env://SESSION_COSMOSDB_KEY",
     "database": "env://SESSION_COSMOSDB_DATABASE",
     "collection": "env://SESSION_COSMOSDB_COLLECTION",
+    "createCollectionIfNotExist": "env://SESSION_COSMOSDB_CREATE_COLLECTION_IF_NOT_EXIST?trueIf=1",
     "ttl": "env://SESSION_COSMOSDB_TTL?type=integer&default=604800"
   },
   "redis": {

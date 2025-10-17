@@ -3,26 +3,24 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Repository } from './repository';
-import { wrapError } from '../lib/utils';
-import { AppPurpose } from '../lib/github/appPurposes';
-import { CacheDefault, getMaxAgeSeconds } from '.';
+import { Repository } from './repository.js';
+import { wrapError } from '../lib/utils.js';
+import { AppPurpose } from '../lib/github/appPurposes.js';
+import { CacheDefault, getMaxAgeSeconds, Operations } from './index.js';
 import {
-  IOperationsInstance,
   PurposefulGetAuthorizationHeader,
   GitHubIssueState,
   IIssueLabel,
-  throwIfNotGitHubCapable,
   ICacheOptions,
   GetAuthorizationHeader,
-} from '../interfaces';
-import { ErrorHelper } from '../lib/transitional';
+} from '../interfaces/index.js';
+import { ErrorHelper } from '../lib/transitional.js';
 
 // Pull requests are issues but not all issues are pull requests. So this is mostly a clone of repositoryIssue.ts
 // right now, with slightly different endpoints.
 
 export class RepositoryPullRequest {
-  private _operations: IOperationsInstance;
+  private _operations: Operations;
   private _getAuthorizationHeader: PurposefulGetAuthorizationHeader;
 
   private _number: number;
@@ -33,7 +31,7 @@ export class RepositoryPullRequest {
   constructor(
     repository: Repository,
     pullRequestNumber: number,
-    operations: IOperationsInstance,
+    operations: Operations,
     getAuthorizationHeader: PurposefulGetAuthorizationHeader,
     entity?: any
   ) {
@@ -79,7 +77,7 @@ export class RepositoryPullRequest {
   }
 
   async update(patch: any): Promise<any> {
-    const operations = throwIfNotGitHubCapable(this._operations);
+    const operations = this._operations as Operations;
     const parameters = Object.assign(patch, {
       owner: this.repository.organization.name,
       repo: this.repository.name,
@@ -95,7 +93,7 @@ export class RepositoryPullRequest {
   }
 
   async getComment(commentId: string): Promise<any> {
-    const operations = throwIfNotGitHubCapable(this._operations);
+    const operations = this._operations as Operations;
     const parameters = Object.assign({
       owner: this.repository.organization.name,
       repo: this.repository.name,
@@ -122,7 +120,7 @@ export class RepositoryPullRequest {
   }
 
   async getReview(reviewId: string): Promise<any> {
-    const operations = throwIfNotGitHubCapable(this._operations);
+    const operations = this._operations as Operations;
     const parameters = Object.assign({
       owner: this.repository.organization.name,
       repo: this.repository.name,
@@ -149,26 +147,12 @@ export class RepositoryPullRequest {
     }
   }
 
-  // async comment(commentBody: string): Promise<any> {
-  //   const operations = throwIfNotGitHubCapable(this._operations);
-  //   const parameters = Object.assign({
-  //     body: commentBody,
-  //   }, {
-  //     owner: this.repository.organization.name,
-  //     repo: this.repository.name,
-  //     issue_number: this.number,
-  //   });
-  //   // Operations has issue write permissions
-  //   const comment = await operations.github.post(this.authorize(AppPurpose.Operations), 'issues.createComment', parameters);
-  //   return comment;
-  // }
-
   async getDetails(options?: ICacheOptions, okToUseLocalEntity = true): Promise<any> {
     if (okToUseLocalEntity && this._entity) {
       return this._entity;
     }
     options = options || {};
-    const operations = throwIfNotGitHubCapable(this._operations);
+    const operations = this._operations as Operations;
     if (!this._repository.name) {
       throw new Error('repository.name required');
     }
@@ -179,15 +163,20 @@ export class RepositoryPullRequest {
     };
     const cacheOptions: ICacheOptions = {
       // NOTE: just reusing repo details stale time
-      maxAgeSeconds: getMaxAgeSeconds(operations, CacheDefault.orgRepoDetailsStaleSeconds, options),
+      maxAgeSeconds: getMaxAgeSeconds(
+        operations as Operations,
+        CacheDefault.orgRepoDetailsStaleSeconds,
+        options
+      ),
     };
     if (options.backgroundRefresh !== undefined) {
       cacheOptions.backgroundRefresh = options.backgroundRefresh;
     }
+    const { github } = operations;
+    const { rest } = github.octokit;
     try {
-      const entity = await operations.github.call(
-        this.authorize(AppPurpose.Data),
-        'pulls.get',
+      const entity = await github.callWithRequirements(
+        github.createRequirementsForFunction(this.authorize(AppPurpose.Data), rest.pulls.get, 'pulls.get'),
         parameters,
         cacheOptions
       );

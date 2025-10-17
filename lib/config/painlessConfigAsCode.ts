@@ -6,20 +6,26 @@
 import appRoot from 'app-root-path';
 import Debug from 'debug';
 import dotenv from 'dotenv';
+import { promises as fs } from 'fs';
 import path from 'path';
 import walkBack from 'walk-back';
-import { InnerError, IPainlessConfigGet, IProviderOptions } from '.';
-import { processEnvironmentProvider } from './environmentConfigurationResolver';
-import { CreateError } from '../transitional';
+
+import type { IPainlessConfigGet, IProviderOptions } from './index.js';
+
+import { processEnvironmentProvider } from './environmentConfigurationResolver.js';
+import { CreateError } from '../transitional.js';
+import { importPathSchemeChangeIfWindows } from '../utils.js';
 
 const debug = Debug.debug('config');
 
-const ApplicationNameEnvironmentVariableKey = 'APPLICATION_NAME';
-const DotEnvOverridesProcessKey = 'PREFER_DOTENV';
+const APPLICATION_NAME_ENV_VAR_KEY = 'APPLICATION_NAME';
+const DOT_ENV_OVERRIDES_PROCESS_ENV_VAR_KEY = 'PREFER_DOTENV';
+const LOCAL_OVERRIDE_ENV_VAR_KEY = 'LOCAL_CONFIGURATION_ENVIRONMENT';
 
 function objectProvider(json: any, applicationName: string) {
   const appKey = applicationName ? `app:${applicationName}` : null;
   return {
+    providerName: 'object provider',
     get: function get(key: string) {
       if (appKey && json) {
         const appConfiguration = json[appKey];
@@ -32,9 +38,9 @@ function objectProvider(json: any, applicationName: string) {
   };
 }
 
-let unconfigured: IPainlessConfigGet | null = null;
+const unconfigured: IPainlessConfigGet | null = null;
 
-function configurePackageEnvironments(
+async function configurePackageEnvironments(
   providers: IPainlessConfigGet[],
   appRoot: string,
   environmentModules: string[],
@@ -50,11 +56,14 @@ function configurePackageEnvironments(
     }
     // Local directory-as-module case
     if (npmName.startsWith('./')) {
-      npmName = path.join(appRoot, npmName);
+      npmName = path.join(appRoot, npmName, 'index.js');
     }
     let environmentPackage = null;
     try {
-      environmentPackage = require(npmName);
+      npmName = importPathSchemeChangeIfWindows(npmName);
+      const imported = await import(npmName);
+      const inc = imported.default || imported;
+      environmentPackage = await inc;
     } catch (packageRequireError) {
       throw new Error(
         `Unable to require the "${npmName}" environment package for the "${environment}" environment`,
@@ -69,7 +78,7 @@ function configurePackageEnvironments(
     if (typeof environmentPackage === 'function') {
       environmentInstances.push(environmentPackage);
       try {
-        values = environmentPackage(environment);
+        values = await environmentPackage(environment);
       } catch (problemCalling) {
         const asText = problemCalling.toString() as string;
         let suggestion = '';
@@ -96,7 +105,7 @@ function configurePackageEnvironments(
   }
 }
 
-function configureLocalEnvironment(
+async function configureLocalEnvironment(
   providers: IPainlessConfigGet[],
   appRoot: string,
   directoryName: string,
@@ -106,27 +115,29 @@ function configureLocalEnvironment(
   const envFile = `${environment}.json`;
   const envPath = path.join(appRoot, directoryName, envFile);
   try {
-    const json = require(envPath);
+    const raw = await fs.readFile(envPath, 'utf8');
+    const json = JSON.parse(raw);
     providers.push(objectProvider(json, applicationName));
   } catch (noFile) {
     // no file
   }
 }
 
-function tryGetPackage(appRoot: string) {
+async function tryGetPackage(appRoot: string) {
   try {
     const packagePath = path.join(appRoot, 'package.json');
-    const pkg = require(packagePath);
+    const raw = await fs.readFile(packagePath, 'utf8');
+    const pkg = JSON.parse(raw);
     return pkg;
   } catch (noPackage) {
     // If there is no package.json for the app, well, that's OK
   }
 }
 
-function preloadDotEnv(): Record<string, string> {
-  const dotenvPath = walkBack(process.cwd(), '.env');
+function preloadDotEnv(dotEnvFilename: string): Record<string, string> {
+  const dotenvPath = walkBack(process.cwd(), dotEnvFilename);
   if (dotenvPath) {
-    const outcome = dotenv.config({ path: dotenvPath });
+    const outcome = dotenv.config({ path: dotenvPath, quiet: true });
     if (outcome.error) {
       throw outcome.error;
     }
@@ -138,30 +149,30 @@ function preloadDotEnv(): Record<string, string> {
   return {};
 }
 
-function initialize(options?: IProviderOptions) {
+async function initialize(options?: IProviderOptions) {
   options = options || {};
   // By capturing the values, we can override without relying on the default dotenv
   // approach and better log the outcomes.
-  const dotenvValues = !options.skipDotEnv ? preloadDotEnv() : {};
+  const envProviderOptions = { overrideValues: {} };
+  const provider = options.provider || processEnvironmentProvider(envProviderOptions);
+  const dotEnvFilename = provider.get('DOTENV_FILENAME') || '.env';
+  const dotenvValues = !options.skipDotEnv ? preloadDotEnv(dotEnvFilename) : {};
   if (options.provider) {
     debug(`options.provider was provided: ${options.provider}. Skipping any .env values.`);
   }
 
-  const envProviderOptions = { overrideValues: {} };
-  const provider = options.provider || processEnvironmentProvider(envProviderOptions);
-  const preferDotEnvChoice = provider.get(DotEnvOverridesProcessKey) === '1';
+  const preferDotEnvChoice = provider.get(DOT_ENV_OVERRIDES_PROCESS_ENV_VAR_KEY) === '1';
   if (preferDotEnvChoice) {
     // Yes, this is setting the value on the options object above and so is expecting
     // that the provider implementation is not destructing the options.
     envProviderOptions.overrideValues = dotenvValues;
     debug(
-      `The ${DotEnvOverridesProcessKey} environment variable was set to 1. Preferring .env file over process.env values.`
+      `The ${DOT_ENV_OVERRIDES_PROCESS_ENV_VAR_KEY} environment variable was set to 1. Preferring .env file over process.env values.`
     );
   }
   let environmentInstances = null;
   const applicationRoot = options.applicationRoot || appRoot;
-  const applicationName = (options.applicationName ||
-    provider.get(ApplicationNameEnvironmentVariableKey)) as string;
+  const applicationName = (options.applicationName || provider.get(APPLICATION_NAME_ENV_VAR_KEY)) as string;
 
   const nodeEnvironment = provider.get('NODE_ENV');
   const configurationEnvironmentKeyNames = (
@@ -192,23 +203,23 @@ function initialize(options?: IProviderOptions) {
     providers.push(objectProvider(testJson[environment], applicationName));
   } else {
     const appRoot = applicationRoot.toString();
-    const pkg = tryGetPackage(appRoot);
+    const pkg = await tryGetPackage(appRoot);
     const appName =
       applicationName ||
       (pkg && pkg.painlessConfigApplicationName ? pkg.painlessConfigApplicationName : undefined);
 
     const environmentDirectoryKey = provider.get('ENVIRONMENT_DIRECTORY_KEY') || 'ENVIRONMENT_DIRECTORY';
     const directoryName = options.directoryName || provider.get(environmentDirectoryKey) || 'env';
-    configureLocalEnvironment(providers, appRoot, directoryName, environment, appName);
+    await configureLocalEnvironment(providers, appRoot, directoryName, environment, appName);
 
     // const localEnvironmentModuleDirectoryKey = provider.get('ENVIRONMENT_MODULE_DIRECTORY_KEY') || 'ENVIRONMENT_MODULE_DIRECTORY';
     // const moduleDirectoryName = options.moduleDirectoryName || provider.get(localEnvironmentModuleDirectoryKey) || pkg.painlessConfigLocalEnvironmentModuleDirectory || 'env';
     // configureLocalEnvironment(providers, appRoot, directoryName, environment, appName);
 
     const environmentModulesKey = provider.get('ENVIRONMENT_MODULES_KEY') || 'ENVIRONMENT_MODULES';
-    const environmentModules = (provider.get(environmentModulesKey) || '').split(',');
+    const environmentModules = (provider.get(environmentModulesKey) || '').split(',').filter((val) => val);
     let painlessConfigEnvironments = pkg ? pkg.painlessConfigEnvironments : null;
-    if (painlessConfigEnvironments) {
+    if (painlessConfigEnvironments && environmentModules.length === 0) {
       if (Array.isArray(painlessConfigEnvironments)) {
         // This is ready-to-use as-is
       } else if (painlessConfigEnvironments.split) {
@@ -218,7 +229,12 @@ function initialize(options?: IProviderOptions) {
       }
       environmentModules.push(...painlessConfigEnvironments);
     }
-    environmentInstances = configurePackageEnvironments(
+    const localEnvironment = provider.get(LOCAL_OVERRIDE_ENV_VAR_KEY);
+    if (localEnvironment) {
+      debug(`Local override environment takes precedence: ${localEnvironment}`);
+      await configurePackageEnvironments(providers, appRoot, environmentModules, localEnvironment, appName);
+    }
+    environmentInstances = await configurePackageEnvironments(
       providers,
       appRoot,
       environmentModules,
@@ -228,7 +244,8 @@ function initialize(options?: IProviderOptions) {
   }
 
   return {
-    environmentInstances: environmentInstances,
+    providerName: 'painless config',
+    environmentInstances,
     get: function (key: string) {
       for (let i = 0; i < providers.length; i++) {
         const value = providers[i].get(key);
@@ -240,11 +257,11 @@ function initialize(options?: IProviderOptions) {
   };
 }
 
-initialize.get = function getWithoutInitialize(key: string) {
-  if (unconfigured === null) {
-    unconfigured = initialize();
-  }
-  return unconfigured.get(key);
-};
+// initialize.get = function getWithoutInitialize(key: string) {
+//   if (unconfigured === null) {
+//     unconfigured = initialize();
+//   }
+//   return unconfigured.get(key);
+// };
 
 export default initialize;

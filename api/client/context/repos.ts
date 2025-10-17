@@ -4,12 +4,11 @@
 //
 
 import { NextFunction, Response } from 'express';
-import asyncHandler from 'express-async-handler';
 
-import { GitHubRepositoryPermission, ReposAppRequest } from '../../../interfaces';
-import { IndividualContext } from '../../../business/user';
+import { GitHubRepositoryPermission, ReposAppRequest } from '../../../interfaces/index.js';
+import { IndividualContext } from '../../../business/user/index.js';
 
-export default asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
+export default async (req: ReposAppRequest, res: Response, next: NextFunction) => {
   try {
     const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
     if (!activeContext.link) {
@@ -39,17 +38,21 @@ export default asyncHandler(async (req: ReposAppRequest, res: Response, next: Ne
     });
     return res.json({
       isLinked: true,
-      repositories: permissions.map((perm) => {
-        return {
-          bestComputedPermission: perm.bestComputedPermission,
-          collaboratorPermission: perm.collaboratorPermission,
-          repository: perm.repository.asJson(),
-          teamPermissions: perm.teamPermissions.map((tp) => tp.asJson()),
-          // TODO: would be nice for team permission for repos to also store the team slug in the query cache!
-        };
-      }),
+      repositories: permissions
+        .filter((perm) => {
+          return perm?.repository?.name;
+        })
+        .map((perm) => {
+          return {
+            bestComputedPermission: perm.bestComputedPermission,
+            collaboratorPermission: perm.collaboratorPermission,
+            repository: perm.repository.asJson(),
+            teamPermissions: perm.teamPermissions.map((tp) => tp.asJson()),
+            // TODO: would be nice for team permission for repos to also store the team slug in the query cache!
+          };
+        }),
     }) as unknown as void;
   } catch (error) {
     return next(error);
   }
-});
+};

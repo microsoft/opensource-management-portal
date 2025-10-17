@@ -3,11 +3,12 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { ITeamCacheProvider, ITeamCacheCreateOptions, TeamCacheProvider } from './teamCacheProvider';
-import { FixedQueryType, IEntityMetadataFixedQuery } from '../../../lib/entityMetadataProvider/query';
+import { ITeamCacheProvider, TeamCacheProvider } from './teamCacheProvider.js';
+import { FixedQueryType, IEntityMetadataFixedQuery } from '../../../lib/entityMetadataProvider/query.js';
+import { IEntityMetadataBaseOptions } from '../../../lib/entityMetadataProvider/entityMetadata.js';
 
 export async function CreateTeamCacheProviderInstance(
-  options?: ITeamCacheCreateOptions
+  options?: IEntityMetadataBaseOptions
 ): Promise<ITeamCacheProvider> {
   const provider = new TeamCacheProvider(options);
   await provider.initialize();

@@ -6,17 +6,17 @@
 import { NextFunction, Response } from 'express';
 import passport from 'passport';
 
-import { IKeyVaultSecretResolver } from '../lib/keyVaultResolver';
-import getCompanySpecificDeployment from './companySpecificDeployment';
+import getCompanySpecificDeployment from './companySpecificDeployment.js';
 
-import createAADStrategy from './passport/aadStrategy';
-import createGithubStrategy from './passport/githubStrategy';
-import serializer from './passport/serializer';
+import { createEntraStrategies } from './passport/entra/strategy.js';
+import createGithubStrategy from './passport/githubStrategy.js';
+import serializer from './passport/serializer.js';
+import { CreateError } from '../lib/transitional.js';
 
-import type { IReposApplication, ReposAppRequest, SiteConfiguration } from '../interfaces';
+import type { IReposApplication, ReposAppRequest, SiteConfiguration } from '../interfaces/index.js';
 
 export default function (app: IReposApplication, config: SiteConfiguration) {
-  const supportedAuth = ['github', 'aad', 'oauth2'];
+  const supportedAuth = ['aad', 'oauth2', 'entra-id'];
 
   if (!supportedAuth.includes(config.authentication.scheme)) {
     throw new Error(`Unsupported primary authentication scheme type "${config.authentication.scheme}"`);
@@ -53,22 +53,22 @@ export default function (app: IReposApplication, config: SiteConfiguration) {
     }
   }
 
-  if (config.authentication.scheme === 'aad') {
-    const aadStrategies = createAADStrategy(app, config);
-    for (const name in aadStrategies) {
-      passport.use(name, aadStrategies[name]);
+  if (config.authentication.scheme === 'entra-id') {
+    const strategies = createEntraStrategies(app, config);
+    for (const name in strategies) {
+      passport.use(name, strategies[name]);
     }
-  } else if (config.authentication.scheme === 'oauth2') {
-    // Set up oauth2 strategy here
-    throw new Error('oauth2 is not currently implemented');
+  }
+
+  if (config.authentication.scheme === 'oauth2') {
+    throw CreateError.NotImplemented('oauth2 is no longer implemented');
   }
 
   app.use(passport.initialize());
   app.use(passport.session());
 
   const serializerOptions = {
-    config: config,
-    keyResolver: app.get('keyEncryptionKeyResolver') as IKeyVaultSecretResolver,
+    config,
   };
 
   passport.serializeUser(serializer.serialize(serializerOptions));
@@ -79,7 +79,7 @@ export default function (app: IReposApplication, config: SiteConfiguration) {
     if (req?.insights?.commonProperties && config.authentication.scheme === 'aad' && req?.user?.azure?.oid) {
       req.insights.commonProperties.aadId = req.user.azure.oid;
     }
-    next();
+    return next();
   });
 
   return passport;

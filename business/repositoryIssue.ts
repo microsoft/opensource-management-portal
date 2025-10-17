@@ -3,25 +3,23 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Repository } from './repository';
-import { wrapError } from '../lib/utils';
-import { AppPurpose } from '../lib/github/appPurposes';
-import { CacheDefault, getMaxAgeSeconds, Operations } from '.';
+import { Repository } from './repository.js';
+import { wrapError } from '../lib/utils.js';
+import { AppPurpose } from '../lib/github/appPurposes.js';
+import { CacheDefault, getMaxAgeSeconds, Operations } from './index.js';
 import {
-  IOperationsInstance,
   PurposefulGetAuthorizationHeader,
   GitHubIssueState,
   IIssueLabel,
-  throwIfNotGitHubCapable,
   ICacheOptions,
   GetAuthorizationHeader,
   GitHubIssuePatchParameters,
   GitHubStateReason,
-} from '../interfaces';
-import { CreateError, ErrorHelper } from '../lib/transitional';
+} from '../interfaces/index.js';
+import { CreateError, ErrorHelper } from '../lib/transitional.js';
 
 export class RepositoryIssue {
-  private _operations: IOperationsInstance;
+  private _operations: Operations;
   private _getAuthorizationHeader: PurposefulGetAuthorizationHeader;
 
   private _number: number;
@@ -32,7 +30,7 @@ export class RepositoryIssue {
   constructor(
     repository: Repository,
     issueNumber: number,
-    operations: IOperationsInstance,
+    operations: Operations,
     getAuthorizationHeader: PurposefulGetAuthorizationHeader,
     entity?: any
   ) {
@@ -78,7 +76,7 @@ export class RepositoryIssue {
   }
 
   async update(patch: GitHubIssuePatchParameters): Promise<any> {
-    const operations = throwIfNotGitHubCapable(this._operations);
+    const operations = this._operations as Operations;
     const parameters = Object.assign(patch, {
       owner: this.repository.organization.name,
       repo: this.repository.name,
@@ -101,7 +99,7 @@ export class RepositoryIssue {
   }
 
   async comment(commentBody: string): Promise<any> {
-    const operations = throwIfNotGitHubCapable(this._operations);
+    const operations = this._operations as Operations;
     const parameters = Object.assign(
       {
         body: commentBody,
@@ -122,7 +120,7 @@ export class RepositoryIssue {
   }
 
   async getComment(commentId: string): Promise<any> {
-    const operations = throwIfNotGitHubCapable(this._operations);
+    const operations = this._operations as Operations;
     const parameters = Object.assign({
       owner: this.repository.organization.name,
       repo: this.repository.name,
@@ -153,7 +151,7 @@ export class RepositoryIssue {
       return this._entity;
     }
     options = options || {};
-    const operations = throwIfNotGitHubCapable(this._operations);
+    const operations = this._operations as Operations;
     if (!this._repository.name) {
       throw new Error('repository.name required');
     }
@@ -164,15 +162,20 @@ export class RepositoryIssue {
     };
     const cacheOptions: ICacheOptions = {
       // NOTE: just reusing repo details stale time
-      maxAgeSeconds: getMaxAgeSeconds(operations, CacheDefault.orgRepoDetailsStaleSeconds, options),
+      maxAgeSeconds: getMaxAgeSeconds(
+        operations as Operations,
+        CacheDefault.orgRepoDetailsStaleSeconds,
+        options
+      ),
     };
     if (options.backgroundRefresh !== undefined) {
       cacheOptions.backgroundRefresh = options.backgroundRefresh;
     }
+    const { github } = operations;
+    const { rest } = github.octokit;
     try {
-      const entity = await operations.github.call(
-        this.authorize(AppPurpose.Data),
-        'issues.get',
+      const entity = await github.callWithRequirements(
+        github.createRequirementsForFunction(this.authorize(AppPurpose.Data), rest.issues.get, 'issues.get'),
         parameters,
         cacheOptions
       );
@@ -216,7 +219,7 @@ export class RepositoryIssue {
     return getAuthorizationHeader;
   }
 
-  static async CreateFromContentUrl(operations: IOperationsInstance, url: string) {
+  static async CreateFromContentUrl(operations: Operations, url: string) {
     const ops = operations as Operations;
     if (!ops.getRepositoryWithOrganizationFromUrl) {
       throw CreateError.ServerError(

@@ -3,51 +3,50 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import type { ConfigRootActiveDirectory } from './activeDirectory.types';
-import type { ConfigRootActiveDirectoryGuests } from './activeDirectoryGuests.types';
-import type { ConfigRootAdministrators } from './administrators.types';
-import type { ConfigRootApi } from './api.flags.types';
-import type { ConfigRootAuthentication } from './authentication.types';
-import type { ConfigRootBrand } from './brand.types';
-import type { ConfigRootCampaigns } from './campaigns.types';
-import type { ConfigRootClient } from './client.types';
-import type { ConfigRootContainers } from './containers.types';
-import type { ConfigRootContinuousDeployment } from './continuousDeployment.types';
-import type { ConfigRootCorporate } from './corporate.types';
-import type { ConfigRootData } from './data.types';
-import type { ConfigRootDebug } from './debug.types';
-import type { ConfigRootDiagnostics } from './diagnostics.types';
-import type { ConfigRootEntityProviders } from './entityProviders.types';
-import type { ConfigRootEnvironment } from './environment.types';
-import type { ConfigRootFeatures } from './features.types';
-import type { ConfigRootGitHub } from './github.types';
-import type { ConfigRootGraph } from './graph.types';
-import type { ConfigRootImmutable } from './immutable.types';
-import type { ConfigRootImpersonation } from './impersonation.types';
-import type { ConfigRootJit } from './jit.types';
-import type { ConfigRootJobs } from './jobs.types';
-import type { ConfigRootLegalEntities } from './legalEntities.types';
-import type { ConfigRootLogging } from './logging.types';
-import type { ConfigRootMail } from './mail.types';
-import type { ConfigRootMailAddresses } from './mailAddresses.types';
-import type { ConfigRootNews } from './news.types';
-import type { ConfigRootNode } from './node.types';
-import type { ConfigRootNotifications } from './notifications.types';
-import type { ConfigRootNpm } from './npm.types';
-import type { ConfigRootProcess } from './process.types';
-import type { ConfigRootRedis } from './redis.types';
-import type { ConfigRootReview } from './review.types';
-import type { ConfigRootServiceMessage } from './serviceMessage.types';
-import type { ConfigRootSession } from './session.types';
-import type { ConfigRootStartup } from './startup.types';
-import type { ConfigRootSudo } from './sudo.types';
-import type { ConfigRootTelemetry } from './telemetry.types';
-import type { ConfigRootTypeScript } from './typescript.types';
-import type { ConfigRootUrls } from './urls.types';
-import type { ConfigRootUserAgent } from './userAgent.types';
-import type { ConfigRootWebHealthProbes } from './webHealthProbes.types';
-import type { ConfigRootWeb } from './web.types';
-import type { ConfigRootWebServer } from './webServer.types';
+import type { ConfigRootActiveDirectory } from './activeDirectory.types.js';
+import type { ConfigRootActiveDirectoryGuests } from './activeDirectoryGuests.types.js';
+import type { ConfigRootAdministrators } from './administrators.types.js';
+import type { ConfigRootApi } from './api.flags.types.js';
+import type { ConfigRootAuthentication } from './authentication.types.js';
+import type { ConfigRootBrand } from './brand.types.js';
+import type { ConfigRootCampaigns } from './campaigns.types.js';
+import type { ConfigRootClient } from './client.types.js';
+import type { ConfigRootContainers } from './containers.types.js';
+import type { ConfigRootContinuousDeployment } from './continuousDeployment.types.js';
+import type { ConfigRootCorporate } from './corporate.types.js';
+import type { ConfigRootData } from './data.types.js';
+import type { ConfigRootDebug } from './debug.types.js';
+import type { ConfigRootDiagnostics } from './diagnostics.types.js';
+import type { ConfigRootEntityProviders } from './entityProviders.types.js';
+import type { ConfigRootEnvironment } from './environment.types.js';
+import type { ConfigRootFeatures } from './features.types.js';
+import type { ConfigRootGitHub } from './github.types.js';
+import type { ConfigRootGraph } from './graph.types.js';
+import type { ConfigRootImmutable } from './immutable.types.js';
+import type { ConfigRootImpersonation } from './impersonation.types.js';
+import type { ConfigRootJit } from './jit.types.js';
+import type { ConfigRootJobs } from './jobs.types.js';
+import type { ConfigRootLegalEntities } from './legalEntities.types.js';
+import type { ConfigRootLogging } from './logging.types.js';
+import type { ConfigRootMail } from './mail.types.js';
+import type { ConfigRootMailAddresses } from './mailAddresses.types.js';
+import type { ConfigRootNews } from './news.types.js';
+import type { ConfigRootNode } from './node.types.js';
+import type { ConfigRootNotifications } from './notifications.types.js';
+import type { ConfigRootProcess } from './process.types.js';
+import type { ConfigRootRedis } from './redis.types.js';
+import type { ConfigRootReview } from './review.types.js';
+import type { ConfigRootServiceMessage } from './serviceMessage.types.js';
+import type { ConfigRootSession } from './session.types.js';
+import type { ConfigRootStartup } from './startup.types.js';
+import type { ConfigRootSudo } from './sudo.types.js';
+import type { ConfigRootTelemetry } from './telemetry.types.js';
+import type { ConfigRootTypeScript } from './typescript.types.js';
+import type { ConfigRootUrls } from './urls.types.js';
+import type { ConfigRootUserAgent } from './userAgent.types.js';
+import type { ConfigRootWebHealthProbes } from './webHealthProbes.types.js';
+import type { ConfigRootWeb } from './web.types.js';
+import type { ConfigRootWebServer } from './webServer.types.js';
 
 type ObfuscatedConfig = any;
 
@@ -58,7 +57,6 @@ type ConfigRootObfuscatedConfig = {
 // prettier-ignore
 export type SiteConfiguration = 
   ConfigRootObfuscatedConfig &
-
   ConfigRootActiveDirectory &
   ConfigRootActiveDirectoryGuests &
   ConfigRootAdministrators &
@@ -89,7 +87,6 @@ export type SiteConfiguration =
   ConfigRootNews &
   ConfigRootNode &
   ConfigRootNotifications &
-  ConfigRootNpm &
   ConfigRootProcess &
   ConfigRootRedis &
   ConfigRootReview &
@@ -100,7 +97,6 @@ export type SiteConfiguration =
   ConfigRootTelemetry &
   ConfigRootTypeScript &
   ConfigRootUrls &
-
   ConfigRootUserAgent &
   ConfigRootWebHealthProbes &
   ConfigRootWeb &

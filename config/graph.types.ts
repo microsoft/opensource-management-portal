@@ -10,9 +10,5 @@ export type ConfigRootGraph = {
 export type ConfigGraph = {
   provider: string;
   require: boolean;
-  tokenCacheSeconds: number;
-  clientId: string;
-  clientSecret: string;
-  tokenEndpoint: string;
   skipManagerLookupForIds: string;
 };

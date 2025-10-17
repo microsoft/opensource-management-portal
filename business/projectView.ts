@@ -3,22 +3,10 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { AppPurpose, AppPurposeTypes } from '../lib/github/appPurposes';
-import { Organization } from '.';
-import {
-  IOperationsInstance,
-  PurposefulGetAuthorizationHeader,
-  throwIfNotGitHubCapable,
-  GetAuthorizationHeader,
-} from '../interfaces';
-import {
-  decorateIterable,
-  IteratorPickerResponse,
-  IteratorResponse,
-  PaginationPageSizeOptions,
-} from './iterable';
-import { DefaultGraphqlPageSize } from '../lib/transitional';
-import { OrganizationProject, ProjectViewEssentials } from './project';
+import { AppPurpose, AppPurposeTypes } from '../lib/github/appPurposes.js';
+import { Operations, Organization } from './index.js';
+import { PurposefulGetAuthorizationHeader, GetAuthorizationHeader } from '../interfaces/index.js';
+import { OrganizationProject, ProjectViewEssentials } from './project.js';
 
 type ProjectViewDetails = {
   id: string;
@@ -28,7 +16,7 @@ type ProjectViewDetails = {
 
 export class OrganizationProjectView {
   private _project: OrganizationProject;
-  private _operations: IOperationsInstance;
+  private _operations: Operations;
 
   private _getAuthorizationHeader: PurposefulGetAuthorizationHeader;
   private _getSpecificAuthorizationHeader: PurposefulGetAuthorizationHeader;
@@ -40,7 +28,7 @@ export class OrganizationProjectView {
 
   constructor(
     organizationProject: OrganizationProject,
-    operations: IOperationsInstance,
+    operations: Operations,
     getAuthorizationHeader: PurposefulGetAuthorizationHeader,
     getSpecificAuthorizationHeader: PurposefulGetAuthorizationHeader,
     projectId: string,
@@ -68,7 +56,7 @@ export class OrganizationProjectView {
   }
 
   async getDetails(): Promise<ProjectViewDetails> {
-    const operations = throwIfNotGitHubCapable(this._operations);
+    const operations = this._operations as Operations;
     try {
       const result = await operations.github.graphql(
         this.authorize(),

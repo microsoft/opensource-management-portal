@@ -3,8 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { TeamJoinApprovalEntity } from './teamJoinApproval';
-import { IEntityMetadataProvider } from '../../../lib/entityMetadataProvider/entityMetadataProvider';
+import { TeamJoinApprovalEntity } from './teamJoinApproval.js';
+import { IEntityMetadataProvider } from '../../../lib/entityMetadataProvider/entityMetadataProvider.js';
 
 export interface IApprovalProvider {
   initialize(): Promise<void>;

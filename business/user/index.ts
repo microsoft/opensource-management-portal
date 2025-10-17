@@ -3,25 +3,25 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import pugLoad from 'pug-load';
+import { Response } from 'express';
 import fs from 'fs';
 import objectPath from 'object-path';
+import pugLoad from 'pug-load';
 
 import Debug from 'debug';
 const debug = Debug.debug('context');
 
-import { addBreadcrumb, isCodespacesAuthenticating } from '../../lib/utils';
-import { Operations } from '../operations';
-import { UserContext } from './aggregate';
+import { addBreadcrumb, isCodespacesAuthenticating } from '../../lib/utils.js';
+import { Operations } from '../operations/index.js';
+import { UserContext } from './aggregate.js';
 import {
   ReposAppRequest,
-  IReposAppResponse,
   IProviders,
   UserAlertType,
   IAppSession,
   ICorporateLink,
   IDictionary,
-} from '../../interfaces';
+} from '../../interfaces/index.js';
 
 // - - - identity
 
@@ -50,7 +50,7 @@ export interface ICorporateIdentity {
 export interface IWebContextOptions {
   baseUrl?: string;
   request: ReposAppRequest;
-  response: IReposAppResponse;
+  response: Response;
   sessionUserProperties: SessionUserProperties;
 }
 
@@ -205,7 +205,7 @@ class PugPlugins {
 export class WebContext {
   private _baseUrl: string;
   private _request: ReposAppRequest;
-  private _response: IReposAppResponse;
+  private _response: Response;
   private _sessionUserProperties: SessionUserProperties;
   private _tokens: ReposGitHubTokensSessionAdapter;
 

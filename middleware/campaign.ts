@@ -5,7 +5,7 @@
 
 import { NextFunction, Response } from 'express';
 
-import { getProviders } from '../lib/transitional';
+import { getProviders } from '../lib/transitional.js';
 
 interface ICampaignData {
   uri?: any;
@@ -23,7 +23,7 @@ export default function initializeCampaigns(app) {
   // Use Application Insights to store simple anonymous information about campaigns
   // or events. Also fires off metrics to help understand how many campaign events
   // come through the app.
-  app.use('*', campaignMiddleware);
+  app.use('/*splat', campaignMiddleware);
 
   function campaignMiddleware(req, res: Response, next: NextFunction) {
     process.nextTick(processCampaignTelemetry.bind(null, req));

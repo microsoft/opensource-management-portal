@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { MemoryLinkProvider } from './memoryLinkProvider';
+import { MemoryLinkProvider } from './memoryLinkProvider.js';
 
 export default function createMemoryProvider(providers, config) {
   const memoryOptions = {};

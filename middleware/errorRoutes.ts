@@ -5,8 +5,8 @@
 
 import { NextFunction, Request, Response } from 'express';
 
-import { IReposApplication, IReposError } from '../interfaces';
-import routeErrorHandler from './errorHandler';
+import { IReposApplication, IReposError } from '../interfaces/index.js';
+import routeErrorHandler from './errorHandler.js';
 
 export default async function configureErrorRoutes(app: IReposApplication, initializationError: Error) {
   if (!app) {

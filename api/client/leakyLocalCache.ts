@@ -3,8 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Operations } from '../../business';
-import { ICorporateLink } from '../../interfaces';
+import { Operations } from '../../business/index.js';
+import { ICorporateLink } from '../../interfaces/index.js';
 
 const defaultMinutes = 5;
 

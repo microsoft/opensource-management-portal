@@ -3,8 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { ICorporateLink } from '../../../interfaces';
-import { PostgresLinkProvider } from './postgresLinkProvider';
+import { ICorporateLink } from '../../../interfaces/index.js';
+import { PostgresLinkProvider } from './postgresLinkProvider.js';
 
 export interface IInternalPostgresLinkOptions {
   provider: PostgresLinkProvider;

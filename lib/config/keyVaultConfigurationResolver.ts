@@ -9,9 +9,11 @@ import { KeyVaultSecret, SecretClient } from '@azure/keyvault-secrets';
 import objectPath from 'object-path';
 import { URL } from 'url';
 
+import { CreateError } from '../transitional.js';
+
 // Key Vault Configuration Assumptions:
 // In URL syntax, we define a custom scheme of "keyvault://" which resolves
-// a KeyVault secret ID, replacing the original. To use a tag (a custom
+// a Key Vault secret ID, replacing the original. To use a tag (a custom
 // attribute on a secret - could be a username for example), use the tag
 // name as the auth parameter of the URL.
 //
@@ -23,13 +25,13 @@ import { URL } from 'url';
 // You can also chose to leave the version off, so that the most recent version
 // of the secret will be resolved during the resolution process.
 //
-// In the case that a KeyVault secret ID is needed inside the app, and not
+// In the case that a Key Vault secret ID is needed inside the app, and not
 // handled at startup, then the secret ID (a URI) can be included without
 // the custom keyvault:// scheme.
 //
 // Note that this use of a custom scheme called "keyvault" is not an officially
-// recommended or supported approach for KeyVault use in applications, and may
-// not be endorsed by the engineering team responsible for KeyVault, but for our
+// recommended or supported approach for Key Vault use in applications, and may
+// not be endorsed by the engineering team responsible for Key Vault, but for our
 // group and our Node apps, it has been very helpful.
 
 const debug = Debug.debug('config');
@@ -50,7 +52,7 @@ async function getSecret(
   const secretUrl = new URL(secretId);
   const i = secretUrl.pathname.indexOf(secretsPath);
   if (i < 0) {
-    throw new Error('The requested resource must be a KeyVault secret');
+    throw new Error(`The requested resource must be a KeyVault secret: ${secretUrl}`);
   }
   let secretName = secretUrl.pathname.substr(i + secretsPath.length);
   let version = '';
@@ -71,7 +73,16 @@ async function getSecret(
 function getUrlIfVault(value) {
   try {
     const keyVaultUrl = new URL(value);
-    if (keyVaultUrl.protocol === keyVaultProtocol) {
+    // fun edge case: if there's a string value in the environment or config
+    // that is "keyvault:something", the URL parser matches the protocol and
+    // it errors out in a painful way. To prevent a challenging debug situation,
+    // we also do a string comparison _after_ the URL protocol check just to be
+    // sure it truly looks like one of our keyvault:// custom scheme values.
+    if (
+      keyVaultUrl.protocol === keyVaultProtocol &&
+      typeof value === 'string' &&
+      value.startsWith(keyVaultProtocol + '//')
+    ) {
       return keyVaultUrl;
     }
   } catch (typeError) {
@@ -114,7 +125,7 @@ export interface IKeyVaultConfigurationOptions {
 
 function createAndWrapKeyVaultClient(options: IKeyVaultConfigurationOptions) {
   if (!options) {
-    throw new Error('No options provided for the key vault resolver.');
+    throw CreateError.InvalidParameters('No options provided for the key vault resolver.');
   }
   const vaultToClient = new Map<string, SecretClient>();
   let cachedOptions: AzureAuthenticationPair = null;
@@ -124,6 +135,18 @@ function createAndWrapKeyVaultClient(options: IKeyVaultConfigurationOptions) {
     (async (vault: string) => {
       if (!cachedOptions) {
         cachedOptions = await options.getClientCredentials();
+        if (!cachedOptions.tenantId) {
+          throw CreateError.ParameterRequired('tenantId');
+        }
+        if (!cachedOptions.clientId) {
+          throw CreateError.ParameterRequired('clientId');
+        }
+        if (!cachedOptions.clientSecret) {
+          console.warn(
+            `NOTE: The vault ${vault} requires a client secret. Are you sure you are not using Managed Identities instead?`
+          );
+          throw CreateError.ParameterRequired('clientSecret');
+        }
         cachedCredentials = new ClientSecretCredential(
           cachedOptions.tenantId,
           cachedOptions.clientId,
@@ -172,22 +195,50 @@ async function getSecretsFromVault(getSecretClient: (vault: string) => Promise<S
       pathProperties.set(path, { uri, tag });
       uniqueUris.add(uri);
     }
+    // pre-resolve clients
+    const uniqueVaults = Array.from(new Set(Array.from(uniqueUriToVault.values())));
+    for (const vaultUrl of uniqueVaults) {
+      await getSecretClient(vaultUrl);
+    }
     const secretStash = new Map<string, KeyVaultSecret>();
     const uniques = Array.from(uniqueUris.values());
-    for (const uniqueSecretId of uniques) {
+    const getSecretValue = async (uniqueSecretId: string) => {
       try {
-        const value = secretStash.get(uniqueSecretId);
+        // from MI client: const { vaultUrl, uri: uniqueSecretId } = secretUrlToVaultUrl(secretUrl);
+        let value = secretStash.get(uniqueSecretId);
         if (!value) {
           const vaultUrl = uniqueUriToVault.get(uniqueSecretId);
           const secretClient = await getSecretClient(vaultUrl);
-          const value = await getSecret(secretClient, secretStash, uniqueSecretId);
+          value = await getSecret(secretClient, secretStash, uniqueSecretId);
           debug(`Retrieved secret ${uniqueSecretId} value`);
           secretStash.set(uniqueSecretId, value);
         }
+        return value?.value;
       } catch (resolveSecretError) {
         // console.warn(`Error resolving secret with ID ${uniqueSecretId}: ${resolveSecretError}`);
         throw resolveSecretError;
       }
+    };
+    const errors: string[] = [];
+    await Promise.all(
+      uniques.map(async (uniqueSecretId) => {
+        try {
+          await getSecretValue(uniqueSecretId);
+        } catch (error) {
+          // console.warn(`Error resolving secret with ID ${uniqueSecretId}: ${resolveSecretError}`);
+          errors.push(error.toString());
+        }
+      })
+    );
+    if (errors.length) {
+      const deduplicated = new Set(errors);
+      const combined = Array.from(deduplicated.values()).join('; ');
+      if (combined.includes('blocked by Conditional Access policies')) {
+        throw CreateError.NotAuthorized(
+          `Error resolving secrets: is there a secure network connection that can access ${uniqueVaults.join(', ')} KeyVault(s)? Consider if IP4 or IP6 need to be enabled or disabled.`
+        );
+      }
+      throw new Error(`Error resolving secrets: ${combined}`);
     }
     for (const path in paths) {
       const { uri, tag } = pathProperties.get(path);

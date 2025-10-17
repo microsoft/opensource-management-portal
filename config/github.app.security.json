@@ -2,6 +2,7 @@
   "appId": "env://GITHUB_APP_SECURITY_APP_ID",
   "appKey": "env://GITHUB_APP_SECURITY_KEY",
   "appKeyFile": "env://GITHUB_APP_SECURITY_KEY_FILE",
+  "appKeyRemoteJwt": "env://GITHUB_APP_SECURITY_REMOTE_JWT",
   "webhookSecret": "",
   "slug": "env://GITHUB_APP_SECURITY_SLUG",
   "description": "Security Response"

@@ -3,20 +3,24 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import throat from 'throat';
-import { shuffle } from 'lodash';
+import { throat } from '../vendor/throat/index.js';
+
+import lodash from 'lodash';
+const { shuffle } = lodash;
 
 const killBitHours = 48;
 
-import job from '../job';
+import job from '../job.js';
+
+const INSIGHTS_PREFIX = 'JobRefreshQueryCache';
 
 job.runBackgroundJob(refreshQueryCache, {
   defaultDebugOutput: 'querycache',
   timeoutMinutes: 60 * killBitHours,
-  insightsPrefix: 'JobRefreshQueryCache',
+  insightsPrefix: INSIGHTS_PREFIX,
 });
 
-import { projectCollaboratorPermissionsObjectToGitHubRepositoryPermission } from '../lib/transitional';
+import { projectCollaboratorPermissionsObjectToGitHubRepositoryPermission } from '../lib/transitional.js';
 import {
   Collaborator,
   Operations,
@@ -26,9 +30,9 @@ import {
   Team,
   TeamMember,
   TeamPermission,
-} from '../business';
-import { sleep, addArrayToSet } from '../lib/utils';
-import QueryCache from '../business/queryCache';
+} from '../business/index.js';
+import { sleep, addArrayToSet } from '../lib/utils.js';
+import QueryCache from '../business/queryCache.js';
 import {
   IPagedCacheOptions,
   ICacheOptions,
@@ -48,7 +52,7 @@ import {
   IReposJob,
   IReposJobResult,
   IProviders,
-} from '../interfaces';
+} from '../interfaces/index.js';
 
 interface IConsistencyStats {
   new: number;
@@ -641,14 +645,19 @@ async function cacheRepositoryCollaborators(
 }
 
 async function refreshQueryCache(providers: IProviders, { args }: IReposJob): Promise<IReposJobResult> {
-  const { config } = providers;
+  const { config, insights } = providers;
+  insights?.trackEvent({
+    name: `${INSIGHTS_PREFIX}${args[0]}Start`,
+    properties: {
+      time: new Date(),
+    },
+  });
   if (config?.jobs?.refreshWrites !== true) {
     console.log('job is currently disabled to avoid metadata refresh/rewrites');
     return;
   }
 
   const operations = providers.operations as Operations;
-  const insights = providers.insights;
   const repositoryCacheProvider = providers.repositoryCacheProvider;
   const queryCache = providers.queryCache;
   const teamCacheProvider = providers.teamCacheProvider;
@@ -806,6 +815,14 @@ async function refreshQueryCache(providers: IProviders, { args }: IReposJob): Pr
   insights.trackMetric({ name: 'QueryCacheConsistencyAdds', value: allUpStats['new'] });
   insights.trackMetric({ name: 'QueryCacheConsistencyDeletes', value: allUpStats['delete'] });
   insights.trackMetric({ name: 'QueryCacheConsistencyUpdates', value: allUpStats['update'] });
+
+  insights?.trackEvent({
+    name: `${INSIGHTS_PREFIX}${args[0]}End`,
+    properties: {
+      time: new Date(),
+    },
+  });
+
   return {
     successProperties: {
       adds: allUpStats['new'],

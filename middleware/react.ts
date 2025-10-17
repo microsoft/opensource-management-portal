@@ -4,21 +4,34 @@
 //
 
 import { NextFunction, Response } from 'express';
+
+import Debug from 'debug';
 import fs from 'fs';
 import path from 'path';
 
-import appPackage from '../package.json';
+import appPackage from '../package.json' with { type: 'json' };
 
-import { getStaticBlobCacheFallback } from '../lib/staticBlobCacheFallback';
-import { getProviders, splitSemiColonCommas } from '../lib/transitional';
-import type { ReposAppRequest, SiteConfiguration } from '../interfaces';
-import { IndividualContext } from '../business/user';
+import { getStaticBlobCacheFallback } from '../lib/staticBlobCacheFallback.js';
+import {
+  CreateError,
+  FrontendBuildDetails,
+  FrontendMode,
+  getFrontendMode,
+  getProviders,
+  getStaticReactClientFolder,
+  splitSemiColonCommas,
+} from '../lib/transitional.js';
+import type { ReposAppRequest, SiteConfiguration } from '../interfaces/index.js';
+import type { IndividualContext } from '../business/user/index.js';
 
-const staticReactPackageNameKey = 'static-react-package-name';
-const staticClientPackageName = appPackage[staticReactPackageNameKey];
+const STATIC_REACT_FLIGHTING_PACKAGE_NAME_KEY = 'static-react-flight-package-name';
+const INSIGHTS_PREFIX = 'route.frontend';
 
-const staticReactFlightingPackageNameKey = 'static-react-flight-package-name';
-const staticClientFlightingPackageName = appPackage[staticReactFlightingPackageNameKey];
+const staticClientFlightingPackageName = appPackage[STATIC_REACT_FLIGHTING_PACKAGE_NAME_KEY];
+
+const debug = Debug.debug('frontend');
+
+const reactCache: Map<string, ContentOptions> = new Map<string, ContentOptions>();
 
 type PackageJsonSubset = {
   name: string;
@@ -48,15 +61,23 @@ type FlightingOptions = BasicFlightingOptions &
   };
 
 export function injectReactClient() {
-  const standardContent = getReactScriptsIndex(staticClientPackageName);
+  const mode = getFrontendMode();
+  const standardContent =
+    mode === FrontendMode.Serve ? getReactScriptsIndex(getStaticReactClientFolder()) : null;
   let flightingBasics: BasicFlightingOptions = null;
   let flightingOptions: FlightingOptions = null;
   return function injectedRoute(req: ReposAppRequest, res: Response, next: NextFunction) {
-    const { config } = getProviders(req);
+    const { config, insights } = getProviders(req);
     // special passthrough
     if (req.path.includes('/byClient')) {
+      debug(`${req.path} - skipping react client injection due to /byClient presence`);
+      insights?.trackEvent({
+        name: `${INSIGHTS_PREFIX}.skip_for_client`,
+        properties: { path: req.path },
+      });
       return next();
     }
+    debug(`${req.path} serving frontend`);
     if (!flightingOptions) {
       flightingBasics = evaluateFlightConditions(req);
       flightingOptions = flightingBasics as FlightingOptions;
@@ -76,14 +97,15 @@ export function injectReactClient() {
       inFlight = false;
     }
     //
-    const servePackage = (inFlight ? flightingOptions : standardContent).package;
+    const servePackage = (inFlight ? flightingOptions : standardContent)?.package;
     const meta: Record<string, string> = {
-      'served-client-package': servePackage.name,
-      'served-client-version': servePackage.version,
+      'served-client-package': servePackage?.name,
+      'served-client-version': servePackage?.version,
       'served-client-flight-default': userFlighted ? '1' : '0',
       // Repos app config
       'portal-environment': config.debug.environmentName,
     };
+
     // Feature flags on the client side from the static list
     if (activeContext?.corporateIdentity?.id) {
       const userClientFlags = getUserClientFeatureFlags(config, activeContext.corporateIdentity.id);
@@ -91,6 +113,7 @@ export function injectReactClient() {
         meta['server-features'] = userClientFlags.join(',');
       }
     }
+
     // Override
     if (inFlight) {
       meta['served-client-flight'] = flightName;
@@ -98,24 +121,38 @@ export function injectReactClient() {
     if (userFlightOverride !== undefined) {
       meta['served-client-flight-override'] = userFlightOverride;
     }
+
     // App Service
-    config?.webServer?.appService?.slot && (meta['app-service-slot'] = config.webServer.appService.slot);
-    config?.webServer?.appService?.name && (meta['app-service-name'] = config.webServer.appService.name);
-    config?.webServer?.appService?.region &&
-      (meta['app-service-region'] = config.webServer.appService.region);
+    if (config?.webServer?.appService?.slot) {
+      meta['app-service-slot'] = config.webServer.appService.slot;
+    }
+    if (config?.webServer?.appService?.name) {
+      meta['app-service-name'] = config.webServer.appService.name;
+    }
+    if (config?.webServer?.appService?.region) {
+      meta['app-service-region'] = config.webServer.appService.region;
+    }
+
     // Repos app framework
-    config?.web?.app && (meta['app-name'] = config.web.app);
+    if (config?.web?.app) {
+      meta['app-name'] = config.web.app;
+    }
+
     // Source control
-    let commitId = servePackage.continuousDeployment?.commitId;
+    let commitId = servePackage?.continuousDeployment?.commitId;
     if (commitId === '__Build_SourceVersion__') {
       commitId = '';
     }
-    let branchName = servePackage.continuousDeployment?.branchName || '';
+    let branchName = servePackage?.continuousDeployment?.branchName || '';
     if (branchName === '__Build_BranchName__') {
       branchName = '';
     }
-    commitId && (meta['source-control-client-commit-id'] = commitId);
-    branchName && (meta['source-control-client-branch-name'] = branchName);
+    if (commitId) {
+      meta['source-control-client-commit-id'] = commitId;
+    }
+    if (branchName) {
+      meta['source-control-client-branch-name'] = branchName;
+    }
     commitId = appPackage.continuousDeployment?.commitId;
     if (commitId === '__Build_SourceVersion__') {
       commitId = '';
@@ -124,11 +161,20 @@ export function injectReactClient() {
     if (branchName === '__Build_BranchName__') {
       branchName = '';
     }
-    commitId && (meta['source-control-server-commit-id'] = commitId);
-    branchName && (meta['source-control-server-branch-name'] = branchName);
+    if (commitId) {
+      meta['source-control-server-commit-id'] = commitId;
+    }
+    if (branchName) {
+      meta['source-control-server-branch-name'] = branchName;
+    }
+
     // Debug-time
-    config?.github?.codespaces?.connected && (meta['github-codespaces-connected'] = '1');
-    config?.github?.codespaces?.name && (meta['github-codespaces-name'] = config.github.codespaces.name);
+    if (config?.github?.codespaces?.connected) {
+      meta['github-codespaces-connected'] = '1';
+    }
+    if (config?.github?.codespaces?.name) {
+      meta['github-codespaces-name'] = config.github.codespaces.name;
+    }
     const addon =
       Object.keys(meta)
         .map((key) => {
@@ -142,10 +188,32 @@ export function injectReactClient() {
     if (inFlight) {
       res.header('x-ms-repos-flight', flightName);
     }
-    const clientHtml = inFlight ? flightingOptions.html : standardContent.html;
+    const clientHtml =
+      mode === FrontendMode.Serve
+        ? inFlight
+          ? flightingOptions.html
+          : standardContent.html
+        : alternativeHtml(mode);
     const html = augmentHtmlHeader(clientHtml, addon);
-    return res.send(html);
+    insights?.trackEvent({
+      name: `${INSIGHTS_PREFIX}.inject`,
+      properties: { path: req.path, ...meta },
+    });
+    return res.send(html) as unknown as void;
   };
+}
+
+function alternativeHtml(messageOrType: string) {
+  return `
+    <html>
+      <head>
+        <title>${messageOrType}</title>
+      </head>
+      <body>
+        <h1>Note</h1>
+        <p>${messageOrType}</p>
+      </body>
+  `;
 }
 
 function evaluateFlightConditions(req: ReposAppRequest): FlightingOptions | BasicFlightingOptions {
@@ -187,11 +255,15 @@ function getUserClientFeatureFlags(config: SiteConfiguration, corporateId: strin
 
 function augmentHtmlHeader(html: string, augmentedHeader: string) {
   const headEnd = html.indexOf('</head>');
-  const head = html.substring(0, headEnd);
-  const body = html.substring(headEnd);
-  const newHead = head + augmentedHeader;
-  const newHtml = newHead + body;
-  return newHtml;
+  if (headEnd >= 0) {
+    const head = html.substring(0, headEnd);
+    const body = html.substring(headEnd);
+    const newHead = head + augmentedHeader;
+    const newHtml = newHead + body;
+    return newHtml;
+  }
+  console.warn('The client HTML does not have a head tag to augment with additional meta tags.');
+  return html;
 }
 
 type CacheBuffer = {
@@ -205,7 +277,7 @@ export async function TryFallbackToBlob(req: ReposAppRequest, res: Response): Pr
     return false;
   }
   const providers = getProviders(req);
-  const baseUrl = '/react' + req.originalUrl;
+  const baseUrl = req.originalUrl;
   if (localFallbackBlobCache.has(baseUrl)) {
     providers.insights.trackEvent({ name: 'FallbackToBlob', properties: { baseUrl } });
     const entry = localFallbackBlobCache.get(baseUrl);
@@ -216,6 +288,9 @@ export async function TryFallbackToBlob(req: ReposAppRequest, res: Response): Pr
     return true;
   }
   const fallbackBlob = await getStaticBlobCacheFallback(providers);
+  if (!fallbackBlob) {
+    return false;
+  }
   const [buffer, contentType] = await fallbackBlob.get(baseUrl);
   if (buffer) {
     providers.insights.trackEvent({ name: 'FallbackToBlob', properties: { baseUrl } });
@@ -229,24 +304,51 @@ export async function TryFallbackToBlob(req: ReposAppRequest, res: Response): Pr
   return false;
 }
 
-function getReactScriptsIndex(packageName: string): ContentOptions {
+function getReactScriptsIndex(details: FrontendBuildDetails): ContentOptions {
+  const cacheRoot = details.hostingRoot;
+  if (reactCache.has(cacheRoot)) {
+    return reactCache.get(cacheRoot);
+  }
+  let pagePath = null;
+  let staticPackageFile = details.package;
+  const staticModernReactApp = details.hostingRoot;
+  const dir = details.directory;
+  if (!staticPackageFile) {
+    const raw = fs.readFileSync(`${dir}/package.json`, 'utf8');
+    staticPackageFile = JSON.parse(raw);
+  }
+  if (!staticModernReactApp) {
+    throw CreateError.NotFound(`The static client folder and package.json was not found: ${dir}`);
+  }
+  const clientFolder = staticModernReactApp;
   try {
-    const staticModernReactApp = require(packageName);
-    const staticPackageFile = require(`${packageName}/package.json`);
-    const previewClientFolder = staticModernReactApp;
-    if (typeof previewClientFolder !== 'string') {
-      throw new Error(`The return value of the preview package ${packageName} must be a string/path`);
+    if (typeof clientFolder !== 'string') {
+      throw new Error(`The return value of the preview package ${dir} must be a string/path`);
     }
-    const indexPageContent = fs.readFileSync(path.join(previewClientFolder, 'client.html'), {
-      encoding: 'utf8',
-    });
-    return {
+    let indexPageContent = null;
+    try {
+      pagePath = path.join(clientFolder, 'index.html');
+      indexPageContent = fs.readFileSync(pagePath, {
+        encoding: 'utf8',
+      });
+    } catch (error) {
+      if (error.code !== 'ENOENT') {
+        throw error;
+      }
+      pagePath = path.join(clientFolder, 'client.html');
+      indexPageContent = fs.readFileSync(pagePath, {
+        encoding: 'utf8',
+      });
+    }
+    const values = {
       html: indexPageContent,
       package: staticPackageFile,
     };
+    reactCache.set(cacheRoot, values);
+    return values;
   } catch (hostClientError) {
     console.error(
-      `The static client could not be loaded via package ${packageName}. Note that index.html needs to be named client.html in build/.`
+      `The static client could not be loaded via package/folder ${staticModernReactApp}. Note that index.html needs to be named client.html or index.html in build/. Attempted path: ${pagePath || ''}`
     );
     throw hostClientError;
   }

@@ -3,12 +3,14 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Team } from './team';
-import { Repository } from './repository';
+import { Team } from './team.js';
+import { Repository } from './repository.js';
+import { Operations } from './index.js';
 
-import type { GitHubRepositoryPermission, IOperationsInstance } from '../interfaces';
-import { isStandardGitHubTeamPermission, type ITeamRepositoryPermission } from './teamPermission';
-import { projectCollaboratorPermissionsObjectToGitHubRepositoryPermission } from '../lib/transitional';
+import { isStandardGitHubTeamPermission, type ITeamRepositoryPermission } from './teamPermission.js';
+import { projectCollaboratorPermissionsObjectToGitHubRepositoryPermission } from '../lib/transitional.js';
+
+import type { GitHubRepositoryPermission } from '../interfaces/index.js';
 
 // this is used when a team returns the repositories it can work with;
 // the GitHub API is pretty inconsistent. The actual entities are a combination of
@@ -34,7 +36,7 @@ export class TeamRepositoryPermission {
   private _repository: Repository;
   private _id: number;
 
-  constructor(team: Team, entity: RepositoryWithTeamPermissionsEntity, operations: IOperationsInstance) {
+  constructor(team: Team, entity: RepositoryWithTeamPermissionsEntity, operations: Operations) {
     this._team = team;
     if (!entity) {
       throw new Error('TeamRepositoryPermission: requires entity');

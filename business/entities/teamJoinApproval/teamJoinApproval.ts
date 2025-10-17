@@ -5,22 +5,22 @@
 
 import { randomUUID } from 'crypto';
 
-import { IObjectWithDefinedKeys } from '../../../lib/entityMetadataProvider/entityMetadataProvider';
-import { EntityMetadataType, IEntityMetadata } from '../../../lib/entityMetadataProvider/entityMetadata';
+import { IObjectWithDefinedKeys } from '../../../lib/entityMetadataProvider/entityMetadataProvider.js';
+import { EntityMetadataType, IEntityMetadata } from '../../../lib/entityMetadataProvider/entityMetadata.js';
 import {
   MetadataMappingDefinition,
   EntityMetadataMappings,
-} from '../../../lib/entityMetadataProvider/declarations';
-import { FixedQueryType, IEntityMetadataFixedQuery } from '../../../lib/entityMetadataProvider/query';
-import { stringOrNumberAsString, stringOrNumberArrayAsStringArray } from '../../../lib/utils';
+} from '../../../lib/entityMetadataProvider/declarations.js';
+import { FixedQueryType, IEntityMetadataFixedQuery } from '../../../lib/entityMetadataProvider/query.js';
+import { stringOrNumberAsString, stringOrNumberArrayAsStringArray } from '../../../lib/utils.js';
 import {
   PostgresGetAllEntities,
   PostgresJsonEntityQuery,
   PostgresSettings,
   PostgresConfiguration,
-} from '../../../lib/entityMetadataProvider/postgres';
-import { TableSettings } from '../../../lib/entityMetadataProvider/table';
-import { MemorySettings } from '../../../lib/entityMetadataProvider/memory';
+} from '../../../lib/entityMetadataProvider/postgres.js';
+import { TableSettings } from '../../../lib/entityMetadataProvider/table.js';
+import { MemorySettings } from '../../../lib/entityMetadataProvider/memory.js';
 import { odata, TableEntityQueryOptions } from '@azure/data-tables';
 
 const type = new EntityMetadataType('TeamJoinRequest');

@@ -5,7 +5,6 @@
     "blob": {
       "enabled": "env://IMMUTABLE_STORAGE_BLOB_ENABLED?trueIf=1",
       "account": "env://IMMUTABLE_STORAGE_BLOB_DROP_ACCOUNT",
-      "key": "env://IMMUTABLE_STORAGE_BLOB_DROP_KEY",
       "container": "env://IMMUTABLE_STORAGE_BLOB_DROP_CONTAINER"
     }
   }

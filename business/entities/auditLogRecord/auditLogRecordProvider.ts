@@ -7,7 +7,7 @@ import {
   IEntityMetadata,
   EntityMetadataBase,
   IEntityMetadataBaseOptions,
-} from '../../../lib/entityMetadataProvider/entityMetadata';
+} from '../../../lib/entityMetadataProvider/entityMetadata.js';
 import {
   AuditLogRecord,
   AuditLogRecordQueryUndoCandidatesByThirdPartyId,
@@ -15,12 +15,10 @@ import {
   AuditLogRecordQueryRecordsByUserThirdPartyId,
   AuditLogRecordQueryRecordsByRepositoryId,
   AuditLogRecordQueryRecordsByTeamId,
-} from './auditLogRecord';
-import { EntityImplementation } from './auditLogRecord';
+} from './auditLogRecord.js';
+import { EntityImplementation } from './auditLogRecord.js';
 
 const thisProviderType = EntityImplementation.Type;
-
-export interface IAuditLogRecordProviderCreateOptions extends IEntityMetadataBaseOptions {}
 
 export interface IAuditLogRecordProvider {
   initialize(): Promise<void>;
@@ -35,7 +33,7 @@ export interface IAuditLogRecordProvider {
 }
 
 export class AuditLogRecordProvider extends EntityMetadataBase implements IAuditLogRecordProvider {
-  constructor(options: IAuditLogRecordProviderCreateOptions) {
+  constructor(options: IEntityMetadataBaseOptions) {
     super(thisProviderType, options);
     EntityImplementation.EnsureDefinitions();
   }

@@ -5,18 +5,17 @@
 
 import util from 'util';
 
-import { Organization } from './organization';
-import { TeamMember } from './teamMember';
-import { Team } from '.';
+import { Organization } from './organization.js';
+import { TeamMember } from './teamMember.js';
+import { Operations, Team } from './index.js';
 import {
-  type IOperationsInstance,
   GitHubTeamPrivacy,
   TeamJsonFormat,
-  type IGetMembersOptions,
+  IGetMembersOptions,
   GitHubRepositoryPermission,
-  type IGitHubTeamBasics,
-} from '../interfaces';
-import { projectCollaboratorPermissionsObjectToGitHubRepositoryPermission } from '../lib/transitional';
+  IGitHubTeamBasics,
+} from '../interfaces/index.js';
+import { projectCollaboratorPermissionsObjectToGitHubRepositoryPermission } from '../lib/transitional.js';
 
 export interface ITeamRepositoryPermission {
   pull: boolean;
@@ -90,11 +89,7 @@ export class TeamPermission {
     return this._team;
   }
 
-  constructor(
-    organization: Organization,
-    entity: TeamPermissionIncomingEntity,
-    operations: IOperationsInstance
-  ) {
+  constructor(organization: Organization, entity: TeamPermissionIncomingEntity, operations: Operations) {
     this._organization = organization;
     this._entity = entity;
 

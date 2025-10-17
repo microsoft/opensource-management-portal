@@ -21,10 +21,11 @@ import {
   ApiContextType,
   RestMetadata,
   RestResponse,
-} from './core';
-import { GetAuthorizationHeader } from '../../interfaces';
+} from './core.js';
+import { GetAuthorizationHeader } from '../../interfaces/index.js';
 
-import appPackage from '../../package.json';
+import appPackage from '../../package.json' with { type: 'json' };
+import { CreateError } from '../transitional.js';
 
 const appVersion = appPackage.version;
 
@@ -228,6 +229,9 @@ export class CompositeIntelligentEngine extends IntelligentEngine {
     const thisArgument = apiMethod.thisInstance || null;
     let unknown = undefined;
     try {
+      if (!apiMethod || !apiMethod.apply) {
+        throw CreateError.InvalidParameters('apiMethod');
+      }
       unknown = await apiMethod.apply(thisArgument, args);
     } catch (applyError) {
       throw applyError;

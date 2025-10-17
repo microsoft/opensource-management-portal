@@ -10,12 +10,12 @@
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "target": "es2022",
+    "target": "ESNext",
     "typeRoots": ["./node_modules/@types", "./typings"],
     "lib": ["es2022"],
-    "types": ["jest"]
+    "types": ["node"]
   },
-  "exclude": ["**/*.test.ts", "**/*.spec.ts", "./.ossdev/**/*"],
+  "exclude": ["**/*.test.ts", "**/*.spec.ts", "./.ossdev/**/*", "frontend/**"],
   "include": [
     "./*.ts",
     "./api/**/*",
@@ -23,16 +23,12 @@
     "./business/**/*",
     "./config/**/*",
     "./data/**/*",
-    "business/entities/**/*",
-    "business/features/**/*",
     "./interfaces/**/*",
     "./jobs/**/*",
     "./lib/**/*",
     "./microsoft/**/*",
     "./middleware/**/*",
     "./routes/**/*",
-    "./scripts/**/*",
-    "./test/**/*",
-    "business/webhooks/**/*"
+    "./scripts/**/*"
   ]
 }

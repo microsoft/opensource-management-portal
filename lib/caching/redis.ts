@@ -3,15 +3,16 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { RedisClientType, commandOptions } from 'redis';
+import { RedisClientType } from 'redis';
 import zlib from 'zlib';
 
 import Debug from 'debug';
 const debug = Debug.debug('redis');
 const debugCrossOrganization = Debug.debug('redis-cross-org');
 
-import type { ICacheHelper } from '.';
-import { gunzipBuffer, gzipString } from '../utils';
+import type { ICacheHelper } from './index.js';
+import { gunzipBuffer, gzipString } from '../utils.js';
+import { RESP_TYPES } from './redis.thirdParty.js';
 
 export interface ISetCompressedOptions {
   minutesToExpire?: number;
@@ -24,6 +25,7 @@ export interface IRedisHelperOptions {
 
 export default class RedisHelper implements ICacheHelper {
   private _redis: RedisClientType;
+  private _redisForBuffers: RedisClientType;
   private _prefix: string;
 
   constructor(options: IRedisHelperOptions) {
@@ -32,19 +34,23 @@ export default class RedisHelper implements ICacheHelper {
     }
     this._prefix = options.prefix ? options.prefix + '.' : '';
     this._redis = options.redisClient;
+    this._redisForBuffers = this._redis.withCommandOptions({
+      // v5 breaking change: https://github.com/redis/node-redis/blob/master/docs/v4-to-v5.md#command-options
+      [RESP_TYPES.BLOB_STRING as unknown as any]: Buffer,
+    });
   }
 
   private key(key: string) {
     return this._prefix + key;
   }
 
-  get(key: string): Promise<string> {
+  async get(key: string): Promise<string> {
     key = this.key(key);
     debug('GET ' + key);
     if (key.includes('.x#')) {
       debugCrossOrganization('    GET ' + key);
     }
-    return this._redis.get(key);
+    return (await this._redis.get(key)) as string;
   }
 
   async getCompressed(key: string): Promise<string> {
@@ -53,8 +59,7 @@ export default class RedisHelper implements ICacheHelper {
     if (key.includes('.x#')) {
       debugCrossOrganization('    GET ' + key);
     }
-    const bufferOptions = commandOptions({ returnBuffers: true });
-    const buffer = await this._redis.get(bufferOptions, key);
+    const buffer = (await this._redisForBuffers.get(key)) as Buffer;
     if (buffer === undefined || buffer === null) {
       return null;
     }

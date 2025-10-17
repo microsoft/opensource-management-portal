@@ -11,7 +11,9 @@
 
   "serviceBus": {
     "connectionString": "env://GITHUB_WEBHOOKS_SERVICEBUS_CONNECTIONSTRING",
-    "queue": "env://GITHUB_WEBHOOKS_SERVICEBUS_QUEUE"
+    "queue": "env://GITHUB_WEBHOOKS_SERVICEBUS_QUEUE",
+    "useEntraAuthentication": "env://GITHUB_WEBHOOKS_SERVICEBUS_USE_ENTRA_AUTH?trueIf=1",
+    "endpoint": "env://GITHUB_WEBHOOKS_SERVICEBUS_ENDPOINT"
   },
 
   "azureQueues": {

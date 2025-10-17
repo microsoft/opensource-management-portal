@@ -13,10 +13,10 @@ export type ConfigSession = {
   salt: string;
   name: string;
   domain: string;
-  encryption: boolean;
-  encryptionKeyId: string;
 
   cosmosdb: {
+    useManagedIdentity: boolean;
+    createCollectionIfNotExist: boolean;
     endpoint: string;
     key: string;
     database: string;

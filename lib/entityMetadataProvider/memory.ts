@@ -12,14 +12,14 @@ import {
   IEntityMetadataDeserializationHelper,
   SerializeObjectToEntityMetadata,
   DeserializeEntityMetadataToObjectSetCollection,
-} from './entityMetadataProvider';
-import { IEntityMetadata, EntityMetadataType } from './entityMetadata';
-import { IEntityMetadataFixedQuery } from './query';
+} from './entityMetadataProvider.js';
+import { IEntityMetadata, EntityMetadataType } from './entityMetadata.js';
+import { IEntityMetadataFixedQuery } from './query.js';
 import {
   EntityMetadataMappings,
   MetadataMappingDefinition,
   MetadataMappingDefinitionBase,
-} from './declarations';
+} from './declarations.js';
 
 class MemoryMetadataDefinition extends MetadataMappingDefinitionBase {
   constructor(name: string) {

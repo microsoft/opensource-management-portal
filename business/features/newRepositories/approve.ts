@@ -3,11 +3,11 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Operations, Repository } from '../..';
-import { IRepositoryMetadataProvider } from '../../entities/repositoryMetadata/repositoryMetadataProvider';
-import { ICachedEmployeeInformation, RepositoryLockdownState } from '../../../interfaces';
-import { IMail } from '../../../lib/mailProvider';
-import { IMailToRemoveAdministrativeLock } from './interfaces';
+import { Operations, Repository } from '../../index.js';
+import { IRepositoryMetadataProvider } from '../../entities/repositoryMetadata/repositoryMetadataProvider.js';
+import { ICachedEmployeeInformation, RepositoryLockdownState } from '../../../interfaces/index.js';
+import { IMail } from '../../../lib/mailProvider/index.js';
+import { IMailToRemoveAdministrativeLock } from './interfaces.js';
 
 export async function administrativeApproval(
   operations: Operations,
@@ -60,20 +60,19 @@ export async function administrativeApproval(
     const mailToCreator: IMail = {
       to: lockdownMailContent.mailAddress,
       subject: `Your repo was approved, please complete its setup: ${repoName}`,
-      content: await operations.emailRender('newrepolockremoved', {
-        reason: `Your new repo was approved. Additional actions are now required to gain access to continue to use it after classification.
-                  ${reasonInfo}.`,
-        headline: 'Repo approved',
-        notification: 'action',
-        app: `${companyName} GitHub`,
-        isMailToCreator: true,
-        lockdownMailContent,
-      }),
     };
     if (managerInfo && managerInfo.managerMail) {
       mailToCreator.cc = managerInfo.managerMail;
     }
-    await operations.sendMail(mailToCreator);
+    await operations.emailRenderSend('newrepolockremoved', mailToCreator, {
+      reason: `Your new repo was approved. Additional actions are now required to gain access to continue to use it after classification.
+                ${reasonInfo}.`,
+      headline: 'Repo approved',
+      notification: 'action',
+      app: `${companyName} GitHub`,
+      isMailToCreator: true,
+      lockdownMailContent,
+    });
     mailSentToCreator = true;
   } catch (noLinkOrEmail) {
     console.dir(noLinkOrEmail);
@@ -86,18 +85,17 @@ export async function administrativeApproval(
       const mailToOperations: IMail = {
         to: operationsMails,
         subject,
-        content: await operations.emailRender('newrepolockremoved', {
-          reason: `An administrator has approved this repo, removing an administrative lock. As the operations contact for this system, you are receiving this e-mail.
-                    This mail was sent to: ${operationsMails.join(', ')}`,
-          headline: `Administrative lock removed: ${organization.name}/${repository.name}`,
-          notification: 'information',
-          app: `${operations.config.brand.companyName} GitHub`,
-          isMailToOperations: true,
-          lockdownMailContent,
-          mailSentToCreator,
-        }),
       };
-      await operations.sendMail(mailToOperations);
+      await operations.emailRenderSend('newrepolockremoved', mailToOperations, {
+        reason: `An administrator has approved this repo, removing an administrative lock. As the operations contact for this system, you are receiving this e-mail.
+                  This mail was sent to: ${operationsMails.join(', ')}`,
+        headline: `Administrative lock removed: ${organization.name}/${repository.name}`,
+        notification: 'information',
+        app: `${operations.config.brand.companyName} GitHub`,
+        isMailToOperations: true,
+        lockdownMailContent,
+        mailSentToCreator,
+      });
     } catch (mailIssue) {
       console.dir(mailIssue);
     }

@@ -3,12 +3,10 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import asyncHandler from 'express-async-handler';
+import { ReposAppRequest } from '../../../interfaces/index.js';
+import { IndividualContext } from '../../../business/user/index.js';
 
-import { ReposAppRequest } from '../../../interfaces';
-import { IndividualContext } from '../../../business/user';
-
-export default asyncHandler(async (req: ReposAppRequest, res) => {
+export default async (req: ReposAppRequest, res) => {
   const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
   if (!activeContext.link) {
     return res.json({
@@ -34,4 +32,4 @@ export default asyncHandler(async (req: ReposAppRequest, res) => {
     }),
   };
   return res.json(data) as unknown as void;
-});
+};

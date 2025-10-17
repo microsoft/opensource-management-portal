@@ -4,7 +4,7 @@
 //
 
 import { NextFunction, Response } from 'express';
-import { ReposAppRequest } from '../interfaces';
+import { ReposAppRequest } from '../interfaces/index.js';
 
 // Scrub the incoming URL value(s) in the request, replacing tokens and other
 // secrets.

@@ -4,12 +4,11 @@
 //
 
 import { NextFunction, Response, Router } from 'express';
-import asyncHandler from 'express-async-handler';
 
-import { jsonError } from '../../../middleware';
-import { getProviders } from '../../../lib/transitional';
-import LeakyLocalCache, { getLinksLightCache } from '../leakyLocalCache';
-import JsonPager from '../jsonPager';
+import { jsonError } from '../../../middleware/index.js';
+import { CreateError, getProviders } from '../../../lib/transitional.js';
+import LeakyLocalCache, { getLinksLightCache } from '../leakyLocalCache.js';
+import JsonPager from '../jsonPager.js';
 import {
   OrganizationMember,
   TeamMember,
@@ -18,8 +17,8 @@ import {
   Organization,
   MemberSearch,
   corporateLinkToJson,
-} from '../../../business';
-import { NoCacheNoBackground, ReposAppRequest } from '../../../interfaces';
+} from '../../../business/index.js';
+import { NoCacheNoBackground, ReposAppRequest } from '../../../interfaces/index.js';
 
 const router: Router = Router();
 
@@ -67,9 +66,28 @@ export async function equivalentLegacyPeopleSearch(req: ReposAppRequest, options
   const org = req.organization ? req.organization.name : null;
   const orgId = req.organization ? (req.organization as Organization).id : null;
   const { organizationMembers, teamMembers } = await getPeopleForOrganization(operations, org, options);
-  const page = req.query.page_number ? Number(req.query.page_number) : 1;
+  let page = 1;
+  if (req.query.page_number !== undefined) {
+    if (typeof req.query.page_number !== 'string') {
+      throw CreateError.InvalidParameters('page_number must be a string');
+    }
+    page = parseInt(req.query.page_number, 10);
+    if (isNaN(page) || page <= 0) {
+      throw CreateError.InvalidParameters('page_number must be a positive number');
+    }
+  }
+  if (req.query.q !== undefined && typeof req.query.q !== 'string') {
+    throw CreateError.InvalidParameters('q must be a string');
+  }
   const phrase = req.query.q as string;
-  let type = req.query.type as string;
+  if (req.query.type && typeof req.query.type !== 'string') {
+    throw CreateError.InvalidParameters('type must be a string');
+  }
+  if (req.query.sort !== undefined && typeof req.query.sort !== 'string') {
+    throw CreateError.InvalidParameters('sort must be a string');
+  }
+  const sort = typeof req.query.sort === 'string' ? req.query.sort : null;
+  const type = typeof req.query.type === 'string' ? req.query.type : null;
   const validTypes = new Set([
     'linked',
     'active',
@@ -79,8 +97,8 @@ export async function equivalentLegacyPeopleSearch(req: ReposAppRequest, options
     'unknownAccount',
     'owners',
   ]);
-  if (!validTypes.has(type)) {
-    type = null;
+  if (type && !validTypes.has(type)) {
+    throw CreateError.InvalidParameters(`type must be one of: ${Array.from(validTypes).join(', ')}`);
   }
   const filters = [];
   if (type) {
@@ -112,37 +130,34 @@ export async function equivalentLegacyPeopleSearch(req: ReposAppRequest, options
     // team2AddType: null, // req.team2AddType, // Used to enable the "add a member" or maintainer experience for teams
     teamMembers, // Used to filter team members in ./org/ORG/team/TEAM/members and other views
   });
-  await search.search(page, req.query.sort as string);
+  await search.search(page, sort);
   return search;
 }
 
-router.get(
-  '/',
-  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
-    const pager = new JsonPager<OrganizationMember>(req, res);
-    try {
-      const searcher = await equivalentLegacyPeopleSearch(req);
-      const members = searcher.members;
-      const slice = pager.slice(members);
-      return pager.sendJson(
-        slice.map((organizationMember) => {
-          const obj = Object.assign(
-            {
-              link: organizationMember.link ? corporateLinkToJson(organizationMember.link) : null,
-            },
-            organizationMember.getEntity()
-          );
-          return obj;
-        })
-      );
-    } catch (repoError) {
-      console.dir(repoError);
-      return next(jsonError(repoError));
-    }
-  })
-);
+router.get('/', async (req: ReposAppRequest, res: Response, next: NextFunction) => {
+  const pager = new JsonPager<OrganizationMember>(req, res);
+  try {
+    const searcher = await equivalentLegacyPeopleSearch(req);
+    const members = searcher.members;
+    const slice = pager.slice(members);
+    return pager.sendJson(
+      slice.map((organizationMember) => {
+        const obj = Object.assign(
+          {
+            link: organizationMember.link ? corporateLinkToJson(organizationMember.link) : null,
+          },
+          organizationMember.getEntity()
+        );
+        return obj;
+      })
+    );
+  } catch (repoError) {
+    console.dir(repoError);
+    return next(jsonError(repoError));
+  }
+});
 
-router.use('*', (req, res: Response, next: NextFunction) => {
+router.use('/*splat', (req, res: Response, next: NextFunction) => {
   return next(jsonError('no API or function available within this people list', 404));
 });
 

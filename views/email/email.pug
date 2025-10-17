@@ -13,9 +13,11 @@
 //- CDN Information
 //- The assets are served using HTTPS
 //- The assets are stored in the storage account 'ospomail', public blob container 'opensource'
-//- An Akamai CDN is used to serve the images, https://ospomail.azureedge.net points to the container
+//- Azure Front Door CDN is used to serve the images, https://mail.opensource.ms/ points to the container
+//- In 2025 the domain `mail.opensource.ms` will redirect as updates to DNS are allowed again.
+//- Being transient (mail), this is OK.
 
-- var logoBase = 'https://ospomail.azureedge.net/';
+- var logoBase = 'https://mail.opensource.ms/';
 - var logoImage = 'opensource.png'
 - var orgIdSize = 42
 - var iconSize = 60

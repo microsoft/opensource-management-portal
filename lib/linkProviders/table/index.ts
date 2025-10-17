@@ -3,8 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { IProviders } from '../../../interfaces';
-import { TableLinkProvider } from './tableLinkProvider';
+import { IProviders } from '../../../interfaces/index.js';
+import { TableLinkProvider } from './tableLinkProvider.js';
 
 export default function createTableProvider(providers: IProviders, config) {
   const tableOptions = config && config.github && config.github.links ? config.github.links.table : null;

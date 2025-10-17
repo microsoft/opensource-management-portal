@@ -11,7 +11,6 @@
     "enabled": "env://GITHUB_REPORTS_BACKUP?trueIf=datalake",
     "azureStorage": {
       "account": "env://GITHUB_REPORTS_BACKUP_STORAGE_ACCOUNT_NAME",
-      "key": "env://GITHUB_REPORTS_BACKUP_STORAGE_ACCOUNT_KEY",
       "containerName": "env://GITHUB_REPORTS_BACKUP_STORAGE_CONTAINER",
       "blobPrefix": "env://GITHUB_REPORTS_BACKUP_STORAGE_BLOB_PREFIX"
     }

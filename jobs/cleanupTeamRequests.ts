@@ -7,18 +7,26 @@
 
 // Remove any team requests made by people who are no longer linked.
 
-import { IProviders } from '../interfaces';
-import job from '../job';
-import { TeamApprovalDecision } from '../routes/org/team/approval';
-import { CreateError } from '../lib/transitional';
+import { IProviders } from '../interfaces/index.js';
+import job from '../job.js';
+import { TeamApprovalDecision } from '../routes/org/team/approval/index.js';
+import { CreateError } from '../lib/transitional.js';
+
+const INSIGHTS_PREFIX = 'JobTeamRequestsCleanup';
 
 job.runBackgroundJob(cleanup, {
   timeoutMinutes: 5,
-  insightsPrefix: 'JobTeamRequestsCleanup',
+  insightsPrefix: INSIGHTS_PREFIX,
 });
 
 async function cleanup(providers: IProviders) {
   const { approvalProvider, insights, linkProvider } = providers;
+  insights?.trackEvent({
+    name: `${INSIGHTS_PREFIX}Start`,
+    properties: {
+      time: new Date(),
+    },
+  });
   if (!approvalProvider) {
     throw CreateError.InvalidParameters('No approval provider instance available');
   }
@@ -62,4 +70,10 @@ async function cleanup(providers: IProviders) {
   }
   console.log(`Job finishing. Removed ${removedRequests} requests from former linked users.`);
   insights?.trackMetric({ name: 'JobFormerRequestsDenied', value: removedRequests });
+  insights?.trackEvent({
+    name: `${INSIGHTS_PREFIX}End`,
+    properties: {
+      time: new Date(),
+    },
+  });
 }

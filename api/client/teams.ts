@@ -4,17 +4,16 @@
 //
 
 import { NextFunction, Response, Router } from 'express';
-import asyncHandler from 'express-async-handler';
 
-import { Operations, Team } from '../../business';
+import { Operations, Team } from '../../business/index.js';
 import {
   ICrossOrganizationMembershipByOrganization,
   ReposAppRequest,
   TeamJsonFormat,
-} from '../../interfaces';
-import { jsonError } from '../../middleware';
-import { getProviders } from '../../lib/transitional';
-import JsonPager from './jsonPager';
+} from '../../interfaces/index.js';
+import { jsonError } from '../../middleware/index.js';
+import { getProviders } from '../../lib/transitional.js';
+import JsonPager from './jsonPager.js';
 
 const router: Router = Router();
 
@@ -38,40 +37,37 @@ async function getCrossOrganizationTeams(operations: Operations): Promise<Team[]
   return list;
 }
 
-router.get(
-  '/',
-  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
-    const { operations } = getProviders(req);
-    const pager = new JsonPager<Team>(req, res);
-    const q: string = (req.query.q ? (req.query.q as string) : null) || '';
-    try {
-      // TODO: need to do lots of caching to make this awesome!
-      let teams = await getCrossOrganizationTeams(operations);
-      if (q) {
-        teams = teams.filter((team) => {
-          const string = (
-            (team.name || '') +
-            (team.description || '') +
-            (team.id || '') +
-            (team.slug || '')
-          ).toLowerCase();
-          return string.includes(q.toLowerCase());
-        });
-      }
-      const slice = pager.slice(teams);
-      return pager.sendJson(
-        slice.map((team) => {
-          return team.asJson(TeamJsonFormat.Detailed);
-        })
-      );
-    } catch (repoError) {
-      console.dir(repoError);
-      return next(jsonError(repoError));
+router.get('/', async (req: ReposAppRequest, res: Response, next: NextFunction) => {
+  const { operations } = getProviders(req);
+  const pager = new JsonPager<Team>(req, res);
+  const q: string = (req.query.q ? (req.query.q as string) : null) || '';
+  try {
+    // TODO: need to do lots of caching to make this awesome!
+    let teams = await getCrossOrganizationTeams(operations);
+    if (q) {
+      teams = teams.filter((team) => {
+        const string = (
+          (team.name || '') +
+          (team.description || '') +
+          (team.id || '') +
+          (team.slug || '')
+        ).toLowerCase();
+        return string.includes(q.toLowerCase());
+      });
     }
-  })
-);
+    const slice = pager.slice(teams);
+    return pager.sendJson(
+      slice.map((team) => {
+        return team.asJson(TeamJsonFormat.Detailed);
+      })
+    );
+  } catch (repoError) {
+    console.dir(repoError);
+    return next(jsonError(repoError));
+  }
+});
 
-router.use('*', (req, res: Response, next: NextFunction) => {
+router.use('/*splat', (req, res: Response, next: NextFunction) => {
   return next(jsonError('no API or function available within this cross-organization teams list', 404));
 });
 

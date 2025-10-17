@@ -2,6 +2,7 @@
   "appId": "env://GITHUB_APP_ONBOARDING_APP_ID",
   "appKey": "env://GITHUB_APP_ONBOARDING_KEY",
   "appKeyFile": "env://GITHUB_APP_ONBOARDING_KEY_FILE",
+  "appKeyRemoteJwt": "env://GITHUB_APP_ONBOARDING_REMOTE_JWT",
   "webhookSecret": "",
   "slug": "env://GITHUB_APP_ONBOARDING_SLUG",
   "description": "Microsoft Ahoy Onboarding App"

@@ -6,21 +6,31 @@
 // Job: Backfill aliases (3)
 // Job: User attributes hygiene - alias backfills (4)
 
-import job from '../job';
+import job from '../job.js';
 
-import throat from 'throat';
-import { shuffle } from 'lodash';
+import { throat } from '../vendor/throat/index.js';
 
-import { sleep } from '../lib/utils';
-import { IProviders, IReposJobResult, UnlinkPurpose } from '../interfaces';
-import { ErrorHelper } from '../lib/transitional';
+import lodash from 'lodash';
+const { shuffle } = lodash;
+
+import { sleep } from '../lib/utils.js';
+import { IProviders, IReposJobResult, UnlinkPurpose } from '../interfaces/index.js';
+import { ErrorHelper } from '../lib/transitional.js';
+
+const INSIGHTS_PREFIX = 'JobRefreshUsernames';
 
 job.runBackgroundJob(refresh, {
-  insightsPrefix: 'JobRefreshUsernames',
+  insightsPrefix: INSIGHTS_PREFIX,
 });
 
 async function refresh(providers: IProviders): Promise<IReposJobResult> {
   const { config, operations, insights, linkProvider, graphProvider } = providers;
+  insights?.trackEvent({
+    name: `${INSIGHTS_PREFIX}Start`,
+    properties: {
+      time: new Date(),
+    },
+  });
   if (config?.jobs?.refreshWrites !== true) {
     console.log('job is currently disabled to avoid metadata refresh/rewrites');
     return;
@@ -220,6 +230,12 @@ async function refresh(providers: IProviders): Promise<IReposJobResult> {
   console.log(`Corporate name changes: ${updatedAadNames}`);
   console.log(`Corporate username changes: ${updatedAadUpns}`);
   console.log(`Updated corporate mails: ${updatedCorporateMails}`);
+  insights?.trackEvent({
+    name: `${INSIGHTS_PREFIX}end`,
+    properties: {
+      time: new Date(),
+    },
+  });
 
   return {
     successProperties: {

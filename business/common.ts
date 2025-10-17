@@ -5,7 +5,7 @@
 
 import _ from 'lodash';
 
-import { PromiseResolve, PromiseReject, ICallback } from '../interfaces';
+import { PromiseResolve, PromiseReject, ICallback } from '../interfaces/index.js';
 
 export function assignKnownFieldsPrefixed(
   self,
@@ -50,47 +50,7 @@ export function assignKnownFieldsPrefixed(
   }
 }
 
-export function createPromisedInstances<T>(
-  self,
-  createMethod,
-  resolve: PromiseResolve<T>,
-  reject: PromiseReject
-) {
-  return function (error, entities) {
-    if (error) {
-      return reject(error);
-    }
-    const wrap = createMethod.bind(self);
-    return resolve(_.map(entities, wrap));
-  };
-}
-
 export function createInstances<T>(self, createMethod, entities: T[]): T[] {
   const wrap = createMethod.bind(self);
   return _.map(entities, wrap) as any as T[];
-}
-
-export function returnPromisedInstances<T>(
-  self,
-  createMethod,
-  resolve: PromiseResolve<T>,
-  reject: PromiseReject,
-  entities,
-  error
-) {
-  if (error) {
-    return reject(error);
-  }
-  const wrap = createMethod.bind(self);
-  return resolve(_.map(entities, wrap));
-}
-
-export function createInstancesCallback<T>(self, createMethod, callback: ICallback<T[]>) {
-  return function (error, entities) {
-    if (error) {
-      return callback(error);
-    }
-    const wrap = createMethod.bind(self);
-    callback(null, _.map(entities, wrap));
-  };
 }

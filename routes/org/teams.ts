@@ -4,15 +4,14 @@
 //
 
 import { NextFunction, Response, Router } from 'express';
-import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
-import { ReposAppRequest } from '../../interfaces';
-import { popSessionVariable } from '../../lib/utils';
-import lowercaser from '../../middleware/lowercaser';
+import { ReposAppRequest } from '../../interfaces/index.js';
+import { popSessionVariable } from '../../lib/utils.js';
+import lowercaser from '../../middleware/lowercaser.js';
 
-import RouteTeam from './team/';
-import RouteTeamsPager from '../teamsPager';
+import RouteTeam from './team//index.js';
+import RouteTeamsPager from '../teamsPager.js';
 
 interface ITeamsRequest extends ReposAppRequest {
   team2?: any;
@@ -38,30 +37,27 @@ router.get('/', function (req, res: Response, next: NextFunction) {
 
 router.get('/', lowercaser(['sort', 'set']), RouteTeamsPager);
 
-router.use(
-  '/:teamSlug',
-  asyncHandler(async (req: ITeamsRequest, res: Response, next: NextFunction) => {
-    const organization = req.organization;
-    const orgBaseUrl = organization.baseUrl;
-    const slug = req.params.teamSlug as string;
-    try {
-      const team = await organization.getTeamFromName(slug);
-      req.team2 = team;
-      // Breadcrumb and path updates
-      req.teamUrl = `${orgBaseUrl}teams/${team.slug}/`;
-      req.individualContext.webContext.pushBreadcrumb(team.name);
-      return next();
-    } catch (getTeamError) {
-      if (getTeamError && getTeamError.slug) {
-        // Redirect if a name was provided when a slug is more appropriate
-        return res.redirect(`${orgBaseUrl}teams/${getTeamError.slug}`);
-      }
-      if (getTeamError) {
-        return next(getTeamError);
-      }
+router.use('/:teamSlug', async (req: ITeamsRequest, res: Response, next: NextFunction) => {
+  const organization = req.organization;
+  const orgBaseUrl = organization.baseUrl;
+  const slug = req.params.teamSlug as string;
+  try {
+    const team = await organization.getTeamFromName(slug);
+    req.team2 = team;
+    // Breadcrumb and path updates
+    req.teamUrl = `${orgBaseUrl}teams/${team.slug}/`;
+    req.individualContext.webContext.pushBreadcrumb(team.name);
+    return next();
+  } catch (getTeamError) {
+    if (getTeamError && getTeamError.slug) {
+      // Redirect if a name was provided when a slug is more appropriate
+      return res.redirect(`${orgBaseUrl}teams/${getTeamError.slug}`);
     }
-  })
-);
+    if (getTeamError) {
+      return next(getTeamError);
+    }
+  }
+});
 
 router.use('/:teamname', RouteTeam);
 

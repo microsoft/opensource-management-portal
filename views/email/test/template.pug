@@ -1,0 +1,21 @@
+//-
+//- Copyright (c) Microsoft.
+//- Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//-
+
+extends ../email
+
+block content
+  h2.body-heading Your linked GitHub account
+  p.body-text.
+    GitHub account: #{link.thirdPartyUsername}#[br]
+    Linked corporate identity: #{link.corporateUsername || link.corporateAlias}
+
+  p.body-text.
+    Hello world.
+  p.body-text.
+    #{link.corporateDisplayName || link.corporateAlias} deleted the #[strong= repository.organization.name + '/' + repository.name] repository 
+    through the Open Source Management Portal.
+
+  p.body-text.
+    Change applied: #{changeApplied.toISOString()}

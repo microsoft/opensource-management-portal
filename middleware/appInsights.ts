@@ -5,19 +5,19 @@
 
 import { NextFunction, Response } from 'express';
 
-import wrapOrCreateInsightsConsoleClient from '../lib/insights';
+import wrapOrCreateInsightsConsoleClient from '../lib/insights.js';
 
-import Debug from 'debug';
-const debug = Debug.debug('startup');
+import debug from 'debug';
+const debugStartup = debug('startup');
 
-import { setup as appInsightsSetup, defaultClient } from 'applicationinsights';
+import appinsights from 'applicationinsights';
 import type {
   IReposApplication,
   IProviders,
   ReposAppRequest,
   SiteConfiguration,
   ExecutionEnvironment,
-} from '../interfaces';
+} from '../interfaces/index.js';
 
 function ignoreKubernetesProbes(envelope /* , context */) {
   if ('RequestData' === envelope.data.baseType) {
@@ -70,22 +70,23 @@ export default function initializeAppInsights(
   }
   if (cs) {
     const instance = providers.applicationProfile.logDependencies
-      ? appInsightsSetup(cs)
-      : appInsightsSetup(cs).setAutoCollectDependencies(false);
+      ? appinsights.setup(cs)
+      : appinsights.setup(cs).setAutoCollectDependencies(false);
+    const defaultClient = appinsights.defaultClient;
     defaultClient.addTelemetryProcessor(ignoreKubernetesProbes);
     defaultClient.addTelemetryProcessor(filterTelemetry);
     instance.start();
     client = defaultClient;
     const configuredInstrumentationKey = client?.config?.instrumentationKey;
     const configuredEndpoint = client?.config?.endpointUrl;
-    debug(
+    debugStartup(
       `insights telemetry will use identifier: ${configuredInstrumentationKey.substr(
         0,
         6
       )}* and endpoint ${configuredEndpoint}`
     );
   } else {
-    debug('insights telemetry is not configured with a key or connection string');
+    debugStartup('insights telemetry is not configured with a key or connection string');
   }
 
   app?.use((req: ReposAppRequest, res: Response, next: NextFunction) => {
@@ -96,7 +97,7 @@ export default function initializeAppInsights(
       req.headers['x-ms-user-agent'] !== undefined &&
       req.headers['x-ms-user-agent'].includes('System Center')
     ) {
-      return res.status(204).send();
+      return res.status(204).send() as unknown as void;
     }
 
     // Provide application insight event tracking with correlation ID
@@ -104,7 +105,7 @@ export default function initializeAppInsights(
       correlationId: req.correlationId,
     };
     req.insights = wrapOrCreateInsightsConsoleClient(extraProperties, client);
-    next();
+    return next();
   });
 
   return wrapOrCreateInsightsConsoleClient({}, client);

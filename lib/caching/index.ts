@@ -6,8 +6,8 @@
 export interface ICacheHelper {
   get(key: string): Promise<string>;
   getCompressed(key: string): Promise<string>;
-  getObject(key: string): Promise<any>;
-  getObjectCompressed(key: string): Promise<any>;
+  getObject<T = any>(key: string): Promise<T>;
+  getObjectCompressed<T = any>(key: string): Promise<T>;
   set(key: string, value: string): Promise<void>;
   setObject(key: string, value: any): Promise<void>;
   setObjectWithExpire(key: string, value: any, minutesToExpire: number): Promise<void>;

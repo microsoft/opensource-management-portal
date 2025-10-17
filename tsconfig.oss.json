@@ -1,0 +1,43 @@
+{
+  "compilerOptions": {
+    "module": "NodeNext",
+    "sourceMap": true,
+    "outDir": "./dist",
+    "incremental": true,
+    "allowJs": true,
+    "declaration": true,
+    "moduleResolution": "nodenext",
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "target": "ESNext",
+    "typeRoots": ["./node_modules/@types", "./typings"],
+    "lib": ["es2022"],
+    "types": ["node"]
+  },
+  "exclude": [
+    "**/*.test.ts",
+    "**/*.spec.ts",
+    "./.environment/**/*",
+    "./frontend/**",
+    "./microsoft/**/*",
+    "./routes/administration/corporation/**/*",
+    "./config/microsoft.*"
+  ],
+  "include": [
+    "./*.ts",
+    "./.ossdev/**/*",
+    "./api/**/*",
+    "./bin/**/*",
+    "./business/**/*",
+    "./config/**/*",
+    "./data/**/*",
+    "./interfaces/**/*",
+    "./jobs/**/*",
+    "./lib/**/*",
+    "./middleware/**/*",
+    "./routes/**/*",
+    "./scripts/**/*",
+    "./test/**/*"
+  ]
+}

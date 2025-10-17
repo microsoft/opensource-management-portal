@@ -4,15 +4,14 @@
 //
 
 import { NextFunction, Response, Router } from 'express';
-import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
-import { Team, TeamMember } from '../../../business';
-import { ReposAppRequest, RequestTeamMemberAddType, UserAlertType } from '../../../interfaces';
-import { getProviders, validateGitHubLogin } from '../../../lib/transitional';
+import { Team, TeamMember } from '../../../business/index.js';
+import { ReposAppRequest, RequestTeamMemberAddType, UserAlertType } from '../../../interfaces/index.js';
+import { getProviders, validateGitHubLogin } from '../../../lib/transitional.js';
 
-import RoutePeopleSearch from '../../peopleSearch';
-import MiddlewareTeamAdminRequired from './teamAdminRequired';
+import RoutePeopleSearch from '../../peopleSearch.js';
+import MiddlewareTeamAdminRequired from './teamAdminRequired.js';
 
 interface ILocalTeamRequest extends ReposAppRequest {
   team2?: Team;
@@ -54,29 +53,24 @@ async function refreshMembersAndSummary(team2: Team, when): Promise<void> {
   );
 }
 
-router.use(
-  asyncHandler(async (req: ILocalTeamRequest, res: Response, next: NextFunction) => {
-    // Always make sure to have a relatively up-to-date membership cache available
-    const team2 = req.team2 as Team;
-    req.refreshedMembers = await refreshMembers(
-      team2,
-      true /* background refresh ok */,
-      null,
-      false /* refresh all pages */
-    );
-    return next();
-  })
-);
+router.use(async (req: ILocalTeamRequest, res: Response, next: NextFunction) => {
+  // Always make sure to have a relatively up-to-date membership cache available
+  const team2 = req.team2 as Team;
+  req.refreshedMembers = await refreshMembers(
+    team2,
+    true /* background refresh ok */,
+    null,
+    false /* refresh all pages */
+  );
+  return next();
+});
 
-router.get(
-  '/refresh',
-  asyncHandler(async (req: ILocalTeamRequest, res: Response, next: NextFunction) => {
-    // Refresh all the pages and also the cached single-page view shown on the team page
-    const team2 = req.team2 as Team;
-    await refreshMembersAndSummary(team2, 'whenever');
-    return res.redirect(req.teamUrl);
-  })
-);
+router.get('/refresh', async (req: ILocalTeamRequest, res: Response, next: NextFunction) => {
+  // Refresh all the pages and also the cached single-page view shown on the team page
+  const team2 = req.team2 as Team;
+  await refreshMembersAndSummary(team2, 'whenever');
+  return res.redirect(req.teamUrl);
+});
 
 // Browse members
 router.use(
@@ -102,7 +96,7 @@ router.use(
 router.post(
   '/remove',
   MiddlewareTeamAdminRequired,
-  asyncHandler(async (req: ILocalTeamRequest, res: Response, next: NextFunction) => {
+  async (req: ILocalTeamRequest, res: Response, next: NextFunction) => {
     const { operations } = getProviders(req);
     const username = validateGitHubLogin(req.body.username);
     const team2 = req.team2 as Team;
@@ -114,13 +108,13 @@ router.post(
     );
     await refreshMembersAndSummary(team2, 'now');
     return res.redirect(`${req.teamUrl}members/browse/`);
-  })
+  }
 );
 
 router.post(
   '/add',
   MiddlewareTeamAdminRequired,
-  asyncHandler(async (req: ILocalTeamRequest, res: Response, next: NextFunction) => {
+  async (req: ILocalTeamRequest, res: Response, next: NextFunction) => {
     const { operations } = getProviders(req);
     const username = validateGitHubLogin(req.body.username);
     const organization = req.organization;
@@ -169,7 +163,7 @@ router.post(
     );
     await refreshMembersAndSummary(team2, 'now');
     return res.redirect(req.teamUrl + 'members/browse/');
-  })
+  }
 );
 
 export default router;

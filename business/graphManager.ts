@@ -5,20 +5,20 @@
 
 import moment from 'moment';
 
-import { Operations } from './operations';
-import { Repository } from './repository';
-import { TeamRepositoryPermission } from './teamRepositoryPermission';
+import { Operations } from './operations/index.js';
+import { Repository } from './repository.js';
+import { TeamRepositoryPermission } from './teamRepositoryPermission.js';
 import {
   ICorporateLink,
-  IGetOrganizationMembersOptions,
+  GetOrganizationMembersOptions,
   OrganizationMembershipRoleQuery,
   GitHubTeamRole,
   ICrossOrganizationTeamMembership,
   ICacheOptions,
   IPagedCrossOrganizationCacheOptions,
   GitHubRepositoryPermission,
-} from '../interfaces';
-import { isPermissionBetterThan } from '../lib/transitional';
+} from '../interfaces/index.js';
+import { isPermissionBetterThan } from '../lib/transitional.js';
 
 interface ILocalLinksCache {
   updated: moment.Moment;
@@ -46,7 +46,7 @@ export class GraphManager {
 
   async getAllOrganizationMember(
     githubId: string | number,
-    options?: IGetOrganizationMembersOptions
+    options?: GetOrganizationMembersOptions
   ): Promise<any> {
     const allMembers = await this._operations.getMembers(options);
     githubId = typeof githubId === 'string' ? parseInt(githubId, 10) : githubId;
@@ -58,7 +58,7 @@ export class GraphManager {
     id: number,
     optionalRole?: OrganizationMembershipRoleQuery
   ): Promise<any> {
-    const options: IGetOrganizationMembersOptions = {};
+    const options: GetOrganizationMembersOptions = {};
     // options['role'] is not typed, need to validate down the call chain to be clean
     if (optionalRole) {
       options.role = optionalRole;
@@ -185,17 +185,17 @@ export class GraphManager {
     return this._operations.getRepoTeams(options);
   }
 
-  getReposWithCollaborators(options: IPagedCrossOrganizationCacheOptions): Promise<any> {
-    options = options || {};
-    if (!options.maxAgeSeconds) {
-      options.maxAgeSeconds = 60 * 20 /* 20m per-org collabs list OK */;
-    }
-    options.individualMaxAgeSeconds = 12 * 60 * 60; // Half day
-    if (options.backgroundRefresh === undefined) {
-      options.backgroundRefresh = true;
-    }
-    return this._operations.getRepoCollaborators(options);
-  }
+  // getReposWithCollaborators(options: IPagedCrossOrganizationCacheOptions): Promise<any> {
+  //   options = options || {};
+  //   if (!options.maxAgeSeconds) {
+  //     options.maxAgeSeconds = 60 * 20 /* 20m per-org collabs list OK */;
+  //   }
+  //   options.individualMaxAgeSeconds = 12 * 60 * 60; // Half day
+  //   if (options.backgroundRefresh === undefined) {
+  //     options.backgroundRefresh = true;
+  //   }
+  //   return this._operations.getRepoCollaborators(options);
+  // }
 
   private async getCachedLinksMap(
     maxAgeSecondsLocal: number,

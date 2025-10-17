@@ -6,11 +6,11 @@
 import { NextFunction, Response, Router } from 'express';
 const router: Router = Router();
 
-import { getProviders } from '../../lib/transitional';
-import { jsonError } from '../../middleware/jsonError';
+import { getProviders } from '../../lib/transitional.js';
+import { jsonError } from '../../middleware/jsonError.js';
 
-import newOrgRepo from './newOrgRepo';
-import { ReposAppRequest } from '../../interfaces';
+import newOrgRepo from './newOrgRepo.js';
+import { ReposAppRequest } from '../../interfaces/index.js';
 
 router.use('/org/:org', (req: ReposAppRequest, res: Response, next: NextFunction) => {
   const orgName = req.params.org;

@@ -52,7 +52,7 @@ block content
         br
         | Business Justification: #{approvalRequest.releaseReviewJustification}
   
-  if service || serviceOwner || serviceDescription
+  if service || serviceOwner
     h3 Service information
     p This repo was created by a service:
     table.technical
@@ -60,14 +60,10 @@ block content
         tr
           if service
             th Service
-          if serviceDescription
-            th Service information
       tbody
         tr
           if service
             td= service
-          if serviceDescription
-            td= serviceDescription
 
   if results && results.length
     h3 Operations performed

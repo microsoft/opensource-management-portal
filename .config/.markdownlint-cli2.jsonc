@@ -6,7 +6,13 @@
       "allow_different_nesting": true
     },
     "MD026": false,
-    "MD033": false // no inline HTML: we use inline HTML for expandable details sections
+    "MD033": false
   },
-  "ignores": ["**/node_modules/**"]
+  "ignores": [
+    "**/node_modules/**",
+    "frontend/**",
+    "microsoft/assets/**",
+    "**/frontend/node_modules/**",
+    "**/frontend/src/thirdParty/**"
+  ]
 }

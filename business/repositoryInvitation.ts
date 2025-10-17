@@ -3,9 +3,9 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { GitHubRepositoryPermission, GitHubSimpleAccount } from '../interfaces';
-import * as common from './common';
-import { Repository } from './repository';
+import { GitHubRepositoryPermission, GitHubSimpleAccount } from '../interfaces/index.js';
+import * as common from './common.js';
+import { Repository } from './repository.js';
 
 const primaryProperties = ['inviter', 'invitee', 'permissions', 'created_at', 'html_url', 'node_id'];
 

@@ -9,8 +9,8 @@
 import { TableEntityResult } from '@azure/data-tables';
 import crypto from 'crypto';
 import jose from 'node-jose';
-import { IEncryptionOptions } from '../encryption';
-import { IKeyVaultSecretResolver } from '../keyVaultResolver';
+import { IEncryptionOptions } from '../encryption.js';
+import { IKeyVaultSecretResolver } from '../keyVaultResolver.js';
 
 // Azure Storage .NET client library - entity encryption keys:
 //

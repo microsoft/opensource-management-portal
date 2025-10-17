@@ -9,17 +9,18 @@ import {
   getCodespacesHostname,
   isCodespacesAuthenticating,
   isEnterpriseManagedUserLogin,
-} from '../../lib/utils';
+} from '../../lib/utils.js';
 import type {
   IGitHubAccountDetails,
   IProviders,
   IReposApplication,
   SiteConfiguration,
-} from '../../interfaces';
-import type { ConfigGitHubCodespaces } from '../../config/github.codespaces.types';
+} from '../../interfaces/index.js';
+import type { ConfigGitHubCodespaces } from '../../config/github.codespaces.types.js';
+import type { ConfigGitHubOAuth2 } from '../../config/github.oauth2.types.js';
 
 import Debug from 'debug';
-import { ConfigGitHubOAuth2 } from '../../config/github.oauth2.types';
+import { CreateError } from '../../lib/transitional.js';
 const debug = Debug.debug('startup');
 
 export const githubStrategyName = 'github';
@@ -57,7 +58,7 @@ function impersonatedIdentityFromDetails(
   accessTokenReplacement?: string
 ): IGitHubIdentitySubset {
   return {
-    accessToken: 'fakeaccesstoken' || accessTokenReplacement, // by design, do not allow a real access token to be used
+    accessToken: accessTokenReplacement || 'fakeaccesstoken',
     displayName: details.name,
     avatarUrl: details.avatar_url,
     id: String(details.id),
@@ -91,7 +92,7 @@ async function githubResponseToSubsetEx(
   profile: IPassportGitHubIdentityProfile
 ): Promise<IGitHubIdentitySubset> {
   const providers = app.settings.providers as IProviders;
-  const { config, operations } = providers;
+  const { config, insights, operations } = providers;
   const codespacesConfig = config?.github?.codespaces;
   const impersonateOverrideEmuAccount =
     codespacesConfig?.authentication?.github?.impersonateOverrideEmuAccount;
@@ -115,6 +116,27 @@ async function githubResponseToSubsetEx(
     const details = await account.getDetails();
     console.warn(`GITHUB IMPERSONATION: id=${impersonationId} login=${details.login} name=${details.name}`);
     return impersonatedIdentityFromDetails(details);
+  }
+  // Block EMU accounts at the auth layer
+  if (isEnterpriseManagedUserLogin(profile.username)) {
+    insights?.trackEvent({
+      name: 'passport.auth.emu_block',
+    });
+    insights?.trackMetric({
+      name: 'passport.auth.emu_blocks',
+      value: 1,
+    });
+    const error = CreateError.NotAuthorized(
+      'Enterprise Managed Users are not supported by the Open Source Management Portal'
+    ) as any;
+    error.detailed = `You've authenticated to this site with a GitHub Enterprise Cloud with Enterprise Managed User (EMU) account with the username "${profile.username}". Please sign out of this site and GitHub and try again from your standard GitHub login for open source use.`;
+    error.title = 'Enterprise Managed Users are not supported by the Open Source Management Portal';
+    error.fancyLink = {
+      title: 'Sign out of this site and GitHub',
+      link: '/signout/github?redirect=github',
+    };
+    error.skipOops = true;
+    throw error;
   }
   // Standard authentication flow
   const github: IGitHubIdentitySubset = {
@@ -154,14 +176,16 @@ function githubResponseToIncreasedScopeSubset(
 }
 
 export function getGithubAppConfigurationOptions(config: SiteConfiguration) {
+  const githubConfig = config?.github;
   let legacyOAuthApp =
-    config?.github?.oauth2?.clientId && config?.github?.oauth2?.clientSecret ? config.github.oauth2 : null;
+    githubConfig?.oauth2?.clientId && config?.github?.oauth2?.clientSecret ? config.github.oauth2 : null;
   const customerFacingApp =
     config.github.app?.ui?.clientId && config.github.app.ui.clientSecret ? config.github.app.ui : null;
   const useCustomerFacingGithubAppIfPresent =
     config.github.oauth2.useCustomerFacingGitHubAppIfPresent === true;
   const useIncreasedScopeLegacyAppIfNeeded =
     config.github.oauth2.useIncreasedScopeCustomerFacingIfNeeded === true;
+  const callbackUrl = githubConfig?.oauth2?.callbackUrl;
   if (useCustomerFacingGithubAppIfPresent && customerFacingApp) {
     if (legacyOAuthApp && legacyOAuthApp['callbackUrl']) {
       customerFacingApp['callbackUrl'] = legacyOAuthApp['callbackUrl'];
@@ -171,6 +195,7 @@ export function getGithubAppConfigurationOptions(config: SiteConfiguration) {
   const modernAppInUse: boolean = customerFacingApp && !legacyOAuthApp;
   const githubAppConfiguration = modernAppInUse ? customerFacingApp : legacyOAuthApp;
   return {
+    callbackUrl,
     legacyOAuthApp,
     customerFacingApp,
     modernAppInUse,
@@ -182,7 +207,7 @@ export function getGithubAppConfigurationOptions(config: SiteConfiguration) {
 export default function createGithubStrategy(app: IReposApplication, config: SiteConfiguration) {
   const strategies = {};
   const codespaces = config?.github?.codespaces || ({} as ConfigGitHubCodespaces);
-  const { modernAppInUse, githubAppConfiguration, useIncreasedScopeLegacyAppIfNeeded } =
+  const { modernAppInUse, githubAppConfiguration, useIncreasedScopeLegacyAppIfNeeded, callbackUrl } =
     getGithubAppConfigurationOptions(config);
   if (!githubAppConfiguration?.clientId) {
     // CONSIDER: for development, this might be fine, but it might be important
@@ -194,7 +219,7 @@ export default function createGithubStrategy(app: IReposApplication, config: Sit
   const finalCallbackUrl =
     isCodespacesAuthenticating(config, 'github') && !codespaces?.block
       ? getCodespacesHostname(config) + redirectSuffix
-      : (githubAppConfiguration as ConfigGitHubOAuth2)?.callbackUrl;
+      : (githubAppConfiguration as ConfigGitHubOAuth2)?.callbackUrl || callbackUrl;
   let clientId = githubAppConfiguration.clientId;
   let clientSecret = githubAppConfiguration.clientSecret;
   let codespacesOverrideText = '';

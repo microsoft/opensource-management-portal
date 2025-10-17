@@ -3,11 +3,21 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-export interface IGitHubAppInstallationPermissions {
-  issues: string; // write, ?
-  metadata: string; // read, ...
-  administration: string; // write, ...
-}
+import { GitHubAppPermission } from '../../lib/github/types.js';
+
+export type GitHubAppInstallationPermissions = {
+  issues: GitHubAppPermission | string;
+  members: GitHubAppPermission | string;
+  contents: GitHubAppPermission | string;
+  metadata: GitHubAppPermission | string;
+  pull_requests: GitHubAppPermission | string;
+  administration: GitHubAppPermission | string;
+  repository_hooks: GitHubAppPermission | string;
+  organization_plan: GitHubAppPermission | string;
+  organization_hooks: GitHubAppPermission | string;
+  organization_user_blocking: GitHubAppPermission | string;
+  organization_administration: GitHubAppPermission | string;
+};
 
 export interface IGitHubWebhookEnterprise {
   id: number;
@@ -31,7 +41,7 @@ export interface IGitHubAppInstallation {
   app_id: number;
   target_id: number;
   target_type: string;
-  permissions: IGitHubAppInstallationPermissions;
+  permissions: GitHubAppInstallationPermissions;
   events: string[];
   repository_selection: string;
   created_at: string;

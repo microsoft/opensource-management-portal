@@ -9,6 +9,5 @@ export type ConfigDiagnosticsRootBlob = {
 
 export type ConfigDiagnosticsBlob = {
   account: string;
-  key: string;
   container: string;
 };

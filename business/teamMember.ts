@@ -3,16 +3,10 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import {
-  IOperationsInstance,
-  ICorporateLink,
-  throwIfNotCapable,
-  IOperationsProviders,
-  CoreCapability,
-  IOperationsLinks,
-} from '../interfaces';
-import * as common from './common';
-import { Team } from './team';
+import type { ICorporateLink } from '../interfaces/index.js';
+import * as common from './common.js';
+import { Operations } from './operations/core.js';
+import { Team } from './team.js';
 
 // prettier-ignore
 const memberPrimaryProperties = [
@@ -31,7 +25,7 @@ export type TeamMemberJson = {
 
 export class TeamMember {
   private _team: Team;
-  private _operations: IOperationsInstance;
+  private _operations: Operations;
   private _link: ICorporateLink;
   private _id: number;
   private _avatar_url: string;
@@ -68,7 +62,7 @@ export class TeamMember {
     return this._login;
   }
 
-  constructor(team: Team, entity: any, operations: IOperationsInstance) {
+  constructor(team: Team, entity: any, operations: Operations) {
     this._team = team;
     if (entity) {
       common.assignKnownFieldsPrefixed(
@@ -119,7 +113,7 @@ export class TeamMember {
     if (this._mailAddress) {
       return this._mailAddress;
     }
-    const operations = throwIfNotCapable<IOperationsProviders>(this._operations, CoreCapability.Providers);
+    const operations = this._operations as Operations;
     const providers = operations.providers;
     const link = await this.resolveDirectLink();
     if (!link) {
@@ -143,7 +137,7 @@ export class TeamMember {
     if (this._link) {
       return this._link;
     }
-    const operations = throwIfNotCapable<IOperationsLinks>(this._operations, CoreCapability.Links);
+    const operations = this._operations as Operations;
     try {
       this._link = await operations.getLinkByThirdPartyId(this._id.toString());
     } catch (ignoredResolutionError) {

@@ -5,8 +5,8 @@
 
 // This code adopted from our existing jobs code
 
-import cache from 'memory-cache';
 import axios, { AxiosError } from 'axios';
+import axiosRetry from 'axios-retry';
 import querystring from 'querystring';
 import validator from 'validator';
 
@@ -17,21 +17,29 @@ import {
   IGraphGroupMember,
   IGraphGroup,
   GraphUserType,
-} from '.';
-import { ErrorHelper, CreateError, splitSemiColonCommas } from '../transitional';
-import { ICacheHelper } from '../caching';
+  GraphEntityType,
+} from './index.js';
+import { ErrorHelper, CreateError, splitSemiColonCommas } from '../transitional.js';
+import type { ICacheHelper } from '../caching/index.js';
+import type { IEntraApplicationTokens } from '../applicationIdentity.js';
 
 const axios12BufferDecompressionBugHeaderAddition = true;
+const MICROSOFT_GRAPH_RESOURCE_URI = 'https://graph.microsoft.com';
 
-export interface IMicrosoftGraphProviderOptions {
-  tokenCacheSeconds?: string | number;
-  clientId: string;
-  clientSecret: string;
-  tokenEndpoint?: string;
-  tenantId?: string;
+// Under heavy load, make sure to retry timeouts.
+axiosRetry(axios, {
+  retryDelay: axiosRetry.exponentialDelay,
+  retryCondition: (error) => {
+    return error?.code === 'ETIMEDOUT' || axiosRetry.isNetworkOrIdempotentRequestError(error);
+  },
+  shouldResetTimeout: true,
+});
+
+export type MicrosoftGraphProviderOptions = {
+  entraApplicationTokens: IEntraApplicationTokens;
   cacheProvider?: ICacheHelper;
   skipManagerLookupForIds?: string;
-}
+};
 
 export type MicrosoftGraphGroupMembersOptions = {
   getCount?: boolean;
@@ -40,6 +48,7 @@ export type MicrosoftGraphGroupMembersOptions = {
   skipCache?: boolean;
   additionalSelectValues?: string[];
   membership?: MicrosoftGraphGroupMembershipType;
+  subgroupDepth?: number;
 };
 
 export enum MicrosoftGraphGroupMembershipType {
@@ -49,6 +58,7 @@ export enum MicrosoftGraphGroupMembershipType {
 
 export type MicrosoftGraphGroupMember = IGraphGroupMember & {
   userType?: GraphUserType;
+  odataType?: GraphEntityType;
 };
 
 export function microsoftGraphUserTypeFromString(type: string): GraphUserType {
@@ -65,6 +75,20 @@ export function microsoftGraphUserTypeFromString(type: string): GraphUserType {
   }
 }
 
+export function microsoftGraphODataTypeFromString(type: string): GraphEntityType {
+  if (!type) {
+    return;
+  }
+  switch (type) {
+    case '#microsoft.graph.user':
+      return GraphEntityType.User;
+    case '#microsoft.graph.group':
+      return GraphEntityType.Group;
+    default:
+      return;
+  }
+}
+
 type GraphCheckMembersRequest = {
   ids: string[];
 };
@@ -75,9 +99,6 @@ type GraphCheckMembersResponse = {
 
 const graphBaseUrl = 'https://graph.microsoft.com/v1.0/';
 const odataNextLink = '@odata.nextLink';
-const defaultCachePeriodMinutes = 60 * 36; // 36 hours
-
-const attemptCacheGet = true;
 
 type MicrosoftGraphCallOptions = {
   selectValues?: string;
@@ -97,41 +118,23 @@ type GraphCacheOptions = {
 type GraphOptions = MicrosoftGraphCallOptions & GraphCacheOptions;
 
 export class MicrosoftGraphProvider implements IGraphProvider {
-  #_tokenCacheMilliseconds: number;
-  #_clientSecret: string;
-  #_staticManagerEntryCacheById: Map<string, IGraphEntryWithManager>;
-  #_tenantId: string;
-  #_tokenEndpoint: string;
-  #_cache: ICacheHelper;
-  #_skipManagerLookupForIds: string[];
+  private _staticManagerEntryCacheById: Map<string, IGraphEntryWithManager> = new Map();
+  private _entraApplicationTokens: IEntraApplicationTokens;
+  private _skipManagerLookupForIds: string[];
 
-  public clientId: string;
+  clientId: string;
 
-  constructor(graphOptions: IMicrosoftGraphProviderOptions) {
-    this.#_staticManagerEntryCacheById = new Map();
-    const secondsString = (graphOptions.tokenCacheSeconds || '60').toString();
-    this.#_tokenCacheMilliseconds = parseInt(secondsString, 10) * 1000;
-    this.clientId = graphOptions.clientId;
-    this.#_clientSecret = graphOptions.clientSecret;
-    this.#_tenantId = graphOptions.tenantId;
-    this.#_tokenEndpoint = graphOptions.tokenEndpoint;
-    this.#_skipManagerLookupForIds = [];
+  constructor(graphOptions: MicrosoftGraphProviderOptions) {
+    const { entraApplicationTokens } = graphOptions;
+    this.clientId = entraApplicationTokens.clientId;
+    this._entraApplicationTokens = entraApplicationTokens;
+    this._skipManagerLookupForIds = [];
     if (graphOptions.skipManagerLookupForIds) {
-      this.#_skipManagerLookupForIds = splitSemiColonCommas(graphOptions.skipManagerLookupForIds);
-    }
-    this.#_cache = graphOptions.cacheProvider;
-    if (!this.clientId) {
-      throw new Error('MicrosoftGraphProvider: clientId required');
-    }
-    if (!this.#_clientSecret) {
-      throw new Error('MicrosoftGraphProvider: clientSecret required');
+      this._skipManagerLookupForIds = splitSemiColonCommas(graphOptions.skipManagerLookupForIds);
     }
   }
 
   async isUserInGroup(corporateId: string, securityGroupId: string): Promise<boolean> {
-    // Formerly used a very inefficient approach:
-    // const members = await this.getGroupMembers(securityGroupId);
-    // return members.filter((m) => m.id === corporateId).length > 0;
     return await this.checkMemberObjectsForUserId(corporateId, securityGroupId);
   }
 
@@ -163,7 +166,7 @@ export class MicrosoftGraphProvider implements IGraphProvider {
 
   async getUserAndManagerById(aadId: string): Promise<IGraphEntryWithManager> {
     const entity = (await this.getTokenThenEntity(aadId, null)) as IGraphEntryWithManager;
-    if (this.#_skipManagerLookupForIds?.includes(aadId)) {
+    if (this._skipManagerLookupForIds?.includes(aadId)) {
       return entity;
     }
     try {
@@ -206,12 +209,12 @@ export class MicrosoftGraphProvider implements IGraphProvider {
   }
 
   async getCachedEntryWithManagerById(corporateId: string): Promise<IGraphEntryWithManager> {
-    let entry = this.#_staticManagerEntryCacheById.get(corporateId);
+    let entry = this._staticManagerEntryCacheById.get(corporateId);
     if (entry) {
       return entry;
     }
     entry = await this.getUserAndManagerById(corporateId);
-    this.#_staticManagerEntryCacheById.set(corporateId, entry);
+    this._staticManagerEntryCacheById.set(corporateId, entry);
     return entry;
   }
 
@@ -373,6 +376,14 @@ export class MicrosoftGraphProvider implements IGraphProvider {
       });
   }
 
+  async getUserSecurityGroups(id: string): Promise<string[]> {
+    const response = (await this.lookupInGraph(['users', id, 'transitiveMemberOf', 'microsoft.graph.group'], {
+      // filterValues: 'securityEnabled eq true', : cannot server-side filter-by security groups
+      selectValues: 'id,securityEnabled',
+    })) as any[];
+    return response.filter((entry) => entry.securityEnabled === true).map((entry) => entry.id);
+  }
+
   async getUsersByMailNicknames(mailNicknames: string[]): Promise<IGraphEntry[]> {
     // prettier-ignore
     let response = (await this.lookupInGraph([
@@ -405,10 +416,12 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     }
     minimum3Characters = minimum3Characters.replace(/'/g, "''");
     // prettier-ignore
-    let response = (await this.lookupInGraph([
-      'users',
-    ], {
-      filterValues: `startswith(givenName, '${minimum3Characters}') or startswith(surname, '${minimum3Characters}') or startswith(displayName, '${minimum3Characters}') or startswith(mailNickname, '${minimum3Characters}') or startswith(mail, '${minimum3Characters}')`,
+    let filterValues = `startswith(givenName, '${minimum3Characters}') or startswith(surname, '${minimum3Characters}') or startswith(displayName, '${minimum3Characters}') or startswith(mailNickname, '${minimum3Characters}') or startswith(mail, '${minimum3Characters}')`;
+    if (validator.isUUID(minimum3Characters)) {
+      filterValues = `${filterValues} or id eq '${minimum3Characters}'`;
+    }
+    let response = (await this.lookupInGraph(['users'], {
+      filterValues,
       selectValues: 'id,displayName,mailNickname,mail,userPrincipalName,userType,jobTitle',
     })) as any[];
     if (!response.filter && (response as any).value?.filter) {
@@ -452,28 +465,77 @@ export class MicrosoftGraphProvider implements IGraphProvider {
       graphOptions.throwOnMaximumPages = options.throwOnMaximumPages;
     }
     const lookupType = options?.membership || MicrosoftGraphGroupMembershipType.Transitive;
+    const subgroupDepth =
+      lookupType === MicrosoftGraphGroupMembershipType.Transitive ? options?.subgroupDepth : 0;
     const includesUserType = selectValuesSet.has('userType');
+    const additionalFieldsNotUserType = options?.additionalSelectValues?.filter(
+      (field) => field !== 'userType'
+    );
     const response = (await this.lookupInGraph(
       ['groups', corporateGroupId, lookupType],
       graphOptions
     )) as any[];
+    let entries: MicrosoftGraphGroupMember[] = [];
     if (Array.isArray(response)) {
-      return response.map((entry) => {
-        return {
+      entries = response.map((entry) => {
+        const m: MicrosoftGraphGroupMember = {
           id: entry.id,
           userPrincipalName: entry.userPrincipalName,
           userType: includesUserType ? microsoftGraphUserTypeFromString(entry.userType) : undefined,
+          odataType: microsoftGraphODataTypeFromString(entry['@odata.type']),
         };
+        if (additionalFieldsNotUserType && additionalFieldsNotUserType.length > 0) {
+          for (const field of additionalFieldsNotUserType) {
+            if (entry[field]) {
+              m[field] = entry[field];
+            }
+          }
+        }
+        return m;
+      });
+    } else {
+      const subResponse = (response as any).value ? (response as any).value : [];
+      entries = subResponse.map((entry) => {
+        const m: MicrosoftGraphGroupMember = {
+          id: entry.id,
+          userPrincipalName: entry.userPrincipalName,
+          userType: includesUserType ? microsoftGraphUserTypeFromString(entry.userType) : undefined,
+          odataType: microsoftGraphODataTypeFromString(entry['@odata.type']),
+        };
+        if (additionalFieldsNotUserType && additionalFieldsNotUserType.length > 0) {
+          for (const field of additionalFieldsNotUserType) {
+            if (entry[field]) {
+              m[field] = entry[field];
+            }
+          }
+        }
+        return m;
       });
     }
-    const subResponse = (response as any).value ? (response as any).value : [];
-    return subResponse.map((entry) => {
-      return {
-        id: entry.id,
-        userPrincipalName: entry.userPrincipalName,
-        userType: includesUserType ? microsoftGraphUserTypeFromString(entry.userType) : undefined,
-      };
-    });
+    const subGroups = entries.filter((entry) => entry.odataType === GraphEntityType.Group);
+    if (subGroups.length > 0 && subgroupDepth > 0) {
+      const subGroupPromises = subGroups.map((group) => {
+        return this.getGroupMembers(group.id, {
+          ...options,
+          subgroupDepth: subgroupDepth - 1,
+        });
+      });
+      const subGroupResults = await Promise.all(subGroupPromises);
+      for (const subGroupResult of subGroupResults) {
+        entries = entries.concat(subGroupResult);
+      }
+      // no dupes
+      const uniqueEntries = new Map<string, MicrosoftGraphGroupMember>();
+      for (const entry of entries) {
+        uniqueEntries.set(entry.id, entry);
+      }
+      // exclude the subgroups only in subgroup mode
+      for (const subGroup of subGroups) {
+        uniqueEntries.delete(subGroup.id);
+      }
+      entries = Array.from(uniqueEntries.values());
+    }
+    return entries;
   }
 
   async getGroupsStartingWith(minimum3Characters: string): Promise<IGraphGroup[]> {
@@ -534,18 +596,6 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     }
     const extraPath = subResource ? `/${subResource}` : '';
     const url = `https://graph.microsoft.com/v1.0/users/${aadId}${extraPath}?$select=id,mailNickname,userType,displayName,givenName,mail,userPrincipalName,jobTitle`;
-    if (this.#_cache && attemptCacheGet) {
-      try {
-        const cached = await this.#_cache.getObject(url);
-        if (cached?.value) {
-          return cached.value;
-        }
-      } catch (error) {
-        if (!ErrorHelper.IsNotFound(error)) {
-          console.warn(error);
-        }
-      }
-    }
     try {
       const headers = {
         Authorization: `Bearer ${token}`,
@@ -564,12 +614,6 @@ export class MicrosoftGraphProvider implements IGraphProvider {
       if ((response.data as any).error?.message) {
         // axios returns unknown now
         throw CreateError.InvalidParameters((response.data as any).error.message);
-      }
-      if (this.#_cache) {
-        this.#_cache
-          .setObjectWithExpire(url, { value: response.data }, defaultCachePeriodMinutes)
-          .then((ok) => {})
-          .catch((err) => {});
       }
       return response.data;
     } catch (error) {
@@ -611,22 +655,6 @@ export class MicrosoftGraphProvider implements IGraphProvider {
     let value = null;
     let url = `${graphBaseUrl}${subUrl}?${querystring.stringify(queries)}`;
     const originalUrl = url;
-    try {
-      if (this.#_cache && attemptCacheGet && !skipCache) {
-        value = await this.#_cache.getObject(url);
-        if (value?.cache) {
-          if (Array.isArray(value.cache) && value.cache.length === 0) {
-            // live lookup still
-          } else if (typeof value.cache === 'object') {
-            return value.cache as any;
-          } else {
-            console.log(`Potentially bad cache, skip quick return: ${value.cache}`);
-          }
-        }
-      }
-    } catch (error) {
-      console.warn(error);
-    }
     let pages = 0;
     const maximumPages = options?.maximumPages;
     do {
@@ -660,18 +688,6 @@ export class MicrosoftGraphProvider implements IGraphProvider {
       }
       console.warn(`WARN: Maximum pages exceeded for this resource: ${originalUrl}`);
     }
-    if (this.#_cache) {
-      try {
-        this.#_cache
-          .setObjectWithExpire(originalUrl, { cache: value }, defaultCachePeriodMinutes)
-          .then(() => {})
-          .catch((err) => {
-            console.warn(err);
-          });
-      } catch (error) {
-        console.warn(error);
-      }
-    }
     return value;
   }
 
@@ -683,20 +699,6 @@ export class MicrosoftGraphProvider implements IGraphProvider {
   ): Promise<T> {
     const token = await this.getToken();
     const method = body ? 'post' : 'get';
-    if (this.#_cache && attemptCacheGet && method === 'get' && !skipCache) {
-      try {
-        const value = await this.#_cache.getObject(url);
-        if (value?.cache) {
-          if (Array.isArray(value.cache) && value.cache.length === 0) {
-            // live lookup still
-          } else if (typeof value.cache === 'object') {
-            return value.cache as any;
-          }
-        }
-      } catch (error) {
-        console.warn(error);
-      }
-    }
     try {
       const headers = {
         Authorization: `Bearer ${token}`,
@@ -705,7 +707,6 @@ export class MicrosoftGraphProvider implements IGraphProvider {
       if (axios12BufferDecompressionBugHeaderAddition) {
         headers['Accept-Encoding'] = 'identity'; // gzip, deflate'
       }
-
       if (eventualConsistency) {
         headers['ConsistencyLevel'] = eventualConsistency;
       }
@@ -721,12 +722,6 @@ export class MicrosoftGraphProvider implements IGraphProvider {
       if ((response.data as any).error?.message) {
         throw CreateError.InvalidParameters((response.data as any).error.message);
       }
-      if (this.#_cache && method === 'get') {
-        this.#_cache
-          .setObjectWithExpire(url, { cache: response.data }, defaultCachePeriodMinutes)
-          .then(() => {})
-          .catch((err) => {});
-      }
       return response.data;
     } catch (error) {
       const axiosError = error as AxiosError;
@@ -741,6 +736,18 @@ export class MicrosoftGraphProvider implements IGraphProvider {
           throw err;
         } else if (axiosError.response?.status >= 400) {
           const attemptedErrorData = axiosError.response?.data as any;
+          if (attemptedErrorData?.error?.message?.includes('Continuous access evaluation')) {
+            console.warn(
+              `Graph request error: ${attemptedErrorData.error.message} (client ${this.clientId})`
+            );
+            throw CreateError.Wrap(attemptedErrorData.error.message, axiosError);
+          }
+          if (attemptedErrorData?.error?.code === 'Request_UnsupportedQuery') {
+            console.warn(
+              `Graph query unsupported: ${attemptedErrorData.error.message} (client ${this.clientId})`
+            );
+            throw CreateError.Wrap(attemptedErrorData.error.message, axiosError);
+          }
           throw CreateError.InvalidParameters(
             attemptedErrorData.error?.message || 'Incorrect graph parameters',
             axiosError
@@ -753,45 +760,9 @@ export class MicrosoftGraphProvider implements IGraphProvider {
   }
 
   async getToken() {
-    const clientId = this.clientId;
-    const clientSecret = this.#_clientSecret;
-    if (!clientId || !clientSecret) {
-      throw new Error('The graph provider requires an AAD clientId and clientSecret.');
-    }
-    const tokenKey = this.clientId;
-    const token = cache.get(tokenKey) as string;
-    if (token) {
-      return token;
-    }
-    const tokenEndpoint =
-      this.#_tokenEndpoint || `https://login.microsoftonline.com/${this.#_tenantId}/oauth2/token`;
-    // These are the parameters necessary for the OAuth 2.0 Client Credentials Grant Flow.
-    // For more information, see Service to Service Calls Using Client Credentials (https://msdn.microsoft.com/library/azure/dn645543.aspx).
+    const clientId = this._entraApplicationTokens.clientId;
     try {
-      const qs = {
-        grant_type: 'client_credentials',
-        client_id: clientId,
-        client_secret: clientSecret,
-        resource: 'https://graph.microsoft.com',
-      };
-      const response = await axios.post(tokenEndpoint, querystring.stringify(qs), {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-      });
-      if (!response.data) {
-        throw CreateError.ServerError('Empty response');
-      }
-      const data = response.data as any; // axios returns unknown now
-      if (!data.access_token) {
-        throw CreateError.InvalidParameters('No access token');
-      }
-      if (data.error?.message) {
-        throw CreateError.InvalidParameters(data.error.message);
-      }
-      const accessToken = data.access_token as string;
-      cache.put(tokenKey, accessToken, this.#_tokenCacheMilliseconds);
-      return accessToken;
+      return await this._entraApplicationTokens.getAccessToken(MICROSOFT_GRAPH_RESOURCE_URI);
     } catch (error) {
       const axiosError = error as AxiosError;
       if (axiosError?.response) {

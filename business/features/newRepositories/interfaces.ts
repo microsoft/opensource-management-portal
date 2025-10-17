@@ -5,9 +5,9 @@
 
 import { TelemetryClient } from 'applicationinsights';
 
-import { Operations, Organization, Repository } from '../..';
-import { IRepositoryMetadataProvider } from '../../entities/repositoryMetadata/repositoryMetadataProvider';
-import { ICorporateLink, RepositoryLockdownState } from '../../../interfaces';
+import { Operations, Organization, Repository } from '../../index.js';
+import { IRepositoryMetadataProvider } from '../../entities/repositoryMetadata/repositoryMetadataProvider.js';
+import { ICorporateLink, RepositoryLockdownState } from '../../../interfaces/index.js';
 
 export enum RepositoryLockdownCreateType {
   Created = 'created',

@@ -3,9 +3,9 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import type { Organization } from '../..';
-import getCompanySpecificDeployment from '../../../middleware/companySpecificDeployment';
-import { ICorporateLink, IProviders } from '../../../interfaces';
+import type { Organization } from '../../index.js';
+import getCompanySpecificDeployment from '../../../middleware/companySpecificDeployment.js';
+import { ICorporateLink, IProviders } from '../../../interfaces/index.js';
 
 export interface IOrganizationSudo {
   isSudoer(githubLogin: string, link?: ICorporateLink): Promise<boolean>;
@@ -15,31 +15,13 @@ export interface IPortalSudo {
   isSudoer(githubLogin: string, link?: ICorporateLink): Promise<boolean>;
 }
 
-export abstract class OrganizationSudo implements IOrganizationSudo {
-  constructor(
-    protected providers: IProviders,
-    protected organization: Organization
-  ) {}
-  abstract isSudoer(githubLogin: string, link?: ICorporateLink): Promise<boolean>;
+export { OrganizationFeatureSecurityGroupProperty } from './securityGroup.js';
 
-  protected isSudoEnvironmentOff() {
-    // Optional helper for debugging, if the provider chooses to respect the deployment environment
-    const config = this.providers.config;
-    if (config?.sudo?.organization?.off) {
-      console.warn('DEBUG WARNING: Organization sudo support is turned off in the current environment');
-      return true;
-    }
-    return false;
-  }
-}
+export * from './portal.js';
 
-export { OrganizationFeatureSecurityGroupProperty } from './securityGroup';
-
-export * from './portal';
-
-import { OrganizationSudoNoop } from './noop';
-import { OrganizationSudoSecurityGroup } from './securityGroup';
-import { OrganizationSudoGitHubTeams } from './teams';
+import { OrganizationSudoNoop } from './noop.js';
+import { OrganizationSudoSecurityGroup } from './securityGroup.js';
+import { OrganizationSudoGitHubTeams } from './teams.js';
 
 export function createOrganizationSudoInstance(
   providers: IProviders,

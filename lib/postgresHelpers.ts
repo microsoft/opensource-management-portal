@@ -6,6 +6,8 @@
 import Debug from 'debug';
 const debug = Debug.debug('pg');
 
+import type { Pool as PostgresPool } from 'pg';
+
 export function PostgresPoolQuerySingleRow(pool, sql: string, values: any[], callback) {
   PostgresPoolQuery(pool, sql, values, (error, results) => {
     if (error) {
@@ -74,7 +76,7 @@ export function PostgresPoolQuery(pool, sql: string, values: any[], callback) {
   });
 }
 
-export function PostgresPoolQueryAsync(pool, sql: string, values: any[]): Promise<any> {
+export function PostgresPoolQueryAsync(pool: PostgresPool, sql: string, values: any[]): Promise<any> {
   return new Promise((resolve, reject) => {
     PostgresPoolQuery(pool, sql, values, (error, results) => {
       if (results && results['rows'] && results['rows'].length !== undefined) {

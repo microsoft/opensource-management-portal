@@ -5,8 +5,8 @@
 
 import { NextFunction, Response } from 'express';
 
-import { OrganizationMembershipState, ReposAppRequest } from '../../interfaces';
-import { wrapError } from '../../lib/utils';
+import { OrganizationMembershipState, ReposAppRequest } from '../../interfaces/index.js';
+import { wrapError } from '../../lib/utils.js';
 
 const orgPermissionsCacheKeyName = 'orgPermissions';
 const orgOwnersCacheKeyName = 'orgOwners';

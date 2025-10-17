@@ -6,54 +6,65 @@
 import { CosmosClient, Database, Container } from '@azure/cosmos';
 import { Store } from 'express-session';
 
-import { IAppSession } from '../../interfaces';
-import { ErrorHelper } from '../transitional';
+import { CreateError, ErrorHelper } from '../transitional.js';
+import type { IAppSession, IProviders } from '../../interfaces/index.js';
+import { getOrCreateCosmosClient } from '../../middleware/cosmos.js';
 
-export interface ICosmosSessionProviderOptions {
+export type CosmosSessionProviderOptions = {
   endpoint: string;
-  key: string;
-  ttl?: number;
   database?: string;
+  ttl?: number;
+
   collection?: string;
-}
+  createCollectionIfNotExist?: boolean;
+
+  key?: string;
+  useManagedIdentity: boolean;
+  tenantId?: string;
+};
 
 export default class CosmosSessionStore extends Store {
-  private _options: ICosmosSessionProviderOptions;
   private _client: CosmosClient;
   private _initialized: boolean;
   private _database: Database;
   private _collection: Container;
 
-  // session: Express.Session
-  constructor(options: ICosmosSessionProviderOptions) {
+  constructor(
+    private providers: IProviders,
+    private options: CosmosSessionProviderOptions
+  ) {
     super();
-    this._options = options;
   }
 
   async initialize() {
     if (this._initialized) {
       return;
     }
-    const { endpoint, key } = this._options;
+    const { createCollectionIfNotExist, endpoint, key, useManagedIdentity } = this.options;
     if (!endpoint) {
-      throw new Error('options.endpoint required');
+      throw CreateError.InvalidParameters('options.endpoint required');
     }
-    if (!key) {
-      throw new Error('options.key required');
+    if (!key && !useManagedIdentity) {
+      throw CreateError.InvalidParameters('options.key required when not using Managed Identity');
     }
-    if (!this._options.collection) {
-      throw new Error('options.collection required');
+    if (!this.options.collection) {
+      throw CreateError.InvalidParameters('options.collection required');
     }
-    if (!this._options.database) {
-      throw new Error('options.database required');
+    if (!this.options.database) {
+      throw CreateError.InvalidParameters('options.database required');
     }
-    this._client = new CosmosClient({ endpoint, key });
-    this._database = (
-      await this._client.databases.createIfNotExists({ id: this._options.database })
-    ).database;
-    this._collection = (
-      await this._database.containers.createIfNotExists({ id: this._options.collection })
-    ).container;
+    this._client = await getOrCreateCosmosClient(this.providers, this.options);
+    if (createCollectionIfNotExist) {
+      this._database = (
+        await this._client.databases.createIfNotExists({ id: this.options.database })
+      ).database;
+      this._collection = (
+        await this._database.containers.createIfNotExists({ id: this.options.collection })
+      ).container;
+    } else {
+      this._database = this._client.database(this.options.database);
+      this._collection = this._database.container(this.options.collection);
+    }
     this._initialized = true;
   }
 
@@ -122,7 +133,7 @@ export default class CosmosSessionStore extends Store {
     }
     const item = Object.assign({}, session, {
       id: sid,
-      ttl: this._options.ttl,
+      ttl: this.options.ttl,
       seen: new Date(),
     });
     this._collection.items

@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Repository, Team } from '../../..';
+import { Repository, Team } from '../../../index.js';
 
 export async function tryDropTeam(repository: Repository, team: Team, log: string[]): Promise<void> {
   const organization = repository.organization;

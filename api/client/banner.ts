@@ -4,10 +4,10 @@
 //
 
 import { NextFunction, Response, Router } from 'express';
-import { ReposAppRequest } from '../../interfaces';
+import { ReposAppRequest } from '../../interfaces/index.js';
 
-import { jsonError } from '../../middleware';
-import { getProviders } from '../../lib/transitional';
+import { jsonError } from '../../middleware/index.js';
+import { getProviders } from '../../lib/transitional.js';
 
 const router: Router = Router();
 
@@ -19,10 +19,10 @@ router.get('/', (req: ReposAppRequest, res: Response, next: NextFunction) => {
   const link = config.serviceMessage?.link;
   const details = config.serviceMessage?.details;
   const banner = text ? { text, link, details } : null;
-  return res.json({ banner });
+  return res.json({ banner }) as unknown as void;
 });
 
-router.use('*', (req, res: Response, next: NextFunction) => {
+router.use('/*splat', (req, res: Response, next: NextFunction) => {
   return next(jsonError('no API or function available within this banner route', 404));
 });
 

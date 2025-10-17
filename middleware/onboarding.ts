@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { IProviders, IReposApplication, SiteConfiguration } from '../interfaces';
+import { IProviders, IReposApplication, SiteConfiguration } from '../interfaces/index.js';
 
 // ----------------------------------------------------------------------------
 // Onboarding helper

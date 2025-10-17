@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { IMailProvider, IMail } from '.';
+import { IMailProvider, IMail } from './index.js';
 
 import nodemailer from 'nodemailer';
 

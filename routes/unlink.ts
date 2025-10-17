@@ -4,65 +4,59 @@
 //
 
 import { NextFunction, Response, Router } from 'express';
-import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
-import { getProviders } from '../lib/transitional';
-import { wrapError } from '../lib/utils';
-import { IndividualContext } from '../business/user';
-import { jsonError } from '../middleware';
-import { ReposAppRequest, OrganizationMembershipState, UnlinkPurpose } from '../interfaces';
+import { getProviders } from '../lib/transitional.js';
+import { wrapError } from '../lib/utils.js';
+import { IndividualContext } from '../business/user/index.js';
+import { jsonError } from '../middleware/index.js';
+import { ReposAppRequest, OrganizationMembershipState, UnlinkPurpose } from '../interfaces/index.js';
 
-router.use(
-  asyncHandler(async function (req: ReposAppRequest, res: Response, next: NextFunction) {
-    const memberOfOrganizations = [];
-    const { operations } = getProviders(req);
-    const ghi = req.individualContext.getGitHubIdentity();
-    if (!ghi || !ghi.username) {
-      return next(new Error('GitHub identity required'));
-    }
-    const username = ghi.username;
-    for (const organization of operations.organizations.values()) {
-      try {
-        const result = await organization.getMembership(username);
-        let state = null;
-        if (result && result.state) {
-          state = result.state;
-        }
-        if (state === OrganizationMembershipState.Active || state === OrganizationMembershipState.Pending) {
-          memberOfOrganizations.push(organization);
-        }
-      } catch (error) {
-        // TODO: consider insights here, but we do not want to halt progress
-        // on allowing unlink operations
+router.use(async function (req: ReposAppRequest, res: Response, next: NextFunction) {
+  const memberOfOrganizations = [];
+  const { operations } = getProviders(req);
+  const ghi = req.individualContext.getGitHubIdentity();
+  if (!ghi || !ghi.username) {
+    return next(new Error('GitHub identity required'));
+  }
+  const username = ghi.username;
+  for (const organization of operations.organizations.values()) {
+    try {
+      const result = await organization.getMembership(username);
+      let state = null;
+      if (result && result.state) {
+        state = result.state;
       }
+      if (state === OrganizationMembershipState.Active || state === OrganizationMembershipState.Pending) {
+        memberOfOrganizations.push(organization);
+      }
+    } catch (error) {
+      // TODO: consider insights here, but we do not want to halt progress
+      // on allowing unlink operations
     }
-    req.currentOrganizationMemberships = memberOfOrganizations;
-    return next();
-  })
-);
+  }
+  req.currentOrganizationMemberships = memberOfOrganizations;
+  return next();
+});
 
-router.get(
-  '/',
-  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
-    const link = req.individualContext.link;
-    const id = req.individualContext.getGitHubIdentity().id;
-    const { operations } = getProviders(req);
-    const account = operations.getAccount(id);
-    const currentOrganizationMemberships = await account.getOperationalOrganizationMemberships();
-    if (link && id) {
-      return req.individualContext.webContext.render({
-        view: 'unlink',
-        title: 'Remove corporate link and organization memberships',
-        state: {
-          organizations: currentOrganizationMemberships,
-        },
-      });
-    } else {
-      return next(new Error('No link could be found.'));
-    }
-  })
-);
+router.get('/', async (req: ReposAppRequest, res: Response, next: NextFunction) => {
+  const link = req.individualContext.link;
+  const id = req.individualContext.getGitHubIdentity().id;
+  const { operations } = getProviders(req);
+  const account = operations.getAccount(id);
+  const currentOrganizationMemberships = await account.getOperationalOrganizationMemberships();
+  if (link && id) {
+    return req.individualContext.webContext.render({
+      view: 'unlink',
+      title: 'Remove corporate link and organization memberships',
+      state: {
+        organizations: currentOrganizationMemberships,
+      },
+    });
+  } else {
+    return next(new Error('No link could be found.'));
+  }
+});
 
 export async function unlinkInteractive(
   isJson: boolean,
@@ -108,13 +102,10 @@ export async function unlinkInteractive(
   }
 }
 
-router.post(
-  '/',
-  asyncHandler(async function (req: ReposAppRequest, res: Response, next: NextFunction) {
-    const individualContext = req.individualContext;
-    // TODO: validate
-    return unlinkInteractive(false, individualContext, req, res, next);
-  })
-);
+router.post('/', async function (req: ReposAppRequest, res: Response, next: NextFunction) {
+  const individualContext = req.individualContext;
+  // TODO: validate
+  return unlinkInteractive(false, individualContext, req, res, next);
+});
 
 export default router;

@@ -8,17 +8,16 @@ import _ from 'lodash';
 import Debug from 'debug';
 const debug = Debug.debug('restapi');
 
-import cost from './cost';
-import { RestResponse, flattenData } from './core';
-import { CompositeApiContext, CompositeIntelligentEngine } from './composite';
-import { Collaborator } from '../../business/collaborator';
-import { Team } from '../../business/team';
-import { IPagedCacheOptions, GetAuthorizationHeader, IDictionary } from '../../interfaces';
-import { RestLibrary } from '.';
-import { sleep } from '../utils';
-import GitHubApplication from '../../business/application';
-import { RepositoryPrimaryProperties } from '../../business/primaryProperties';
-import { RepositoryInvitation } from '../../business/repositoryInvitation';
+import cost from './cost.js';
+import { RestResponse, flattenData } from './core.js';
+import { CompositeApiContext, CompositeIntelligentEngine } from './composite.js';
+import { RestLibrary } from './index.js';
+import { sleep } from '../utils.js';
+import GitHubApplication from '../../business/application.js';
+import { CreateError, ErrorHelper } from '../transitional.js';
+
+import type { GitHubAuthenticationWithRequirements } from './types.js';
+import type { IPagedCacheOptions, GetAuthorizationHeader, IDictionary } from '../../interfaces/index.js';
 
 export interface IGetAppInstallationsParameters {
   app_id: string;
@@ -61,81 +60,15 @@ export interface IListPullsParameters {
   direction?: GitHubSortDirection;
 }
 
-const mostBasicAccountProperties = ['id', 'login', 'avatar_url'];
+export const mostBasicAccountProperties = ['id', 'login', 'avatar_url'];
 
-const branchDetailsToCopy = ['name', 'commit', 'protected'];
-const repoDetailsToCopy = RepositoryPrimaryProperties;
-const teamDetailsToCopy = Team.PrimaryProperties;
-const memberDetailsToCopy = Collaborator.PrimaryProperties;
+export const evenMoreBasicAccountProperties = ['id', 'login'];
+
 const appInstallDetailsToCopy = GitHubApplication.PrimaryInstallationProperties;
-const contributorsDetailsToCopy = [...Collaborator.PrimaryProperties, 'contributions'];
-const repoInviteDetailsToCopy = RepositoryInvitation.PrimaryProperties;
 
-type SubReducerProperties = Record<string, string[]>;
+export type SubReducerProperties = Record<string, string[]>;
 
-type WithSubPropertyReducer = any[] & { subPropertiesToReduce?: SubReducerProperties };
-
-const copilotSeatPropertiesToCopy: WithSubPropertyReducer = [
-  'created_at',
-  'updated_at',
-  'last_activity_at',
-  'last_activity_editor',
-  'assignee', // id, login; mostBasicAccountProperties
-];
-copilotSeatPropertiesToCopy.subPropertiesToReduce = {
-  assignee: mostBasicAccountProperties,
-};
-
-const teamPermissionsToCopyForRepository = [
-  'name',
-  'id',
-  'slug',
-  'description',
-  // 'members_count',
-  // 'repos_count',
-  'privacy',
-  // 'notification_setting',
-  'permission', // custom role name at times
-  'permissions', // array of booleans for admin, maintain, push, triage, pull
-  'parent', // large object for a parent team, if present
-];
-
-const teamRepoPermissionsToCopy = [
-  'id',
-  'name',
-  'full_name',
-  'description',
-  'private',
-  'fork',
-  'permissions',
-  'role_name',
-];
-
-const pullDetailsToCopy = [
-  'id',
-  'number',
-  'state',
-  'locked',
-  'title',
-  // user
-  'body',
-  // labels
-  // milestone
-  // active_lock_reason
-  'created_at',
-  'updated_at',
-  'closed_at',
-  'merged_at',
-  'merge_commit_sha',
-  'assignee', // << NOTE: this was deprecated in 2020 (? not sure on date)
-  'assignees',
-  // requested_reviewers
-  // requested_teams
-  'head', // PERF: large user of list storage
-  'base', // PERF: large user of list storage
-  'author_association',
-  'draft',
-];
+export type WithSubPropertyReducer = any[] & { subPropertiesToReduce?: SubReducerProperties };
 
 interface IRequestWithData {
   data: unknown;
@@ -177,6 +110,28 @@ export class RestCollections {
     );
   }
 
+  collectAllPagesWithRequirements<ParametersType = any, EntityType = any>(
+    collectionCacheKey: string,
+    requirements: GitHubAuthenticationWithRequirements,
+    parameters: ParametersType,
+    cacheOptions: IPagedCacheOptions,
+    fieldNamesToKeep?: string[] | WithSubPropertyReducer,
+    arrayReducePropertyName?: string
+  ): Promise<EntityType[]> {
+    if (!requirements?.requirements?.octokitFunctionName) {
+      throw CreateError.InvalidParameters('No octokitFunctionName in requirements');
+    }
+    return this.generalizedCollectionWithFilter(
+      collectionCacheKey,
+      requirements.requirements.octokitFunctionName,
+      fieldNamesToKeep,
+      requirements.authorization,
+      parameters,
+      cacheOptions,
+      arrayReducePropertyName
+    );
+  }
+
   collectAllPagesViaHttpGet<ParametersType = any, EntityType = any>(
     token: string | GetAuthorizationHeader,
     collectionCacheKey: string,
@@ -203,107 +158,36 @@ export class RestCollections {
     );
   }
 
-  // ---
-
-  getOrgRepos(
-    token: string | GetAuthorizationHeader,
-    options,
-    cacheOptions: IPagedCacheOptions
-  ): Promise<any> {
-    return this.generalizedCollectionWithFilter(
-      'orgRepos',
-      'repos.listForOrg',
-      repoDetailsToCopy,
-      token,
-      options,
-      cacheOptions
-    );
-  }
-
-  getOrgTeams(
-    token: string | GetAuthorizationHeader,
-    options,
-    cacheOptions: IPagedCacheOptions
-  ): Promise<any> {
-    return this.generalizedCollectionWithFilter(
-      'orgTeams',
-      'teams.list',
-      teamDetailsToCopy,
-      token,
-      options,
-      cacheOptions
-    );
-  }
-
-  getTeamChildTeams(
-    token: string | GetAuthorizationHeader,
-    options,
-    cacheOptions: IPagedCacheOptions
-  ): Promise<any> {
-    return this.generalizedCollectionWithFilter(
-      'teamChildTeams',
-      'teams.listChildInOrg',
-      teamDetailsToCopy,
-      token,
-      options,
-      cacheOptions
-    );
-  }
-
-  getUserActivity(
-    token: string | GetAuthorizationHeader,
-    options,
-    cacheOptions: IPagedCacheOptions
-  ): Promise<any> {
-    return this.generalizedCollectionWithFilter(
-      'userActivity',
-      'activity.listEventsForAuthenticatedUser',
-      null /*activityDetailsToCopy*/,
-      token,
-      options,
-      cacheOptions
-    );
-  }
-
-  getOrgMembers(
-    token: string | GetAuthorizationHeader,
-    options,
-    cacheOptions: IPagedCacheOptions
-  ): Promise<any> {
-    return this.generalizedCollectionWithFilter(
-      'orgMembers',
-      'orgs.listMembers',
-      memberDetailsToCopy,
-      token,
-      options,
-      cacheOptions
-    );
-  }
-
-  getOrganizationCopilotSeats(
-    token: string | GetAuthorizationHeader,
-    options: CollectionCopilotSeatsOptions,
-    cacheOptions: IPagedCacheOptions
-  ): Promise<any> {
-    // technically type CopilotSeatData
-    const orgName = options.org;
-    delete options.org;
-    const params = Object.assign(
+  collectAllPagesViaHttpGetWithRequirements<ParametersType = any, EntityType = any>(
+    collectionCacheKey: string,
+    requirements: GitHubAuthenticationWithRequirements,
+    parameters: ParametersType,
+    cacheOptions: IPagedCacheOptions,
+    fieldNamesToKeep?: string[] | WithSubPropertyReducer,
+    arrayReducePropertyName?: string
+  ): Promise<EntityType[]> {
+    if (!requirements?.requirements?.octokitRequest) {
+      throw CreateError.InvalidParameters('No octokitRequest in requirements');
+    }
+    const getRestUrl = requirements.requirements.octokitRequest;
+    const expandedOptions: WithOctokitRequest<ParametersType> = Object.assign(
       {
-        octokitRequest: `GET /orgs/${orgName}/copilot/billing/seats`,
+        octokitRequest: getRestUrl.startsWith('GET ') ? getRestUrl.substr(4) : getRestUrl,
       },
-      options
+      parameters
     );
-    return this.generalizedCollectionWithFilter(
-      'orgCopilotSeats',
+    return this.collectAllPages<ParametersType, EntityType>(
+      requirements.authorization,
+      collectionCacheKey,
       'request',
-      copilotSeatPropertiesToCopy,
-      token,
-      params,
+      expandedOptions,
       cacheOptions,
-      'seats'
+      fieldNamesToKeep,
+      arrayReducePropertyName
     );
   }
+
+  // ---
 
   getAppInstallations(
     token: string | GetAuthorizationHeader,
@@ -326,156 +210,6 @@ export class RestCollections {
     );
   }
 
-  getRepoIssues(
-    token: string | GetAuthorizationHeader,
-    options,
-    cacheOptions: IPagedCacheOptions
-  ): Promise<any[]> {
-    return this.generalizedCollectionWithFilter(
-      'repoIssues',
-      'issues.listForRepo',
-      null,
-      token,
-      options,
-      cacheOptions
-    );
-  }
-
-  getRepoProjects(
-    token: string | GetAuthorizationHeader,
-    options,
-    cacheOptions: IPagedCacheOptions
-  ): Promise<any[]> {
-    return this.generalizedCollectionWithFilter(
-      'repoProjects',
-      'projects.listForRepo',
-      null,
-      token,
-      options,
-      cacheOptions
-    );
-  }
-
-  getRepoTeams(
-    token: string | GetAuthorizationHeader,
-    options,
-    cacheOptions: IPagedCacheOptions
-  ): Promise<any> {
-    return this.generalizedCollectionWithFilter(
-      'repoTeamPermissions',
-      'repos.listTeams',
-      teamPermissionsToCopyForRepository,
-      token,
-      options,
-      cacheOptions
-    );
-  }
-
-  getRepoContributors(
-    token: string | GetAuthorizationHeader,
-    options,
-    cacheOptions: IPagedCacheOptions
-  ): Promise<any> {
-    return this.generalizedCollectionWithFilter(
-      'repoListContributors',
-      'repos.listContributors',
-      contributorsDetailsToCopy,
-      token,
-      options,
-      cacheOptions
-    );
-  }
-
-  getRepoCollaborators(
-    token: string | GetAuthorizationHeader,
-    options,
-    cacheOptions: IPagedCacheOptions
-  ): Promise<any> {
-    return this.generalizedCollectionWithFilter(
-      'repoCollaborators',
-      'repos.listCollaborators',
-      memberDetailsToCopy,
-      token,
-      options,
-      cacheOptions
-    );
-  }
-
-  getRepoInvitations(
-    token: string | GetAuthorizationHeader,
-    options,
-    cacheOptions: IPagedCacheOptions
-  ): Promise<any> {
-    return this.generalizedCollectionWithFilter(
-      'repoInvitations',
-      'repos.listInvitations',
-      repoInviteDetailsToCopy,
-      token,
-      options,
-      cacheOptions
-    );
-  }
-
-  getRepoBranches(
-    token: string | GetAuthorizationHeader,
-    options,
-    cacheOptions: IPagedCacheOptions
-  ): Promise<any> {
-    return this.generalizedCollectionWithFilter(
-      'repoBranches',
-      'repos.listBranches',
-      branchDetailsToCopy,
-      token,
-      options,
-      cacheOptions
-    );
-  }
-
-  getRepoPullRequests(
-    token: string | GetAuthorizationHeader,
-    options: IListPullsParameters,
-    cacheOptions: IPagedCacheOptions
-  ): Promise<any> {
-    return this.generalizedCollectionWithFilter(
-      'repoPullRequests',
-      'pulls.list',
-      pullDetailsToCopy,
-      token,
-      options,
-      cacheOptions
-    );
-  }
-
-  getTeamMembers(
-    token: string | GetAuthorizationHeader,
-    options,
-    cacheOptions: IPagedCacheOptions
-  ): Promise<any> {
-    return this.generalizedCollectionWithFilter(
-      'teamMembers',
-      'teams.listMembersInOrg',
-      memberDetailsToCopy,
-      token,
-      options,
-      cacheOptions
-    );
-  }
-
-  getTeamRepos(
-    token: string | GetAuthorizationHeader,
-    options,
-    cacheOptions: IPagedCacheOptions
-  ): Promise<any> {
-    return this.generalizedCollectionWithFilter(
-      'teamRepos',
-      'teams.listReposInOrg',
-      teamRepoPermissionsToCopy,
-      token,
-      options,
-      cacheOptions
-    );
-  }
-
   private async getGithubCollection<OptionsType>(
     token: string | GetAuthorizationHeader,
     methodName: string,
@@ -483,12 +217,14 @@ export class RestCollections {
     cacheOptions: IPagedCacheOptions,
     arrayReducePropertyName?: string
   ): Promise<IRequestWithData> {
+    const insights = this.libraryContext.insights;
     const hasNextPage = this.libraryContext.hasNextPage;
     const githubCall = this.githubCall;
     let done = false;
     let results = [];
     let recentResult = null;
     const requests = [];
+    let emptyDataResponses = 0;
     let pages = 0;
     let currentPage = 0;
     const pageLimit = (options as any)?.pageLimit || cacheOptions['pageLimit'] || Number.MAX_VALUE;
@@ -499,14 +235,16 @@ export class RestCollections {
       const currentToken = typeof token === 'string' ? token : await token();
       args.push(currentToken);
       const clonedOptions: WithPage<OptionsType> = Object.assign({}, options);
-      if (++currentPage > 1) {
+      if (currentPage > 0) {
         clonedOptions.page = currentPage;
       }
+      const octokitRequest = (clonedOptions as any)?.octokitRequest as string;
       args.push(methodName, clonedOptions);
       let error = null;
       let result = null;
       try {
         result = await (method as any).apply(null, args);
+        ++currentPage;
         if (
           arrayReducePropertyName &&
           result[arrayReducePropertyName] &&
@@ -538,8 +276,36 @@ export class RestCollections {
           done = true;
         }
       } catch (iterationError) {
+        if (
+          iterationError?.message === 'no response.data' &&
+          currentPage > 1 &&
+          octokitRequest &&
+          octokitRequest.endsWith('/copilot/billing/seats')
+        ) {
+          // The Copilot seat APIs occasionally return empty data temporarily. This is not
+          // ideal, but it slows gathering. This telemetry will help monitor how common the
+          // issue is.
+          ++emptyDataResponses;
+          insights?.trackEvent({
+            name: 'github.rest.copilot.empty_seat_data',
+            properties: {
+              currentPage,
+              octokitRequest,
+              emptyDataResponses,
+            },
+          });
+          if (emptyDataResponses < 5) {
+            await sleep(500);
+            continue;
+          }
+        }
         done = true;
-        error = iterationError;
+        if (ErrorHelper.IsServerError(iterationError) && currentPage > 200) {
+          // special unique error around calling copilot/billing/seats on the last page currently [2024-04-14]
+          console.log('xxx hit issue on page ' + currentPage);
+        } else {
+          error = iterationError;
+        }
       }
       if (!done && !error && result.headers && result.headers['retry-after']) {
         // actual retry headers win
@@ -605,20 +371,28 @@ export class RestCollections {
         const doNotModify = results[i];
         if (doNotModify) {
           const r = {};
-          _.forOwn(doNotModify, (value, key) => {
-            if (keepAll || propertiesToKeep.indexOf(key) >= 0) {
-              if (subReductionProperties && subReductionProperties[key]) {
-                const validSubKeys = new Set(subReductionProperties[key]);
-                for (const subKey of Object.getOwnPropertyNames(value)) {
-                  if (!validSubKeys.has(subKey)) {
-                    delete value[subKey];
+          try {
+            _.forOwn(doNotModify, (value, key) => {
+              if (keepAll || propertiesToKeep.indexOf(key) >= 0) {
+                if (subReductionProperties && subReductionProperties[key] && value) {
+                  const validSubKeys = new Set(subReductionProperties[key]);
+                  for (const subKey of Object.getOwnPropertyNames(value)) {
+                    if (!validSubKeys.has(subKey)) {
+                      delete value[subKey];
+                    }
                   }
+                } else if (subReductionProperties && subReductionProperties[key] && !value) {
+                  console.warn(
+                    `GitHub Collections reduction warning: no properties for ${key} in ${JSON.stringify(value)}`
+                  );
                 }
+                r[key] = value;
               }
-              r[key] = value;
-            }
-          });
-          repos.push(r);
+            });
+            repos.push(r);
+          } catch (error) {
+            console.warn(`GitHub Collections warning: Error processing object clone`, error);
+          }
         }
       }
       const filteredData = {

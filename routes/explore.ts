@@ -6,8 +6,8 @@
 import { NextFunction, Response, Router } from 'express';
 const router: Router = Router();
 
-import { ReposAppRequest } from '../interfaces';
-import { getProviders } from '../lib/transitional';
+import { ReposAppRequest } from '../interfaces/index.js';
+import { getProviders } from '../lib/transitional.js';
 
 router.get('/', (req: ReposAppRequest, res) => {
   const config = getProviders(req).config;

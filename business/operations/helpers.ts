@@ -5,7 +5,7 @@
 
 import _ from 'lodash';
 
-import { Operations } from '.';
+import { Operations } from './index.js';
 
 type PrioritizedOptions = {
   shufflePrimary?: boolean;

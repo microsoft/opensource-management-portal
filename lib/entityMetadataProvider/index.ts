@@ -3,19 +3,21 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { IEntityMetadataProvider } from './entityMetadataProvider';
-import { ITableEntityMetadataProviderOptions, TableEntityMetadataProvider } from './table';
-import { IPostgresEntityMetadataProviderOptions, PostgresEntityMetadataProvider } from './postgres';
-import { MemoryConfiguration, MemoryEntityMetadataProvider, MemorySettings } from './memory';
+import { ITableEntityMetadataProviderOptions, TableEntityMetadataProvider } from './table.js';
+import { MemoryConfiguration, MemoryEntityMetadataProvider, MemorySettings } from './memory.js';
+import { IPostgresEntityMetadataProviderOptions, PostgresEntityMetadataProvider } from './postgres.js';
 
-export * from './entityMetadataProvider';
-export * from './query';
-export * from './declarations';
-export * from './entityMetadata';
+import type { IEntityMetadataProvider } from './entityMetadataProvider.js';
+import type { IProviders } from '../../interfaces/providers.js';
+
+export * from './entityMetadataProvider.js';
+export * from './query.js';
+export * from './declarations.js';
+export * from './entityMetadata.js';
 
 export { MemoryConfiguration, MemorySettings };
-export { PostgresConfiguration, PostgresSettings } from './postgres';
-export { TableConfiguration, TableSettings } from './table';
+export { PostgresConfiguration, PostgresSettings } from './postgres.js';
+export { TableConfiguration, TableSettings } from './table.js';
 
 const providerTypes = ['memory', 'table', 'postgres'];
 
@@ -24,6 +26,7 @@ const defaultProviderName = 'memory';
 export const keyValueMetadataField = 'additionalData';
 
 export interface IEntityMetadataProvidersOptions {
+  providers: IProviders;
   tableOptions?: ITableEntityMetadataProviderOptions;
   postgresOptions?: IPostgresEntityMetadataProviderOptions;
   providerTypeName?: string;
@@ -53,7 +56,7 @@ export function createEntityMetadataProviderInstance(
       return new PostgresEntityMetadataProvider(options.postgresOptions);
 
     case 'table':
-      return new TableEntityMetadataProvider(options.tableOptions);
+      return new TableEntityMetadataProvider(options.providers, options.tableOptions);
 
     default:
       throw new Error(`${providerName} EntityMetadataProvider not implemented`);

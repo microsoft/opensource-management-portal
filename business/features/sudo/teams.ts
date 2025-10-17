@@ -3,10 +3,15 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { OrganizationSudo } from '.';
-import { Organization } from '../..';
-import { IProviders, ICorporateLink, GitHubTeamRole, ITeamMembershipRoleState } from '../../../interfaces';
-import { ErrorHelper } from '../../../lib/transitional';
+import { Organization } from '../../index.js';
+import {
+  type IProviders,
+  type ICorporateLink,
+  GitHubTeamRole,
+  type ITeamMembershipRoleState,
+} from '../../../interfaces/index.js';
+import { ErrorHelper } from '../../../lib/transitional.js';
+import { OrganizationSudo } from './class.js';
 
 export class OrganizationSudoGitHubTeams extends OrganizationSudo {
   constructor(providers: IProviders, organization: Organization) {

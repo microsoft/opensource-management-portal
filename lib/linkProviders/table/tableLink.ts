@@ -3,8 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { ICorporateLinkExtendedDirectMethods, ICorporateLinkExtended } from '../../../interfaces';
-import { TableLinkProvider } from './tableLinkProvider';
+import { ICorporateLinkExtendedDirectMethods, ICorporateLinkExtended } from '../../../interfaces/index.js';
+import { TableLinkProvider } from './tableLinkProvider.js';
 
 export interface IInternalTableLinkOptions {
   provider: TableLinkProvider;

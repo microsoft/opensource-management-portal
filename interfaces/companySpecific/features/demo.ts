@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { IndividualContext } from '../../../business/user';
+import { IndividualContext } from '../../../business/user/index.js';
 
 export interface ICompanySpecificFeatureDemo {
   isDemoUser: (activeContext: IndividualContext) => boolean;

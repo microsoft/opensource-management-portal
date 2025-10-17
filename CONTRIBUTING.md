@@ -51,7 +51,6 @@ collaboration.
 
 1. Fork the repo on GitHub, cloning on your machine
 2. Create a branch with your changes.
-
    - Please keep the branch specific to your contribution
    - Please use logical commits with helpful, concise commit messages
    - Follow the coding style of the project

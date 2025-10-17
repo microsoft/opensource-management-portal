@@ -16,7 +16,7 @@ block content
 
     if contributions
       - var nominationTypes = Object.getOwnPropertyNames(contributions)
-      p #[a(href='https://aka.ms/fossfund') Contributions you've made this month]:
+      p #[a(href='https://aka.ms/fossfund') Contributions you've made]:
       ul
         each nt in nominationTypes
           - var countOfThisType = contributions[nt].length
@@ -70,8 +70,6 @@ block content
       p Project: #[a(href=nominee.web)= nominee.web]
     p: a(href='https://aka.ms/fossfund') Open ballot...
     p= nominee.description
-    if nominee.justification
-      p: small: em= nominee.justification
 
   hr
 
@@ -102,9 +100,6 @@ block content
     li Must have contributed in the open to at least one project on GitHub beyond Microsoft's governance during the eligibility period. Contributions to your own repos or to forks of Microsoft projects are not included.
     li Contributions captured automatically include opening and merging pull requests, opening issues, discussing issues, performing code reviews of pull requests, etc.
     li People may also self-attest other contributions using #[a(href='https://repos.opensource.microsoft.com/contributions/attestation') an attestation form].  Note: a linked GitHub account is still required for self-attestation.
-
-  h3 Where to view your contributions, nominate and vote
-  p The page at #[a(href='https://aka.ms/fossfund') https://aka.ms/fossfund] will show your contributions and other information about nominating and voting.
 
   h3 Feedback
   p We'd love to hear from you at #[a(href='mailto:opensource@microsoft.com') opensource@microsoft.com].

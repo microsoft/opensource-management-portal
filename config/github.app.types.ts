@@ -13,6 +13,7 @@ export type ConfigGitHubAppGeneric = {
   appId: string;
   appKey: string;
   appKeyFile: string;
+  appKeyRemoteJwt: string;
   webhookSecret: string;
   slug: string;
   description: string;

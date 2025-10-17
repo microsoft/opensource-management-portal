@@ -5,12 +5,12 @@
 
 import { NextFunction, Response, Router } from 'express';
 
-import { ReposAppRequest } from '../../../interfaces';
-import { wrapError } from '../../../lib/utils';
+import { ReposAppRequest } from '../../../interfaces/index.js';
+import { wrapError } from '../../../lib/utils.js';
 const router: Router = Router();
 
-import RouteApprovals from './approvals';
-import RouteMembers from './members';
+import RouteApprovals from './approvals.js';
+import RouteMembers from './members.js';
 
 interface ILocalRequest extends ReposAppRequest {
   teamPermissions?: any;

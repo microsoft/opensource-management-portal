@@ -4,44 +4,42 @@
 //
 
 import { NextFunction, Response, Router } from 'express';
-import asyncHandler from 'express-async-handler';
 
-import { ReposAppRequest } from '../../../interfaces';
-import { jsonError } from '../../../middleware';
-import getCompanySpecificDeployment from '../../../middleware/companySpecificDeployment';
-import { getProviders } from '../../../lib/transitional';
+import { ReposAppRequest } from '../../../interfaces/index.js';
+import { jsonError } from '../../../middleware/index.js';
+import getCompanySpecificDeployment from '../../../middleware/companySpecificDeployment.js';
+import { getProviders } from '../../../lib/transitional.js';
 import {
   blockIfUnmanagedOrganization,
   IReposAppRequestWithOrganizationManagementType,
   OrganizationManagementType,
-} from '../../../middleware/business/organization';
+} from '../../../middleware/business/organization.js';
 
-import routeRepos from './repos';
-import routeTeams from './teams';
-import routePeople from './people';
-import routeNewRepoMetadata from './newRepoMetadata';
-import routeAnnotations from './annotations';
+import routeRepos from './repos.js';
+import routeTeams from './teams.js';
+import routePeople from './people.js';
+import routeNewRepoMetadata from './newRepoMetadata.js';
+import routeAnnotations from './annotations.js';
 
 const router: Router = Router();
 
 const deployment = getCompanySpecificDeployment();
-deployment?.routes?.api?.organization?.index && deployment?.routes?.api?.organization?.index(router);
+if (deployment?.routes?.api?.organization?.index) {
+  deployment?.routes?.api?.organization?.index(router);
+}
 
-router.get(
-  '/accountDetails',
-  asyncHandler(async (req: IReposAppRequestWithOrganizationManagementType, res) => {
-    const { organization, organizationProfile, organizationManagementType } = req;
-    if (organizationManagementType === OrganizationManagementType.Unmanaged) {
-      return res.json(organizationProfile) as unknown as void;
-    }
-    const entity = organization.getEntity();
-    if (entity) {
-      return res.json(entity) as unknown as void;
-    }
-    const details = await organization.getDetails();
-    return res.json(details) as unknown as void;
-  })
-);
+router.get('/accountDetails', async (req: IReposAppRequestWithOrganizationManagementType, res) => {
+  const { organization, organizationProfile, organizationManagementType } = req;
+  if (organizationManagementType === OrganizationManagementType.Unmanaged) {
+    return res.json(organizationProfile) as unknown as void;
+  }
+  const entity = organization.getEntity();
+  if (entity) {
+    return res.json(entity) as unknown as void;
+  }
+  const details = await organization.getDetails();
+  return res.json(details) as unknown as void;
+});
 
 /*
 asClientJson() {
@@ -63,21 +61,19 @@ asClientJson() {
 */
 router.get(
   '/',
-  asyncHandler(
-    async (req: IReposAppRequestWithOrganizationManagementType, res: Response, next: NextFunction) => {
-      const { organization, organizationProfile, organizationManagementType } = req;
-      if (organizationManagementType === OrganizationManagementType.Unmanaged) {
-        return res.json({
-          managementType: req.organizationManagementType,
-          id: organizationProfile.id,
-        }) as unknown as void;
-      }
+  async (req: IReposAppRequestWithOrganizationManagementType, res: Response, next: NextFunction) => {
+    const { organization, organizationProfile, organizationManagementType } = req;
+    if (organizationManagementType === OrganizationManagementType.Unmanaged) {
       return res.json({
         managementType: req.organizationManagementType,
-        ...organization.asClientJson(),
+        id: organizationProfile.id,
       }) as unknown as void;
     }
-  )
+    return res.json({
+      managementType: req.organizationManagementType,
+      ...organization.asClientJson(),
+    }) as unknown as void;
+  }
 );
 
 router.use('/annotations', routeAnnotations);
@@ -92,10 +88,10 @@ router.use('/newRepoMetadata', routeNewRepoMetadata);
 router.get('/newRepoBanner', (req: ReposAppRequest, res) => {
   const { config } = getProviders(req);
   const newRepositoriesOffline = config?.github?.repos?.newRepositoriesOffline;
-  return res.json({ newRepositoriesOffline });
+  return res.json({ newRepositoriesOffline }) as unknown as void;
 });
 
-router.use('*', (req, res: Response, next: NextFunction) => {
+router.use('/*splat', (req, res: Response, next: NextFunction) => {
   return next(jsonError('no API or function available', 404));
 });
 

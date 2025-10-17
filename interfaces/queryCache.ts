@@ -8,13 +8,13 @@ import {
   OrganizationMembershipRole,
   GitHubCollaboratorType,
   GitHubRepositoryPermission,
-} from '.';
-import { Team, Repository, Organization } from '../business';
-import { RepositoryCacheEntity } from '../business/entities/repositoryCache/repositoryCache';
-import { RepositoryCollaboratorCacheEntity } from '../business/entities/repositoryCollaboratorCache/repositoryCollaboratorCache';
-import { RepositoryTeamCacheEntity } from '../business/entities/repositoryTeamCache/repositoryTeamCache';
-import { TeamCacheEntity } from '../business/entities/teamCache/teamCache';
-import { TeamMemberCacheEntity } from '../business/entities/teamMemberCache/teamMemberCache';
+} from './index.js';
+import { Team, Repository, Organization } from '../business/index.js';
+import { RepositoryCacheEntity } from '../business/entities/repositoryCache/repositoryCache.js';
+import { RepositoryCollaboratorCacheEntity } from '../business/entities/repositoryCollaboratorCache/repositoryCollaboratorCache.js';
+import { RepositoryTeamCacheEntity } from '../business/entities/repositoryTeamCache/repositoryTeamCache.js';
+import { TeamCacheEntity } from '../business/entities/teamCache/teamCache.js';
+import { TeamMemberCacheEntity } from '../business/entities/teamMemberCache/teamMemberCache.js';
 
 export enum QueryCacheOperation {
   New = 'new',

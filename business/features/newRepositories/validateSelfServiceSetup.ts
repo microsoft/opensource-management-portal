@@ -3,9 +3,9 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { RepositoryMetadataEntity } from '../../entities/repositoryMetadata/repositoryMetadata';
-import { RepositoryLockdownState } from '../../../interfaces';
-import { IndividualContext } from '../../user';
+import { RepositoryMetadataEntity } from '../../entities/repositoryMetadata/repositoryMetadata.js';
+import { RepositoryLockdownState } from '../../../interfaces/index.js';
+import { IndividualContext } from '../../user/index.js';
 
 export async function validateUserCanConfigureRepository(
   metadata: RepositoryMetadataEntity,
@@ -35,13 +35,13 @@ export async function validateUserCanConfigureRepository(
     throw new Error('The repository has not been locked down');
   }
   if (metadata.lockdownState === RepositoryLockdownState.Unlocked) {
-    throw new Error('The repository has already been unlocked');
+    throw new Error('The repository has already been enabled');
   }
   if (metadata.lockdownState === RepositoryLockdownState.AdministratorLocked) {
-    throw new Error('This repository is locked and requires administrator approval.');
+    throw new Error('This repository is disabled and requires administrator approval.');
   }
   if (metadata.lockdownState === RepositoryLockdownState.ComplianceLocked) {
-    throw new Error('This repository is locked because compliance information is missing.');
+    throw new Error('This repository is disabled because compliance information is missing.');
   }
   if (metadata.lockdownState !== RepositoryLockdownState.Locked) {
     throw new Error(`Unsupported repository lockdown state ${metadata.lockdownState}`);

@@ -5,9 +5,9 @@
 
 import { NextFunction, Response, Router } from 'express';
 
-import { ReposAppRequest } from '../../interfaces';
+import { ReposAppRequest } from '../../interfaces/index.js';
 
-import { wrapError } from '../../lib/utils';
+import { wrapError } from '../../lib/utils.js';
 
 function denyRoute(next: NextFunction) {
   next(

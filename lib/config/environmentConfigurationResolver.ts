@@ -76,6 +76,7 @@ function identifyPaths(node: any, prefix?: string) {
 
 export function processEnvironmentProvider(options?: IEnvironmentProviderOptions) {
   return {
+    providerName: 'process environment with override options',
     get: (key: string) => {
       const { overrideValues } = options || {};
       if (overrideValues && overrideValues[key] && overrideValues[key] !== process.env[key]) {

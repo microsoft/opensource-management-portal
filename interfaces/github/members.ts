@@ -3,14 +3,14 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { ICorporateLink, IProviders, RequestTeamMemberAddType } from '..';
-import { OrganizationMember, ICrossOrganizationMembersResult, TeamMember } from '../../business';
+import { ICorporateLink, IProviders, RequestTeamMemberAddType } from '../index.js';
+import { OrganizationMember, type CrossOrganizationMembersResult, TeamMember } from '../../business/index.js';
 
 export interface IMemberSearchOptions {
   providers: IProviders;
 
   organizationMembers?: OrganizationMember[];
-  crossOrganizationMembers?: ICrossOrganizationMembersResult;
+  crossOrganizationMembers?: CrossOrganizationMembersResult;
 
   isOrganizationScoped?: boolean;
   links?: ICorporateLink[];

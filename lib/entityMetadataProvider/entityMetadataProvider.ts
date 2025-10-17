@@ -3,9 +3,9 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { type IEntityMetadata, EntityMetadataType } from './entityMetadata';
-import type { IEntityMetadataFixedQuery } from './query';
-import { swapMap } from '../utils';
+import { type IEntityMetadata, EntityMetadataType } from './entityMetadata.js';
+import type { IEntityMetadataFixedQuery } from './query.js';
+import { swapMap } from '../utils.js';
 
 export enum EntityField {
   Type = 'entityType',
@@ -28,7 +28,7 @@ export interface IEntityMetadataSerializationHelper {
 
 export interface IEntityMetadataDeserializationHelper {
   // deserialize defined metadata to an object
-  (entity: IEntityMetadata): any;
+  (entity: IEntityMetadata, options?: unknown): any;
 }
 
 export interface IEntityMetadataProvider {

@@ -5,9 +5,9 @@
 
 // NOTE: Technically this file should be separate from the GitHub library
 
-import { CompositeApiContext } from './composite';
-import { createCallbackFlattenData } from './core';
-import { RestLibrary } from '.';
+import { CompositeApiContext } from './composite.js';
+import { createCallbackFlattenData } from './core.js';
+import { RestLibrary } from './index.js';
 
 export class LinkMethods {
   private libraryContext: RestLibrary;

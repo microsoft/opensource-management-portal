@@ -11,9 +11,10 @@ import type {
   ConfiguredHeaderProbe,
   ConfiguredGeneralProbe,
   ConfiguredProbeBase,
-} from '../config/webHealthProbes.types';
-import { IReposApplication, ReposAppRequest, SiteConfiguration } from '../interfaces';
-import { CreateError } from '../lib/transitional';
+} from '../config/webHealthProbes.types.js';
+import { IReposApplication, ReposAppRequest, SiteConfiguration } from '../interfaces/index.js';
+import { CreateError } from '../lib/transitional.js';
+import getCompanySpecificDeployment from './companySpecificDeployment.js';
 
 const dbg = Debug.debug('health');
 
@@ -30,12 +31,18 @@ enum ProbeType {
   Header = 'header',
 }
 
-export default function initializeHealthCheck(
+export default async function initializeHealthCheck(
   app: IReposApplication,
   config: SiteConfiguration /* WebHealthProbeSubsetConfiguration */
 ) {
-  const { webHealthProbes: healthConfig } = config;
+  let connections = 0;
 
+  const companySpecific = getCompanySpecificDeployment();
+  if (app && companySpecific?.routes?.connectHealthRoutes) {
+    connections += companySpecific.routes.connectHealthRoutes(app, config);
+  }
+
+  const { webHealthProbes: healthConfig } = config;
   const enabledHeaderProbes =
     healthConfig?.enabled === true
       ? supportedHeaderProbeTypes
@@ -156,8 +163,12 @@ export default function initializeHealthCheck(
     healthy: true,
   };
 
-  if (enabledHeaderProbes.length > 0 && app) {
-    dbg(`Configured header health probes: ${enabledHeaderProbes.length}`);
+  if (enabledGenericProbes?.length) {
+    connections += enabledGenericProbes.length;
+  }
+
+  if (connections > 0 && app) {
+    dbg(`Configured header health probes: ${connections}`);
     app.get(
       '/health/readiness',
       multipleHeaderHealthCheck.bind(null, HealthProbeType.Readiness, ProbeType.Header, enabledHeaderProbes)
@@ -183,8 +194,8 @@ export default function initializeHealthCheck(
   if (app && enabledGenericProbes.length + enabledGenericProbes.length > 0) {
     dbg('Health probes listening');
     // 404 on anything that was not handled by any active, allowed probe listeners
-    app.use('/health/*', (req, res) => {
-      return res.status(404).end();
+    app.use('/health/*splat', (req, res) => {
+      return res.status(404).end() as unknown as void;
     });
   } else {
     dbg('No health probes listening');

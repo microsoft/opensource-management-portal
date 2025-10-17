@@ -3,11 +3,11 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Repository } from '../../..';
-import { GitHubCollaboratorAffiliationQuery } from '../../../../interfaces';
-import { tryDowngradeCollaborator } from './downgradeCollaborator';
-import { tryDropCollaborator } from './dropCollaborator';
-import { tryDropTeam } from './dropTeam';
+import { Repository } from '../../../index.js';
+import { GitHubCollaboratorAffiliationQuery } from '../../../../interfaces/index.js';
+import { tryDowngradeCollaborator } from './downgradeCollaborator.js';
+import { tryDropCollaborator } from './dropCollaborator.js';
+import { tryDropTeam } from './dropTeam.js';
 
 export async function lockdownRepository(
   log: string[],

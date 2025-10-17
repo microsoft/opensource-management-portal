@@ -3,9 +3,9 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { decryptEntityAsync, encryptEntityAsync, IEncryptionOptions } from '../../lib/encryption';
-import { wrapError } from '../../lib/utils';
-import { LegacySerializer } from './serializer';
+import { decryptEntityAsync, encryptEntityAsync, IEncryptionOptions } from '../../lib/encryption.js';
+import { wrapError } from '../../lib/utils.js';
+import { LegacySerializer } from './serializer.js';
 
 // NOTE TO DEVELOPERS: we are no longer using encrypted sessions at our company
 // and so this codepath is rarely used. We may want to consider removing this

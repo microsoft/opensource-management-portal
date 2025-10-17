@@ -3,14 +3,14 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+import type { IEntityMetadataBaseOptions } from '../../../lib/entityMetadataProvider/entityMetadata.js';
 import {
   RepositoryCollaboratorCacheProvider,
-  IRepositoryCollaboratorCacheCreateOptions,
   IRepositoryCollaboratorCacheProvider,
-} from './repositoryCollaboratorCacheProvider';
+} from './repositoryCollaboratorCacheProvider.js';
 
 export async function CreateRepositoryCollaboratorCacheProviderInstance(
-  options?: IRepositoryCollaboratorCacheCreateOptions
+  options?: IEntityMetadataBaseOptions
 ): Promise<IRepositoryCollaboratorCacheProvider> {
   const provider = new RepositoryCollaboratorCacheProvider(options);
   await provider.initialize();

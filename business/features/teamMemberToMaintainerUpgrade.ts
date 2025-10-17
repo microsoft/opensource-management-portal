@@ -3,18 +3,18 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Team } from '..';
-import { Operations } from '..';
-import { IndividualContext } from '../user';
-import { addArrayToSet } from '../../lib/utils';
-import { IMail } from '../../lib/mailProvider';
+import { Team } from '../index.js';
+import { Operations } from '../index.js';
+import { IndividualContext } from '../user/index.js';
+import { addArrayToSet } from '../../lib/utils.js';
+import { IMail } from '../../lib/mailProvider/index.js';
 import {
   NoCacheNoBackground,
   ITeamMembershipRoleState,
   OrganizationMembershipState,
   GitHubTeamRole,
-} from '../../interfaces';
-import { ErrorHelper } from '../../lib/transitional';
+} from '../../interfaces/index.js';
+import { ErrorHelper } from '../../lib/transitional.js';
 
 interface ISelfServiceAllowedResult {
   currentMaintainerCount: number;
@@ -170,20 +170,19 @@ export default class SelfServiceTeamMemberToMaintainerUpgrades {
         to: mailAddresses,
         cc: opsAddress ? [opsAddress] : null,
         subject: `${team.organization.name}/${team.name}: GitHub Team Member ${identifierForRequester} upgraded themselves to Team Maintainer`,
-        content: await operations.emailRender('teamMemberSelfServiceMaintainerUpgrade', {
-          reason: `This is a required operational notification: ${identifierForRequester} used a self-service permission upgrade feature. ${notifyDescription}`,
-          headline: `Team maintainer upgrade`,
-          notification: 'information',
-          app: `${companyName} GitHub`,
-          team,
-          link: individualContext.link,
-          organization: team.organization,
-          identifierForRequester,
-          maintainers,
-          thirdPartyLoginToLink,
-        }),
       };
-      await this.#operations.sendMail(mail);
+      await this.#operations.emailRenderSend('teamMemberSelfServiceMaintainerUpgrade', mail, {
+        reason: `This is a required operational notification: ${identifierForRequester} used a self-service permission upgrade feature. ${notifyDescription}`,
+        headline: `Team maintainer upgrade`,
+        notification: 'information',
+        app: `${companyName} GitHub`,
+        team,
+        link: individualContext.link,
+        organization: team.organization,
+        identifierForRequester,
+        maintainers,
+        thirdPartyLoginToLink,
+      });
     } catch (mailError) {
       console.log('mailError:');
       console.warn(mailError);

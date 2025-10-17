@@ -3,86 +3,20 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { IProviders } from '../../interfaces';
-import { MicrosoftGraphProvider } from './microsoftGraphProvider';
+import { CreateError } from '../transitional.js';
+import { MicrosoftGraphProvider, MicrosoftGraphProviderOptions } from './microsoftGraphProvider.js';
+import { getEntraApplicationIdentityInstance } from '../applicationIdentity.js';
 
-export enum GraphUserType {
-  Unknown = '', // most employees
-  Guest = 'Guest',
-  Member = 'Member', // some users, like LinkedIn employees, are a member
-}
+import type { IProviders, SiteConfiguration } from '../../interfaces/index.js';
+import type { IGraphProvider } from './types.js';
 
-export interface IGraphEntry {
-  displayName: string;
-  givenName: string;
-  id: string;
-  mail: string;
-  userPrincipalName: string;
-  userType?: GraphUserType;
-  mailNickname?: string;
-  // alias?: string;
-  jobTitle?: string;
-}
+export * from './types.js';
+export * from './enums.js';
 
-export interface IGraphGroupMember {
-  id: string;
-  userPrincipalName: string;
-}
-
-export interface IGraphGroup {
-  id: string;
-  displayName: string;
-  mailNickname: string;
-
-  description?: string;
-  mail?: string;
-}
-
-export interface IGraphEntryWithManager extends IGraphEntry {
-  manager: IGraphEntry;
-}
-
-export interface IGraphProvider {
-  getUserById(id: string): Promise<IGraphEntry>;
-
-  getUserIdByNickname(nickname: string): Promise<string>;
-
-  getUserAndManagerById(corporateId: string): Promise<IGraphEntryWithManager>;
-
-  getManagerById(corporateId: string): Promise<IGraphEntry>;
-  getManagementChain(corporateId: string): Promise<IGraphEntry[]>;
-
-  getDirectReports(corporateIdOrUpn: string): Promise<IGraphEntry[]>;
-
-  getMailAddressByUsername(corporateUsername: string): Promise<string>;
-  getUserIdByUsername(corporateUsername: string): Promise<string>;
-  getUserIdByMail(mail: string): Promise<string>;
-
-  getUsersBySearch(minimum3Characters: string): Promise<IGraphEntry[]>;
-  getUsersByIds(userIds: string[]): Promise<IGraphEntry[]>;
-  getUsersByMailNicknames(mailNicknames: string[]): Promise<IGraphEntry[]>;
-
-  getGroupsById(corporateId: string): Promise<string[]>;
-  getGroupsByMail(mailAddress: string): Promise<string[]>;
-  getGroupsByNickname(nickname: string): Promise<string[]>;
-  getGroupsStartingWith(minimum3Characters: string): Promise<IGraphGroup[]>;
-  getGroupMembers(corporateGroupId: string): Promise<IGraphGroupMember[]>;
-  getGroup(corporateGroupId: string): Promise<IGraphGroup>;
-  isUserInGroup(corporateId: string, securityGroupId: string): Promise<boolean>;
-
-  getToken(): Promise<string>;
-}
-
-export function CreateGraphProviderInstance(providers: IProviders, config: any, callback) {
-  const activeDirectoryConfig = config.activeDirectory;
-  const graphConfig = Object.assign(
-    {
-      tenantId: activeDirectoryConfig.tenantId,
-    },
-    config.graph
-  );
+export function CreateGraphProviderInstance(providers: IProviders, config: SiteConfiguration, callback) {
+  const graphConfig = config.graph;
   if (!graphConfig) {
-    return callback(new Error('No graph provider configuration.'));
+    return callback(CreateError.InvalidParameters('No graph provider configuration.'));
   }
   const provider = graphConfig.provider;
   if (!provider) {
@@ -92,10 +26,15 @@ export function CreateGraphProviderInstance(providers: IProviders, config: any, 
   try {
     switch (provider) {
       case 'microsoftGraphProvider':
+        const identity = getEntraApplicationIdentityInstance(providers, 'graph:directory');
+        const options: MicrosoftGraphProviderOptions = {
+          ...graphConfig,
+          entraApplicationTokens: identity,
+        };
         if (providers?.cacheProvider) {
-          graphConfig.cacheProvider = providers.cacheProvider;
+          options.cacheProvider = providers.cacheProvider;
         }
-        providerInstance = new MicrosoftGraphProvider(graphConfig);
+        providerInstance = new MicrosoftGraphProvider(options);
         break;
       default:
         break;

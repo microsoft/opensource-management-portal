@@ -8,10 +8,11 @@ import { NextFunction, Request, Response } from 'express';
 import { AccessToken } from 'simple-oauth2';
 
 import type { TelemetryClient } from 'applicationinsights';
-import type { IReposApplication } from './app';
+import type { IReposApplication } from './app.js';
+import type { EntraApiTokenValidateResponse } from '../middleware/api/authentication/types.js';
 
-import { Organization, Team } from '../business';
-import { IndividualContext } from '../business/user';
+import { Organization, Team } from '../business/index.js';
+import { IndividualContext } from '../business/user/index.js';
 
 export enum UserAlertType {
   Success = 'success',
@@ -42,10 +43,15 @@ export enum LocalApiRepoAction {
 export type VoidedExpressRoute = (req: ReposAppRequest, res: Response, next: NextFunction) => Promise<void>;
 // req: Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>, res: Response<any, Record<string, any>, number>, next: NextFunction) => void | Promise<...>
 
+export type ReposAppUser = {
+  azure?: any;
+  github?: any;
+};
+
 export interface ReposAppRequest extends Request {
   // passport
-  isAuthenticated(): boolean;
-  user: any;
+  // isAuthenticated(): boolean;
+  user: ReposAppUser;
 
   app: IReposApplication;
 
@@ -64,7 +70,34 @@ export interface ReposAppRequest extends Request {
   individualContext: IndividualContext;
   watchdogContextOverride?: IndividualContext;
   oauthAccessToken: AccessToken;
+
+  userOverwriteRequest?: ReposAppUser;
 }
+
+export const wrapErrorForImmediateUserError = (err: Error) => {
+  (err as any).immediate = true;
+  return err;
+};
+
+export type ApiRequestToken = {
+  authenticationProvider: string;
+  hasOrganizationScope: (scope: string) => boolean;
+  hasScope: (scope: string) => boolean;
+  hasAnyScope: (scopes: string[]) => boolean;
+  hasScopePrefix: (scopePrefix: string) => boolean;
+  displayUsername: string;
+  token: EntraApiTokenValidateResponse;
+  getScopes: () => string[];
+  getMonikerSources: () => string[];
+  extraContext?: unknown;
+};
+
+export type ReposApiRequest = ReposAppRequest & {
+  apiKeyToken: ApiRequestToken;
+  apiVersion?: string;
+
+  userContextOverwriteRequest?: any;
+};
 
 export interface IUserAlert {
   message: string;
@@ -74,7 +107,7 @@ export interface IUserAlert {
   optionalCaption: string;
 }
 
-interface IAppSessionProperties extends Session {
+export interface IAppSession extends Session {
   enableMultipleAccounts: boolean;
   selectedGithubId: string;
   passport: any;
@@ -82,10 +115,6 @@ interface IAppSessionProperties extends Session {
   alerts?: IUserAlert[];
   referer: string;
 }
-
-export interface IAppSession extends IAppSessionProperties {}
-
-export interface IReposAppResponse extends Response {}
 
 export interface IReposRequestWithOrganization extends ReposAppRequest {
   organization?: any;

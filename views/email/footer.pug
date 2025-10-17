@@ -42,11 +42,15 @@
             p.footer
               | #{companyName}
               br
-              a(href=config.urls.explore) Explore
-              | &nbsp;&bull;&nbsp;
-              a(href=config.urls.docs) Docs
-              | &nbsp;&bull;&nbsp;
-              a(href='mailto:' + config.brand.supportMail) #{config.brand.supportMail}
+              if config && config.urls && config.urls.explore
+                a(href=config.urls.explore) Explore
+                | &nbsp;&bull;&nbsp;
+              if config && config.urls && config.urls.docs
+                a(href=config.urls.docs) Docs
+                | &nbsp;&bull;&nbsp;
+              if config && config.brand && config.brand.supportMail
+                a(href='mailto:' + config.brand.supportMail) #{config.brand.supportMail}
 
           td(width='120', valign='middle')
-            img(align='right', valign='middle', src=config.brand.companyLogoSrc, width='108', alt=companyName)
+            if config && config.brand && config.brand.companyLogoSrc
+              img(align='right', valign='middle', src=config.brand.companyLogoSrc, width='108', alt=companyName)

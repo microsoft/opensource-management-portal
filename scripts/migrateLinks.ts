@@ -13,12 +13,12 @@
 // LINK_MIGRATION_DESTINATION_TYPE
 // LINK_MIGRATION_OVERWRITE  values : 'overwrite', 'skip'
 
-import throat from 'throat';
+import { throat } from '../vendor/throat/index.js';
 
-import job from '../job';
-import { ICorporateLink, IProviders } from '../interfaces';
-import { createAndInitializeLinkProviderInstance } from '../lib/linkProviders';
-import { getThirdPartyLinkById } from '../lib/transitional';
+import job from '../job.js';
+import { ICorporateLink, IProviders } from '../interfaces/index.js';
+import { createAndInitializeLinkProviderInstance } from '../lib/linkProviders/index.js';
+import { getThirdPartyLinkById } from '../lib/transitional.js';
 
 const parallelWorkLimit = 5;
 
