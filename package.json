@@ -194,7 +194,7 @@
     "@typescript-eslint/parser": "8.46.1",
     "cross-env": "10.1.0",
     "cspell": "9.2.1",
-    "eslint": "9.37.0",
+    "eslint": "9.38.0",
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-n": "17.23.1",
     "eslint-plugin-prettier": "5.5.4",
