@@ -76,7 +76,7 @@
     "@azure/keyvault-secrets": "4.10.0",
     "@azure/msal-node": "3.8.0",
     "@azure/service-bus": "7.9.5",
-    "@azure/storage-blob": "12.28.0",
+    "@azure/storage-blob": "12.29.1",
     "@azure/storage-queue": "12.27.0",
     "@octokit/app-permissions": "2.1.0",
     "@octokit/auth-app": "8.1.1",
