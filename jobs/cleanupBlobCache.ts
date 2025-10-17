@@ -5,13 +5,22 @@
 
 // Job 17: Cleanup blob cache
 
-import BlobCache from '../lib/caching/blob';
-import job from '../job';
-import { IProviders } from '../interfaces';
+import BlobCache from '../lib/caching/blob.js';
+import job from '../job.js';
+import type { IProviders } from '../interfaces/index.js';
+
+const INSIGHTS_PREFIX = 'JobCleanupBlobCache';
 
 job.runBackgroundJob(cleanup);
 
 async function cleanup(providers: IProviders): Promise<void> {
+  const { insights } = providers;
+  insights?.trackEvent({
+    name: `${INSIGHTS_PREFIX}Start`,
+    properties: {
+      time: new Date(),
+    },
+  });
   for (const providerName in providers) {
     const provider = providers[providerName];
     if (provider && provider['expiringBlobCache']) {
@@ -37,4 +46,10 @@ Errors:          ${stats.errors.length}
       }
     }
   }
+  insights?.trackEvent({
+    name: `${INSIGHTS_PREFIX}End`,
+    properties: {
+      time: new Date(),
+    },
+  });
 }

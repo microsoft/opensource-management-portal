@@ -1,10 +1,66 @@
 {
-  "clientId": "env://AAD_CLIENT_ID",
-  "clientSecret": "env://AAD_CLIENT_SECRET",
-  "tenantId": "env://AAD_TENANT_ID",
-  "isMultiTenant": "env://AAD_MULTI_TENANT?trueIf=1",
-  "redirectUrl": "env://AAD_REDIRECT_URL",
-  "issuer": "env://AAD_ISSUER",
-  "blockGuestUserTypes": "env://AAD_BLOCK_GUEST_LINKING?trueIf=block",
-  "blockGuestSignIns": "env://AAD_BLOCK_GUESTS?trueIf=block"
+  "application": {
+    "deployedClientId": "env://ENTRA_DEPLOYED_CLIENT_ID",
+
+    "managedIdentity": {
+      "clientId": "env://USER_ASSIGNED_MANAGED_IDENTITY_CLIENT_ID"
+    },
+
+    "nextGenerationApplicationRegistration": {
+      "clientId": "env://ENTRA_APP_CLIENT_ID",
+      "tenantId": "env://ENTRA_APP_TENANT_ID",
+      "optionalClientSecret": "env://ENTRA_APP_CLIENT_SECRET",
+      "useDeveloperCli": "env://ENTRA_APP_DEVELOPER_CLI?trueIf=1",
+      "developerCliSubscriptionId": "env://ENTRA_APP_DEVELOPER_CLI_SUBSCRIPTION_ID"
+    },
+
+    "fallbackIfSingleApplicationRegistration": {
+      "clientId": "env://ENTRA_ID_CLIENT_ID",
+      "clientSecret": "env://ENTRA_ID_CLIENT_SECRET",
+      "tenantId": "env://ENTRA_ID_TENANT_ID",
+      "useDeveloperCli": "env://ENTRA_DEVELOPER_CLI?trueIf=1"
+    }
+  },
+
+  "api": {
+    "authentication": {
+      "provider": "env://ENTRA_ID_API_AUTHENTICATION_PROVIDER?default=msal"
+    }
+  },
+
+  "authentication": {
+    "blockGuestUserTypes": "env://AAD_BLOCK_GUEST_LINKING?trueIf=block",
+    "blockGuestSignIns": "env://AAD_BLOCK_GUESTS?trueIf=block",
+    "allowedTenantIds": "env://ENTRA_ID_ALLOWED_TENANT_IDS",
+    "issuer": "env://AAD_ISSUER",
+    "isMultiTenant": "env://AAD_MULTI_TENANT?trueIf=1",
+
+    "entraManagedIdentityAuthentication": {
+      "redirectUrl": "env://ENTRA_ID_REDIRECT_URL",
+      "isMultiTenant": "env://ENTRA_ID_MULTI_TENANT?trueIf=1",
+
+      "applicationRegistration": {
+        "authenticationType": "env://ENTRA_ID_AUTHENTICATION_TYPE?default=managed-identity",
+
+        "clientId": "env://ENTRA_ID_AUTHENTICATION_CLIENT_ID",
+        "clientSecret": "env://ENTRA_ID_AUTHENTICATION_CLIENT_SECRET",
+        "tenantId": "env://ENTRA_ID_AUTHENTICATION_TENANT_ID"
+      }
+    },
+
+    "developmentTenantRewriting": {
+      "enabled": "env://REWRITING_AAD_TENANT_REWRITE_FROM",
+      "callbackStarts": "http://localhost:3000/",
+      "from": {
+        "tenant": "env://REWRITING_AAD_TENANT_REWRITE_FROM",
+        "upn": "env://REWRITING_AAD_UPN_REWRITE_FROM",
+        "id": "env://REWRITING_AAD_ID_REWRITE_FROM"
+      },
+      "to": {
+        "tenant": "env://REWRITING_AAD_TENANT_REWRITE_TO",
+        "upn": "env://REWRITING_AAD_UPN_REWRITE_TO",
+        "id": "env://REWRITING_AAD_ID_REWRITE_TO"
+      }
+    }
+  }
 }

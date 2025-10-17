@@ -4,53 +4,48 @@
 //
 
 import { NextFunction, Response, Router } from 'express';
-import asyncHandler from 'express-async-handler';
 
-import { ICorporateLink, UnlinkPurpose } from '../../interfaces';
-import { jsonError } from '../../middleware';
-import { IApiRequest } from '../../middleware/apiReposAuth';
-import { getProviders } from '../../lib/transitional';
+import { ICorporateLink, ReposApiRequest, UnlinkPurpose } from '../../interfaces/index.js';
+import { jsonError } from '../../middleware/index.js';
+import { CreateError, getProviders } from '../../lib/transitional.js';
 
 const router: Router = Router();
 
-interface ILinksApiRequestWithUnlink extends IApiRequest {
+interface ILinksApiRequestWithUnlink extends ReposApiRequest {
   unlink?: ICorporateLink;
 }
 
 router.use(function (req: ILinksApiRequestWithUnlink, res: Response, next: NextFunction) {
   const token = req.apiKeyToken;
-  if (!token.scopes) {
-    return next(jsonError('The key is not authorized for specific APIs', 401));
+  if (!token.hasScope) {
+    return next(CreateError.NotAuthorized('The key is not authorized for specific APIs'));
   }
   if (!token.hasScope('unlink')) {
-    return next(jsonError('The key is not authorized to use the unlink API', 401));
+    return next(CreateError.NotAuthorized('The key is not authorized to use the unlink API'));
   }
   return next();
 });
 
-router.use(
-  '/github/id/:id',
-  asyncHandler(async (req: ILinksApiRequestWithUnlink, res: Response, next: NextFunction) => {
-    const { linkProvider } = getProviders(req);
-    const id = req.params.id;
-    try {
-      const link = await linkProvider.getByThirdPartyId(id);
-      if (!link) {
-        throw new Error(`Could not locate a link for GitHub user ID ${id}`);
-      }
-      req.unlink = link;
-      return next();
-    } catch (error) {
-      return next(jsonError(error));
+router.use('/github/id/:id', async (req: ILinksApiRequestWithUnlink, res: Response, next: NextFunction) => {
+  const { linkProvider } = getProviders(req);
+  const id = req.params.id;
+  try {
+    const link = await linkProvider.getByThirdPartyId(id);
+    if (!link) {
+      throw new Error(`Could not locate a link for GitHub user ID ${id}`);
     }
-  })
-);
+    req.unlink = link;
+    return next();
+  } catch (error) {
+    return next(jsonError(error));
+  }
+});
 
-router.use('*', (req: ILinksApiRequestWithUnlink, res: Response, next: NextFunction) => {
+router.use('/*splat', (req: ILinksApiRequestWithUnlink, res: Response, next: NextFunction) => {
   return next(req.unlink ? undefined : jsonError('No link available for operation', 404));
 });
 
-router.delete('*', (req: ILinksApiRequestWithUnlink, res: Response, next: NextFunction) => {
+router.delete('/*splat', (req: ILinksApiRequestWithUnlink, res: Response, next: NextFunction) => {
   const { config, operations } = getProviders(req);
   const link = req.unlink;
   let purpose: UnlinkPurpose = null;

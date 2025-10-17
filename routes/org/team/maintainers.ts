@@ -4,21 +4,20 @@
 //
 
 import { NextFunction, Response, Router } from 'express';
-import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
-import { getProviders, validateGitHubLogin } from '../../../lib/transitional';
+import { getProviders, validateGitHubLogin } from '../../../lib/transitional.js';
 import {
   ReposAppRequest,
   RequestTeamMemberAddType,
   NoCacheNoBackground,
   UserAlertType,
-} from '../../../interfaces';
-import { Team, TeamMember } from '../../../business';
+} from '../../../interfaces/index.js';
+import { Team, TeamMember } from '../../../business/index.js';
 
-import MiddlewareTeamAdminRequired from './teamAdminRequired';
+import MiddlewareTeamAdminRequired from './teamAdminRequired.js';
 
-import RoutePeopleSearch from '../../peopleSearch';
+import RoutePeopleSearch from '../../peopleSearch.js';
 
 interface ILocalRequest extends ReposAppRequest {
   team2?: Team;
@@ -27,17 +26,15 @@ interface ILocalRequest extends ReposAppRequest {
   team2AddType?: RequestTeamMemberAddType;
 }
 
-router.use(
-  asyncHandler(async (req: ILocalRequest, res: Response, next: NextFunction) => {
-    // Get the latest maintainers, forced, with every request
-    const team2 = req.team2 as Team;
-    const maintainers = await refreshMaintainers(team2);
-    if (maintainers) {
-      req.verifiedCurrentMaintainers = maintainers;
-    }
-    return next();
-  })
-);
+router.use(async (req: ILocalRequest, res: Response, next: NextFunction) => {
+  // Get the latest maintainers, forced, with every request
+  const team2 = req.team2 as Team;
+  const maintainers = await refreshMaintainers(team2);
+  if (maintainers) {
+    req.verifiedCurrentMaintainers = maintainers;
+  }
+  return next();
+});
 
 async function refreshMaintainers(team2: Team): Promise<TeamMember[]> {
   return team2.getMaintainers(NoCacheNoBackground);
@@ -51,7 +48,7 @@ router.get('/refresh', (req: ILocalRequest, res) => {
 router.post(
   '/:id/downgrade',
   MiddlewareTeamAdminRequired,
-  asyncHandler(async (req: ILocalRequest, res: Response, next: NextFunction) => {
+  async (req: ILocalRequest, res: Response, next: NextFunction) => {
     const team2 = req.team2 as Team;
     const id = req.params.id;
     const verifiedCurrentMaintainers = req.verifiedCurrentMaintainers;
@@ -79,7 +76,7 @@ router.post(
     );
     const maintainers = await refreshMaintainers(team2);
     res.redirect(req.teamUrl);
-  })
+  }
 );
 
 router.use('/add', MiddlewareTeamAdminRequired, (req: ILocalRequest, res: Response, next: NextFunction) => {
@@ -90,7 +87,7 @@ router.use('/add', MiddlewareTeamAdminRequired, (req: ILocalRequest, res: Respon
 router.post(
   '/add',
   MiddlewareTeamAdminRequired,
-  asyncHandler(async function (req: ILocalRequest, res: Response, next: NextFunction) {
+  async function (req: ILocalRequest, res: Response, next: NextFunction) {
     const { operations } = getProviders(req);
     const login = validateGitHubLogin(req.body.username);
     const team2 = req.team2 as Team;
@@ -102,7 +99,7 @@ router.post(
     );
     const maintainers = await refreshMaintainers(team2);
     return res.redirect(req.teamUrl);
-  })
+  }
 );
 
 router.use('/add', RoutePeopleSearch);

@@ -4,31 +4,27 @@
 //
 
 import { NextFunction, Response, Router } from 'express';
-import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
-import { ReposAppRequest, UserAlertType } from '../../../interfaces';
-import { Organization } from '../../../business/organization';
-import { Team } from '../../../business/team';
+import { ReposAppRequest, UserAlertType } from '../../../interfaces/index.js';
+import { Organization } from '../../../business/organization.js';
+import { Team } from '../../../business/team.js';
 
 interface ILocalRequest extends ReposAppRequest {
   team2?: any;
 }
 
-router.post(
-  '/',
-  asyncHandler(async (req: ILocalRequest, res: Response, next: NextFunction) => {
-    const organization = req.organization as Organization;
-    const team2 = req.team2 as Team;
-    const username = req.individualContext.link.thirdPartyUsername;
-    await team2.removeMembership(username);
-    req.individualContext.webContext.saveUserAlert(
-      `You've been successfully removed from ${team2.name}!`,
-      'Remove',
-      UserAlertType.Success
-    );
-    return res.redirect('/' + organization.name + '/teams');
-  })
-);
+router.post('/', async (req: ILocalRequest, res: Response, next: NextFunction) => {
+  const organization = req.organization as Organization;
+  const team2 = req.team2 as Team;
+  const username = req.individualContext.link.thirdPartyUsername;
+  await team2.removeMembership(username);
+  req.individualContext.webContext.saveUserAlert(
+    `You've been successfully removed from ${team2.name}!`,
+    'Remove',
+    UserAlertType.Success
+  );
+  return res.redirect('/' + organization.name + '/teams');
+});
 
 export default router;

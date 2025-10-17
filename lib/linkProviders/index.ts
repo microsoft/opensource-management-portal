@@ -3,11 +3,11 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { ICorporateLink, ICorporateLinkExtended, IProviders } from '../../interfaces';
+import { ICorporateLink, ICorporateLinkExtended, IProviders } from '../../interfaces/index.js';
 
-import createMemoryProvider from './memory';
-import createPostgresProvider from './postgres';
-import createTableProvider from './table';
+import createMemoryProvider from './memory/index.js';
+import createPostgresProvider from './postgres/index.js';
+import createTableProvider from './table/index.js';
 
 const linkProviders = {
   memory: createMemoryProvider,

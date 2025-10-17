@@ -6,15 +6,33 @@
 import { Response, Request } from 'express';
 import fs from 'fs';
 import path from 'path';
-import { URL } from 'url';
+import { URL, fileURLToPath, pathToFileURL } from 'url';
 import zlib from 'zlib';
 
-import { type Repository } from '../business/repository';
-import type { ReposAppRequest, IAppSession, IReposError, SiteConfiguration } from '../interfaces';
-import { getProviders } from './transitional';
+import { type Repository } from '../business/repository.js';
+import type { ReposAppRequest, IAppSession, IReposError, SiteConfiguration } from '../interfaces/index.js';
+import { CreateError, getProviders } from './transitional.js';
+
+const isWindows = process.platform === 'win32';
 
 export function daysInMilliseconds(days: number): number {
   return 1000 * 60 * 60 * 24 * days;
+}
+
+export function shortSha(string?: string): string {
+  if (!string) {
+    return '';
+  }
+  return string.slice(0, 7);
+}
+
+export function importPathSchemeChangeIfWindows(npmName: string) {
+  if (isWindows && path.isAbsolute(npmName)) {
+    const normalized = path.normalize(npmName);
+    const fileUrl = pathToFileURL(normalized);
+    return fileUrl.href;
+  }
+  return npmName;
 }
 
 export function dateToDateString(date: Date) {
@@ -37,13 +55,15 @@ export function stringOrNumberArrayAsStringArray(values: any[]) {
 
 export function requireJson(nameFromRoot: string): any {
   // In some situations TypeScript can load from JSON, but for the transition this is better to reach outside the out directory
-  let file = path.resolve(__dirname, nameFromRoot);
+  const filename = fileURLToPath(import.meta.url);
+  const dirname = path.dirname(filename);
+  let file = path.resolve(dirname, nameFromRoot);
   // If within the output directory
   if (fs.existsSync(file)) {
     const content = fs.readFileSync(file, 'utf8');
     return JSON.parse(content);
   }
-  file = path.resolve(__dirname, '..', nameFromRoot);
+  file = path.resolve(dirname, '..', nameFromRoot);
   if (!fs.existsSync(file)) {
     throw new Error(`Cannot find JSON file ${file} to read as a module`);
   }
@@ -112,8 +132,12 @@ export function sortByCaseInsensitive(a: string, b: string) {
 }
 
 export function cleanResponse<T = any>(response: T) {
-  (response as any)?.cost && delete (response as any).cost;
-  (response as any)?.headers && delete (response as any).headers;
+  if ((response as any)?.cost) {
+    delete (response as any).cost;
+  }
+  if ((response as any)?.headers) {
+    delete (response as any).headers;
+  }
   return response as Omit<T, 'cost' | 'headers'>;
 }
 
@@ -326,7 +350,10 @@ export function isEnterpriseManagedUserLogin(login: string) {
   return login?.includes('_');
 }
 
-export function isCodespacesAuthenticating(config: SiteConfiguration, authType: 'aad' | 'github') {
+export function isCodespacesAuthenticating(
+  config: SiteConfiguration,
+  authType: 'aad' | 'github' | 'entra-id'
+) {
   const { codespaces } = config?.github || {};
   return (
     codespaces?.connected === true &&
@@ -383,4 +410,28 @@ export function getUserIdFromWellFormedAvatar(avatar: string): string {
     }
   }
   return null;
+}
+
+export function asIso8601DayOnly(value: Date | string) {
+  if (typeof value === 'string') {
+    value = new Date(value);
+  }
+  if (value instanceof Date) {
+    return value.toISOString().substr(0, 10);
+  }
+  throw CreateError.InvalidParameters('Invalid date value: ' + value);
+}
+
+export function fromIso8601DateToUnderscored(value: Date | string) {
+  const str = asIso8601DayOnly(value);
+  return str.replaceAll(':', '_');
+}
+
+export function stripIso8601Microseconds(value: string) {
+  return value.substring(0, value.length - 5);
+}
+
+export function fromIso8601DateToUnderscoredWithTime(value: Date | string) {
+  value = fromIso8601DateToUnderscored(value);
+  return stripIso8601Microseconds(value);
 }

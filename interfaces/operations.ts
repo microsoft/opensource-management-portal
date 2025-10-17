@@ -3,8 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { ICorporateLink, IDictionary } from '.';
-import { IGraphEntryWithManager } from '../lib/graphProvider';
+import type { ICorporateLink, IDictionary } from './index.js';
+import type { IGraphEntryWithManager } from '../lib/graphProvider/index.js';
 
 export interface IUnlinkMailStatus {
   to: string[];

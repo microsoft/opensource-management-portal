@@ -5,10 +5,10 @@
 
 import { NextFunction, Response } from 'express';
 
-import { ReposAppRequest } from '../../interfaces/web';
-import { jsonError } from '../jsonError';
-import { CreateError, ErrorHelper, getProviders } from '../../lib/transitional';
-import { setOrganizationProfileForRequest } from '../github/ensureOrganizationProfile';
+import { ReposAppRequest } from '../../interfaces/web.js';
+import { jsonError } from '../jsonError.js';
+import { CreateError, ErrorHelper, getProviders } from '../../lib/transitional.js';
+import { setOrganizationProfileForRequest } from '../github/ensureOrganizationProfile.js';
 
 export enum OrganizationManagementType {
   Managed = 'managed',

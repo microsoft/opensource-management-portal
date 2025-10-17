@@ -12,6 +12,7 @@ export type ConfigDebug = {
   showUsers: boolean;
   showDebugFooter: boolean;
   unlinkWithoutDrops: boolean;
+  unlinkWithoutUnlink: boolean;
   exitImmediately: boolean;
   breakConsoleEveryMinute?: boolean;
 };

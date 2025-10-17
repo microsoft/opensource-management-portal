@@ -4,38 +4,32 @@
 //
 
 import { NextFunction, Response, Router } from 'express';
-import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
-import approvalsRoute from './approvals';
-import authorizationsRoute from './authorizations';
-import personalAccessTokensRoute from './personalAccessTokens';
+import approvalsRoute from './approvals.js';
+import authorizationsRoute from './authorizations.js';
 
-import contributionDataRoute from './contributionData';
-import campaignsRoute from './campaigns';
-import { AddLinkToRequest } from '../../middleware';
-import { ReposAppRequest } from '../../interfaces';
+import contributionDataRoute from './contributionData.js';
+import campaignsRoute from './campaigns.js';
+import { tryAddLinkToRequest } from '../../middleware/index.js';
+import { ReposAppRequest } from '../../interfaces/index.js';
 
-router.use(asyncHandler(AddLinkToRequest));
+router.use(tryAddLinkToRequest);
 
-router.get(
-  '/',
-  asyncHandler(async (req: ReposAppRequest, res) => {
-    const link = req.individualContext.link;
-    req.individualContext.webContext.render({
-      view: 'settings',
-      title: 'Settings',
-      state: {
-        link,
-      },
-    });
-  })
-);
+router.get('/', async (req: ReposAppRequest, res) => {
+  const link = req.individualContext.link;
+  req.individualContext.webContext.render({
+    view: 'settings',
+    title: 'Settings',
+    state: {
+      link,
+    },
+  });
+});
 
 router.use('/approvals', approvalsRoute);
 router.use('/authorizations', authorizationsRoute);
 router.use('/campaigns', campaignsRoute);
-router.use('/security/tokens', personalAccessTokensRoute);
 router.use('/contributionData', contributionDataRoute);
 
 export default router;

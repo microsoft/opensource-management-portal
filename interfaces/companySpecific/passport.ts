@@ -4,7 +4,7 @@
 //
 
 import { PassportStatic } from 'passport';
-import type { IAuthenticationHelperMethods } from '../../middleware/passport-routes';
+import type { IAuthenticationHelperMethods } from '../../middleware/passport-routes.js';
 
 export interface ICompanySpecificPassportMiddleware {
   configure?: (app: any, config: any, passport: PassportStatic) => void;

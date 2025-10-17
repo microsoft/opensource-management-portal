@@ -5,9 +5,9 @@
 
 import { NextFunction, Response } from 'express';
 
-import { Repository } from '../../business/repository';
-import type { ReposAppRequest } from '../../interfaces/web';
-import { CreateError } from '../../lib/transitional';
+import { Repository } from '../../business/repository.js';
+import type { ReposAppRequest } from '../../interfaces/web.js';
+import { CreateError } from '../../lib/transitional.js';
 
 export type RequestWithRepo = ReposAppRequest & {
   repository: Repository;

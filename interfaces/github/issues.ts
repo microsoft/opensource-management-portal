@@ -3,8 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { IPagedCacheOptions } from '.';
-import { GitHubSortDirection } from '../../lib/github/collections';
+import { IPagedCacheOptions } from './index.js';
+import { GitHubSortDirection } from '../../lib/github/collections.js';
 
 export enum GetIssuesSort {
   Created = 'created',

@@ -6,8 +6,10 @@
 import { DateTime } from 'luxon';
 import { ServiceBusClient, ServiceBusReceivedMessage, ServiceBusReceiver } from '@azure/service-bus';
 
-import { IQueueMessage, IQueueProcessor } from '.';
-import { IDictionary, Json } from '../../interfaces';
+import type { IQueueMessage, IQueueProcessor } from './index.js';
+import { IDictionary, IProviders, Json } from '../../interfaces/index.js';
+import { CreateError } from '../transitional.js';
+import { tryGetEntraApplicationTokenCredential } from '../applicationIdentity.js';
 
 // NOTE: in May 2021 this file was moved to the newer generation of Azure SDK dependencies,
 // which brings in AMQP under the covers instead of the HTTP REST approach; this is therefore
@@ -18,7 +20,11 @@ const maxWaitTimeInMs = 30 /* seconds */ * 1000;
 
 export interface IServiceBusQueueProcessorOptions {
   queue: string;
-  connectionString: string;
+  connectionString?: string;
+  useEntraAuthentication?: boolean;
+  endpoint?: string;
+  immediatelyDeleteMessages: boolean;
+  maximumMessagesPerRequest?: number;
 }
 
 export class ServiceBusMessage implements IQueueMessage {
@@ -52,43 +58,55 @@ export class ServiceBusMessage implements IQueueMessage {
 
 export default class ServiceBusQueueProcessor implements IQueueProcessor {
   #options: IServiceBusQueueProcessorOptions;
-  #service: ServiceBusClient;
   #receiver: ServiceBusReceiver;
   #initialized: boolean;
 
   supportsMultipleThreads: false;
 
-  constructor(options: IServiceBusQueueProcessorOptions) {
-    if (!options.connectionString) {
-      throw new Error('options.connectionString required');
+  constructor(
+    private providers: IProviders,
+    options: IServiceBusQueueProcessorOptions
+  ) {
+    if (!options.connectionString && !options.useEntraAuthentication) {
+      throw CreateError.InvalidParameters('options.connectionString required');
+    } else if (options.useEntraAuthentication && !options.endpoint) {
+      throw CreateError.InvalidParameters('options.endpoint required for Entra ID');
     }
     if (!options.queue) {
-      throw new Error('options.queue required');
+      throw CreateError.InvalidParameters('options.queue required');
     }
     this.#options = options;
   }
 
   async initialize(): Promise<void> {
     const options = this.#options;
-    const service = new ServiceBusClient(options.connectionString);
-    this.#service = service;
-    this.#receiver = service.createReceiver(options.queue, { receiveMode: 'peekLock' });
+    const service = this.#options.useEntraAuthentication
+      ? new ServiceBusClient(
+          options.endpoint,
+          tryGetEntraApplicationTokenCredential(this.providers, 'service bus')
+        )
+      : new ServiceBusClient(options.connectionString);
+    this.#receiver = service.createReceiver(options.queue, {
+      receiveMode: options.immediatelyDeleteMessages ? 'receiveAndDelete' : 'peekLock',
+    });
     this.#initialized = true;
   }
 
-  async receiveMessages(): Promise<ServiceBusMessage[]> {
+  async receiveMessages(maxWaitTimeMsAlternative?: number): Promise<ServiceBusMessage[]> {
     if (!this.#initialized) {
       throw new Error('Provider not initialized');
     }
 
     try {
-      const messages = await this.#receiver.receiveMessages(defaultMessagesPerRequest, {
-        maxWaitTimeInMs,
-      });
+      const messages = await this.#receiver.receiveMessages(
+        this.#options.maximumMessagesPerRequest || defaultMessagesPerRequest,
+        {
+          maxWaitTimeInMs: maxWaitTimeMsAlternative || maxWaitTimeInMs,
+        }
+      );
       return messages.map((message) => new ServiceBusMessage(message));
     } catch (error) {
       // if empty, return empty array
-
       console.warn(error);
     }
   }
@@ -96,6 +114,12 @@ export default class ServiceBusQueueProcessor implements IQueueProcessor {
   async deleteMessage(message: IQueueMessage): Promise<void> {
     if (!this.#initialized) {
       throw new Error('Provider not initialized');
+    }
+    if (this.#options.immediatelyDeleteMessages) {
+      console.log(
+        `In immediate delete mode, not deleting message ${message.identifier} (it was already handled)`
+      );
+      return;
     }
     const assumedType = message as ServiceBusMessage;
     const lockedMessage = assumedType.lockedMessage();

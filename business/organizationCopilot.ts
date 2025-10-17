@@ -4,18 +4,25 @@
 //
 
 import {
+  EnhancedPagedCacheOptions,
   GetAuthorizationHeader,
   ICacheOptions,
-  IOperationsInstance,
-  IPagedCacheOptions,
   PurposefulGetAuthorizationHeader,
-  throwIfNotGitHubCapable,
-} from '../interfaces';
-import type { CollectionCopilotSeatsOptions } from '../lib/github/collections';
-import { AppPurpose, AppPurposeTypes } from '../lib/github/appPurposes';
-import { CacheDefault, getMaxAgeSeconds, getPageSize, symbolizeApiResponse } from './operations/core';
-import { Organization } from './organization';
-import { HttpMethod } from '../lib/github';
+} from '../interfaces/index.js';
+import {
+  evenMoreBasicAccountProperties,
+  type CollectionCopilotSeatsOptions,
+  type WithSubPropertyReducer,
+} from '../lib/github/collections.js';
+import { AppPurpose, AppPurposeTypes } from '../lib/github/appPurposes.js';
+import {
+  CacheDefault,
+  getMaxAgeSeconds,
+  getPageSize,
+  Operations,
+  symbolizeApiResponse,
+} from './operations/core.js';
+import { Organization } from './organization.js';
 
 export type CopilotSeatData = {
   assignee: {
@@ -46,56 +53,173 @@ export type CopilotDailySummary = {
   total_lines_suggested: number;
   total_lines_accepted: number;
   total_active_users: number;
+  total_chat_acceptances: number;
+  total_chat_turns: number;
+  total_active_chat_users: number;
   breakdown: CopilotDailyBreakdown[];
 };
 
-export type OrganizationCopilotSummary = CopilotDailySummary[];
+export type CopilotMetricsCompletionsLanguage = {
+  language: string;
+  total_engaged_users: number;
+};
+
+export type CopilotModelLanguageTotals = {
+  name: string;
+  total_engaged_users: number;
+  total_code_suggestions: number;
+  total_code_acceptances: number;
+  total_code_lines_suggested: number;
+  total_code_lines_accepted: number;
+};
+
+export type CopilotMetricsCompletionsModel = {
+  name: string;
+  is_custom_model: boolean;
+  custom_model_training_date: string; // iso8601
+  total_engaged_users: number;
+  languages: CopilotModelLanguageTotals[];
+};
+
+export type CopilotMetricsCompletionsEditor = {
+  name: string;
+  total_engaged_users: number;
+  models: CopilotMetricsCompletionsModel[];
+};
+
+export type CopilotMetricsChatEditor = {
+  name: string;
+  total_engaged_users: number;
+  models: CopilotMetricsEditorChatModel[];
+};
+
+export type CopilotMetricsDotcomChatModel = {
+  name: string;
+  is_custom_model: boolean;
+  custom_model_training_date: string; // iso8601
+  total_engaged_users: number;
+  total_chats: number;
+};
+
+export type CopilotMetricsEditorChatModel = {
+  name: string;
+  is_custom_model: boolean;
+  custom_model_training_date: string; // iso8601
+  total_engaged_users: number;
+  total_chat_turns: number;
+  total_chat_insertion_events: number;
+  total_chat_copy_events: number;
+};
+
+export type CopilotMetricsCompletionsGroup = {
+  total_engaged_users: number;
+  languages: CopilotMetricsCompletionsLanguage[];
+  editors: CopilotMetricsCompletionsEditor[];
+};
+
+export type CopilotMetricsDotcomChat = {
+  total_engaged_users: number;
+  models: CopilotMetricsDotcomChatModel[];
+};
+
+export type CopilotMetricsChatGroup = {
+  total_engaged_users: number;
+  editors: CopilotMetricsChatEditor[];
+};
+
+export type CopilotMetricsDotcomPullRequestModel = {
+  name: string;
+  is_custom_model: boolean;
+  custom_model_training_date: string; // iso8601
+  total_pr_summaries_created: number;
+  total_engaged_users: number;
+};
+
+export type CopilotMetricsDotcomPullRequestRepository = {
+  name: string;
+  total_engaged_users: number;
+  models: CopilotMetricsDotcomPullRequestModel[];
+};
+
+export type CopilotMetricsDotcomPullRequests = {
+  total_engaged_users: number;
+  repositories: CopilotMetricsDotcomPullRequestRepository[];
+};
+
+export type CopilotDailyMetricsSummary = {
+  date: string;
+  total_active_users: number;
+  total_engaged_users: number;
+  copilot_ide_code_completions: CopilotMetricsCompletionsGroup;
+  copilot_ide_chat: CopilotMetricsChatGroup;
+  copilot_dotcom_chat: CopilotMetricsDotcomChat;
+  copilot_dotcom_pull_requests: CopilotMetricsDotcomPullRequests;
+};
+
+export type CopilotMetricsSummary = CopilotDailySummary[];
+
+export type CopilotHistoricalMetrics = CopilotDailyMetricsSummary[];
 
 export class OrganizationCopilot {
   constructor(
     private organization: Organization,
     private getSpecificAuthorizationHeader: PurposefulGetAuthorizationHeader,
-    private operations: IOperationsInstance
+    private operations: Operations
   ) {}
 
   async getSeatActivity(
-    options?: IPagedCacheOptions,
+    options?: EnhancedPagedCacheOptions,
     appPurpose: AppPurposeTypes = AppPurpose.Data
   ): Promise<CopilotSeatData[]> {
     options = options || {};
-    const operations = throwIfNotGitHubCapable(this.operations);
+    const operations = this.operations as Operations;
     const getAuthorizationHeader = this.getSpecificAuthorizationHeader.bind(
       this,
       appPurpose
     ) as GetAuthorizationHeader;
     const github = operations.github;
+    const perPage = options.perPage || getPageSize(operations);
+    if (options.perPage) {
+      delete options.perPage;
+    }
     const parameters: CollectionCopilotSeatsOptions = {
-      org: this.organization.name,
-      per_page: getPageSize(operations),
-    };
+      // org: this.organization.name,
+      per_page: perPage,
+    } as any;
     const caching = {
-      maxAgeSeconds: getMaxAgeSeconds(operations, CacheDefault.orgMembersStaleSeconds, options),
+      maxAgeSeconds: getMaxAgeSeconds(operations as Operations, CacheDefault.orgMembersStaleSeconds, options),
       backgroundRefresh: true,
       pageRequestDelay: options.pageRequestDelay,
     };
     if (options && options.backgroundRefresh === false) {
       caching.backgroundRefresh = false;
     }
-    // (caching as any).pageLimit = 10;
-    const seats = (await github.collections.getOrganizationCopilotSeats(
-      getAuthorizationHeader,
+    const seats = await github.collections.collectAllPagesViaHttpGetWithRequirements<any, CopilotSeatData>(
+      'orgCopilotSeats',
+      github.createRequirementsForRequest(
+        getAuthorizationHeader,
+        `GET /orgs/${this.organization.name}/copilot/billing/seats`,
+        {
+          permissions: {
+            permission: 'organization_copilot_seat_management',
+            access: 'read', // technically 'write' per API
+          },
+        }
+      ),
       parameters,
-      caching
-    )) as CopilotSeatData[];
+      caching,
+      copilotSeatPropertiesToCopy,
+      'seats'
+    );
     return seats;
   }
 
-  async getDailyActivitySummary(
+  async getDailyMetrics(
     options?: ICacheOptions,
     appPurpose: AppPurposeTypes = AppPurpose.Data
-  ): Promise<OrganizationCopilotSummary> {
+  ): Promise<CopilotHistoricalMetrics> {
     options = options || {};
-    const operations = throwIfNotGitHubCapable(this.operations);
+    const operations = this.operations as Operations;
     const getAuthorizationHeader = this.getSpecificAuthorizationHeader.bind(
       this,
       appPurpose
@@ -105,16 +229,21 @@ export class OrganizationCopilot {
       org: this.organization.name,
     };
     const caching = {
-      maxAgeSeconds: getMaxAgeSeconds(operations, CacheDefault.orgMembersStaleSeconds, options),
+      maxAgeSeconds: getMaxAgeSeconds(operations as Operations, CacheDefault.orgMembersStaleSeconds, options),
       backgroundRefresh: true,
     };
     if (options && options.backgroundRefresh === false) {
       caching.backgroundRefresh = false;
     }
     try {
-      const result: OrganizationCopilotSummary = await github.request(
-        getAuthorizationHeader,
-        'GET /orgs/:org/copilot/usage',
+      // X-GitHub-Api-Version: 2022-11-28
+      const result: CopilotMetricsSummary = await github.requestWithRequirements(
+        github.createRequirementsForRequest(getAuthorizationHeader, 'GET /orgs/:org/copilot/metrics', {
+          permissions: {
+            permission: 'organization_copilot_seat_management',
+            access: 'read',
+          },
+        }),
         parameters,
         caching
       );
@@ -124,3 +253,14 @@ export class OrganizationCopilot {
     }
   }
 }
+
+const copilotSeatPropertiesToCopy: WithSubPropertyReducer = [
+  'created_at',
+  'updated_at',
+  'last_activity_at',
+  'last_activity_editor',
+  'assignee', // id, login; mostBasicAccountProperties
+];
+copilotSeatPropertiesToCopy.subPropertiesToReduce = {
+  assignee: evenMoreBasicAccountProperties,
+};

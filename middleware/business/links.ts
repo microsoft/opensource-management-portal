@@ -5,11 +5,13 @@
 
 // Within the context, tries to resolve a link if it _can_. It does not force that a user is linked!
 
-import { IndividualContext } from '../../business/user';
-import { getProviders } from '../../lib/transitional';
-import { wrapError } from '../../lib/utils';
-import { ReposAppRequest, IReposError } from '../../interfaces';
 import { NextFunction, Response } from 'express';
+
+import { getProviders } from '../../lib/transitional.js';
+import { wrapError } from '../../lib/utils.js';
+
+import type { IndividualContext } from '../../business/user/index.js';
+import type { ReposAppRequest, IReposError } from '../../interfaces/index.js';
 
 export function RequireLinkMatchesGitHubSessionExceptPrefixedRoute(prefix: string) {
   return requireLinkMatchesGitHubSession.bind(null, prefix);
@@ -73,7 +75,7 @@ function requireLinkMatchesGitHubSession(
   return next(securityError);
 }
 
-export async function AddLinkToRequest(req, res: Response, next: NextFunction) {
+export async function tryAddLinkToRequest(req: ReposAppRequest, res: Response, next: NextFunction) {
   const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
   const contextName = req.individualContext ? 'Individual User Context' : 'API Context';
   if (!activeContext) {

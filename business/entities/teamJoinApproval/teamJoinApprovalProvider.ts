@@ -3,11 +3,11 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { IApprovalProvider } from './approvalProvider';
+import { IApprovalProvider } from './approvalProvider.js';
 import {
   IEntityMetadataBaseOptions,
   EntityMetadataBase,
-} from '../../../lib/entityMetadataProvider/entityMetadata';
+} from '../../../lib/entityMetadataProvider/entityMetadata.js';
 import {
   TeamJoinApprovalEntity,
   TeamJoinRequestFixedQueryByTeam,
@@ -15,14 +15,12 @@ import {
   TeamJoinRequestFixedQueryByThirdPartyUserId,
   TeamJoinRequestFixedQueryAll,
   EntityImplementation,
-} from './teamJoinApproval';
+} from './teamJoinApproval.js';
 
 const thisProviderType = EntityImplementation.Type;
 
-export interface ITeamJoinApprovalProviderOptions extends IEntityMetadataBaseOptions {}
-
 export class TeamJoinApprovalProvider extends EntityMetadataBase implements IApprovalProvider {
-  constructor(options: ITeamJoinApprovalProviderOptions) {
+  constructor(options: IEntityMetadataBaseOptions) {
     super(thisProviderType, options);
     EntityImplementation.EnsureDefinitions();
   }

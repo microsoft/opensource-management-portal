@@ -7,7 +7,7 @@ import {
   IEntityMetadata,
   EntityMetadataBase,
   IEntityMetadataBaseOptions,
-} from '../../../lib/entityMetadataProvider/entityMetadata';
+} from '../../../lib/entityMetadataProvider/entityMetadata.js';
 import {
   OrganizationMemberCacheEntity,
   EntityImplementation,
@@ -17,11 +17,9 @@ import {
   OrganizationBasicsFixedQuery,
   OrganizationMemberCacheDeleteByOrganizationId,
   OrganizationOwnersQuery,
-} from './organizationMemberCache';
+} from './organizationMemberCache.js';
 
 const thisProviderType = EntityImplementation.Type;
-
-export interface IOrganizationMemberCacheCreateOptions extends IEntityMetadataBaseOptions {}
 
 export interface IOrganizationMemberCacheProvider {
   initialize(): Promise<void>;
@@ -46,7 +44,7 @@ export class OrganizationMemberCacheProvider
   extends EntityMetadataBase
   implements IOrganizationMemberCacheProvider
 {
-  constructor(options: IOrganizationMemberCacheCreateOptions) {
+  constructor(options: IEntityMetadataBaseOptions) {
     super(thisProviderType, options);
     EntityImplementation.EnsureDefinitions();
   }

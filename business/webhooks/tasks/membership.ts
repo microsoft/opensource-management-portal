@@ -3,9 +3,9 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { WebhookProcessor } from '../organizationProcessor';
-import { Operations, Organization } from '../..';
-import { IProviders, GitHubTeamRole } from '../../../interfaces';
+import { WebhookProcessor } from '../organizationProcessor.js';
+import { Operations, Organization } from '../../index.js';
+import { IProviders, GitHubTeamRole } from '../../../interfaces/index.js';
 
 export default class MembershipWebhookProcessor implements WebhookProcessor {
   filter(data: any) {

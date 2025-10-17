@@ -3,24 +3,24 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { EntityField } from '../../../lib/entityMetadataProvider/entityMetadataProvider';
-import { EntityMetadataType, IEntityMetadata } from '../../../lib/entityMetadataProvider/entityMetadata';
-import { IEntityMetadataFixedQuery, FixedQueryType } from '../../../lib/entityMetadataProvider/query';
+import { EntityField } from '../../../lib/entityMetadataProvider/entityMetadataProvider.js';
+import { EntityMetadataType, IEntityMetadata } from '../../../lib/entityMetadataProvider/entityMetadata.js';
+import { IEntityMetadataFixedQuery, FixedQueryType } from '../../../lib/entityMetadataProvider/query.js';
 import {
   EntityMetadataMappings,
   MetadataMappingDefinition,
-} from '../../../lib/entityMetadataProvider/declarations';
+} from '../../../lib/entityMetadataProvider/declarations.js';
 import {
   PostgresGetAllEntities,
   PostgresJsonEntityQuery,
   PostgresJsonEntityQueryMultiple,
   PostgresSettings,
   PostgresConfiguration,
-} from '../../../lib/entityMetadataProvider/postgres';
-import { stringOrNumberAsString } from '../../../lib/utils';
-import { GitHubRepositoryPermission } from '../../../interfaces/github/repos';
-import { MemoryConfiguration, MemorySettings } from '../../../lib/entityMetadataProvider/memory';
-import { TableConfiguration } from '../../../lib/entityMetadataProvider';
+} from '../../../lib/entityMetadataProvider/postgres.js';
+import { stringOrNumberAsString } from '../../../lib/utils.js';
+import { GitHubRepositoryPermission } from '../../../interfaces/github/repos.js';
+import { MemoryConfiguration, MemorySettings } from '../../../lib/entityMetadataProvider/memory.js';
+import { TableConfiguration } from '../../../lib/entityMetadataProvider/index.js';
 
 const type = new EntityMetadataType('RepositoryTeamCache');
 

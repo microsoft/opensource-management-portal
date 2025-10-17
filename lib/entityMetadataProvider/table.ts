@@ -31,6 +31,8 @@ const emptyString = '';
 
 type AzureDataTablesQueryResponse = TableEntityResultPage<Record<string, unknown>>;
 
+type AzureTableName = { name: string };
+
 //type AzureDataTablesQueryResponse = ListEntitiesResponse<object>; // or ? ListEntitiesResponse<TableEntityResult<object>>;
 
 import {
@@ -41,17 +43,25 @@ import {
   DeserializeEntityMetadataToObjectSetCollection,
   IObjectWithDefinedKeys,
   EntityFieldNames,
-} from './entityMetadataProvider';
-import { IEntityMetadata, EntityMetadataType, EntityMetadataTypes } from './entityMetadata';
-import { IEntityMetadataFixedQuery } from './query';
+} from './entityMetadataProvider.js';
+import { IEntityMetadata, EntityMetadataType, EntityMetadataTypes } from './entityMetadata.js';
+import { IEntityMetadataFixedQuery } from './query.js';
 import {
   MetadataMappingDefinition,
   EntityMetadataMappings,
   MetadataMappingDefinitionBase,
-} from './declarations';
-import { encryptTableEntity, decryptTableEntity, ITableEncryptionOperationOptions } from './tableEncryption';
-import { CreateError, ErrorHelper } from '../transitional';
-import { IKeyVaultSecretResolver } from '../keyVaultResolver';
+} from './declarations.js';
+import {
+  encryptTableEntity,
+  decryptTableEntity,
+  ITableEncryptionOperationOptions,
+} from './tableEncryption.js';
+import { CreateError, ErrorHelper } from '../transitional.js';
+import { IKeyVaultSecretResolver } from '../keyVaultResolver.js';
+import { tryGetEntraApplicationTokenCredential } from '../applicationIdentity.js';
+import { TokenCredential } from '@azure/identity';
+
+import type { IProviders } from '../../interfaces/providers.js';
 
 export interface ITableEncryptionOptions {
   keyEncryptionKeyId: string;
@@ -64,7 +74,8 @@ export interface ITableEntityMetadataProviderOptions {
   metadataTypeToRowKeyPrefixMapping?: any;
   metadataTypeToEncryptedColumnsMapping?: any;
   account: string;
-  key: string;
+  key?: string;
+  useEntraAuthentication: boolean;
   prefix?: string;
   encryption?: ITableEncryptionOptions;
 }
@@ -113,7 +124,9 @@ export class TableEntityMetadataProvider implements IEntityMetadataProvider {
 
   private _azureTableServiceClient: TableServiceClient;
   private _azureTables: Map<string, TableClient> = new Map();
-  private _azureTablesCredential: NamedKeyCredential;
+
+  private _azureTableTokenCredential: TokenCredential;
+  private _azureTableNamedKeyCredential: NamedKeyCredential;
 
   private _tableNameMapping: any;
   private _fixedPartitionKeyMapping: any;
@@ -128,7 +141,7 @@ export class TableEntityMetadataProvider implements IEntityMetadataProvider {
   private _initialized: boolean;
   private _initializedTables: Map<EntityMetadataType, string>;
 
-  constructor(options: ITableEntityMetadataProviderOptions) {
+  constructor(providers: IProviders, options: ITableEntityMetadataProviderOptions) {
     if (!options) {
       throw new Error('ITableEntityMetadataProviderOptions required');
     }
@@ -138,10 +151,10 @@ export class TableEntityMetadataProvider implements IEntityMetadataProvider {
     if (!this._storageAccountName) {
       throw new Error('Storage account name required');
     }
-    const storageAccountKey = options.key;
-    if (!storageAccountKey) {
-      throw new Error('Storage account key required');
+    if (options.useEntraAuthentication === false && !options.key) {
+      throw new Error('Storage account key required to accompany ' + this._storageAccountName);
     }
+    const storageAccountKey = options.key;
     this._prefix = options.prefix || '';
     this._fixedPartitionKeyMapping = Object.assign(
       defaultFixedPartitionKeys(this._prefix),
@@ -158,11 +171,22 @@ export class TableEntityMetadataProvider implements IEntityMetadataProvider {
     this._typeToEncryptionOptions = new Map();
     this._encryptionOptions = options.encryption;
     try {
-      this._azureTablesCredential = new AzureNamedKeyCredential(this._storageAccountName, storageAccountKey);
-      this._azureTableServiceClient = new TableServiceClient(
-        `https://${this._storageAccountName}.table.core.windows.net`,
-        this._azureTablesCredential
-      );
+      if (options.useEntraAuthentication) {
+        this._azureTableTokenCredential = tryGetEntraApplicationTokenCredential(providers, 'table');
+        this._azureTableServiceClient = new TableServiceClient(
+          `https://${this._storageAccountName}.table.core.windows.net`,
+          this._azureTableTokenCredential
+        );
+      } else {
+        this._azureTableNamedKeyCredential = new AzureNamedKeyCredential(
+          this._storageAccountName,
+          storageAccountKey
+        );
+        this._azureTableServiceClient = new TableServiceClient(
+          `https://${this._storageAccountName}.table.core.windows.net`,
+          this._azureTableNamedKeyCredential
+        );
+      }
     } catch (storageAccountError) {
       throw storageAccountError;
     }
@@ -172,11 +196,17 @@ export class TableEntityMetadataProvider implements IEntityMetadataProvider {
   private getTableClient(tableName: string) {
     let client = this._azureTables.get(tableName);
     if (!client) {
-      client = new TableClient(
-        `https://${this._storageAccountName}.table.core.windows.net`,
-        tableName,
-        this._azureTablesCredential
-      );
+      client = this._azureTableTokenCredential
+        ? new TableClient(
+            `https://${this._storageAccountName}.table.core.windows.net`,
+            tableName,
+            this._azureTableTokenCredential
+          )
+        : new TableClient(
+            `https://${this._storageAccountName}.table.core.windows.net`,
+            tableName,
+            this._azureTableNamedKeyCredential
+          );
       this._azureTables.set(tableName, client);
     }
     return client;
@@ -606,6 +636,15 @@ export class TableEntityMetadataProvider implements IEntityMetadataProvider {
 
   private async tableCreateIfNotExists(type: EntityMetadataType, tableName: string): Promise<boolean> {
     try {
+      const iterator = this._azureTableServiceClient.listTables().byPage();
+      const response = await iterator.next(); // just first page
+      const tableNames = response.value as AzureTableName[];
+      for (let i = 0; i < tableNames.length; i++) {
+        if (tableNames[i].name === tableName) {
+          this._initializedTables.set(type, tableName);
+          return false;
+        }
+      }
       await this._azureTableServiceClient.createTable(tableName);
       this._initializedTables.set(type, tableName);
       return true;

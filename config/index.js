@@ -3,6 +3,10 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-module.exports = __dirname;
+const filename = fileURLToPath(import.meta.url);
+const dirname = path.dirname(filename);
+
+export default dirname;

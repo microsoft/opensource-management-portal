@@ -6,9 +6,9 @@
 import { NextFunction, Response, Router } from 'express';
 const router: Router = Router();
 
-import { ReposAppRequest, UserAlertType } from '../../../interfaces';
+import { ReposAppRequest, UserAlertType } from '../../../interfaces/index.js';
 
-import MiddlewareTeamAdminRequired from './teamAdminRequired';
+import MiddlewareTeamAdminRequired from './teamAdminRequired.js';
 
 interface ILocalRequest extends ReposAppRequest {
   team2?: any;

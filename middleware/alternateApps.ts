@@ -8,17 +8,23 @@ const debug = Debug.debug('startup');
 
 import path from 'path';
 
-import type { ApplicationProfile, IReposApplication, SiteConfiguration } from '../interfaces';
+import type { ApplicationProfile, IReposApplication, SiteConfiguration } from '../interfaces/index.js';
+import { fileURLToPath } from 'url';
+import { importPathSchemeChangeIfWindows } from '../lib/utils.js';
 
-export default async function initializeAlternateApps(
+export async function initializeAlternateApps(
   config: SiteConfiguration,
   app: IReposApplication,
   appName: string
 ): Promise<ApplicationProfile> {
-  const appPath = path.resolve(path.join(__dirname, '..', appName, '/'));
+  const filename = fileURLToPath(import.meta.url);
+  const dirname = path.dirname(filename);
+  let appPath = path.resolve(path.join(dirname, '..', appName, '/index.js'));
+  appPath = importPathSchemeChangeIfWindows(appPath);
   debug(`Alternate app requested: name=${appName}, path=${appPath}`);
   try {
-    let setupApp = require(appPath);
+    const imported = await import(appPath);
+    let setupApp = imported.default || imported;
     // support modern imports
     if (typeof setupApp !== 'function' && setupApp.default) {
       setupApp = setupApp.default;

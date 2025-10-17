@@ -4,12 +4,11 @@
 //
 
 import { NextFunction, Response, Router } from 'express';
-import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
-import { getProviders } from '../../lib/transitional';
-import { Operations } from '../../business';
-import { ReposAppRequest, ICorporateLink } from '../../interfaces';
+import { getProviders } from '../../lib/transitional.js';
+import { Operations } from '../../business/index.js';
+import { ReposAppRequest, ICorporateLink } from '../../interfaces/index.js';
 
 interface IRequestWithAuthorizations extends ReposAppRequest {
   authorizations?: any;
@@ -111,26 +110,23 @@ router.get('/', (req: IRequestWithAuthorizations, res) => {
   });
 });
 
-router.get(
-  '/validate',
-  asyncHandler(async (req: IRequestWithAuthorizations, res: Response, next: NextFunction) => {
-    const authorizations = req.authorizations;
-    for (const authorization of authorizations) {
-      const validator = authorization.validator;
-      const validationResult = await validator();
-      authorization.valid = validationResult;
-      if (validationResult.critical === true) {
-        // TODO: Actually delete this token/authorization
-      }
+router.get('/validate', async (req: IRequestWithAuthorizations, res: Response, next: NextFunction) => {
+  const authorizations = req.authorizations;
+  for (const authorization of authorizations) {
+    const validator = authorization.validator;
+    const validationResult = await validator();
+    authorization.valid = validationResult;
+    if (validationResult.critical === true) {
+      // TODO: Actually delete this token/authorization
     }
-    req.individualContext.webContext.render({
-      view: 'settings/authorizations',
-      title: 'Account authorizations',
-      state: {
-        authorizations: authorizations,
-      },
-    });
-  })
-);
+  }
+  req.individualContext.webContext.render({
+    view: 'settings/authorizations',
+    title: 'Account authorizations',
+    state: {
+      authorizations: authorizations,
+    },
+  });
+});
 
 export default router;

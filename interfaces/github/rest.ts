@@ -3,7 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { AppPurposeTypes } from '../../lib/github/appPurposes';
+import type { AppPurposeTypes } from '../../lib/github/appPurposes.js';
+import type { GitHubTokenPermissions } from '../../lib/github/appTokens.js';
 
 export interface ICacheOptions {
   backgroundRefresh?: any | null | undefined;
@@ -22,6 +23,10 @@ export interface IPagedCacheOptions extends ICacheOptions {
   pageRequestDelay?: number | null | undefined; // FUTURE: could be a function, too
 }
 
+export type EnhancedPagedCacheOptions = IPagedCacheOptions & {
+  perPage?: number;
+};
+
 export type PagedCacheOptionsWithPurpose = IPagedCacheOptions & WithOptionalPurpose;
 
 export type PurposefulGetAuthorizationHeader = (
@@ -30,12 +35,20 @@ export type PurposefulGetAuthorizationHeader = (
 
 export type GetAuthorizationHeader = () => Promise<AuthorizationHeaderValue>;
 
+export type GetAuthorizationHeaderWithEnterpriseSlug = GetAuthorizationHeader & {
+  enterpriseSlug: string;
+};
+
 export type AuthorizationHeaderValue = {
   value: string;
   purpose: AppPurposeTypes;
   source?: string;
   installationId?: number;
   organizationName?: string;
+  permissions?: GitHubTokenPermissions;
+  impliedTargetType?: 'organization' | 'enterprise';
+  created?: Date;
+  expires?: Date;
 };
 
 export interface ICacheDefaultTimes {
@@ -65,32 +78,9 @@ export interface ICacheDefaultTimes {
   defaultStaleSeconds: number;
 }
 
-// These "core capabilities" were created when the GitHub operations
-// classes were refactored to support both GitHub Enterprise Cloud and
-// also GitHub AE. Not all operations are supported by both environments
-// the same.
-
-export enum CoreCapability {
-  GitHubRestApi = 'GitHub REST API', // IOperationsGitHubRestLibrary
-  DefaultCacheTimes = 'Default cache times', // IOperationsDefaultCacheTimes
-  GitHubCentralOperations = 'GitHub central operations', // IOperationsCentralOperationsToken
-  Urls = 'urls', // IOperationsUrls
-  LockdownFeatureFlags = 'Lockdown feature flags', // IOperationsLockdownFeatureFlags
-  Providers = 'Providers', // IOperationsProviders
-  LegalEntities = 'Legal entities', // IOperationsLegalEntities
-  ServiceAccounts = 'Service Accounts', // IOperationsServiceAccounts
-  Links = 'Links', // IOperationsLinks
-  Templates = 'Templates', // IOperationsTemplates
-  RepositoryMetadataProvider = 'RepositoryMetadataProvider', // IOperationsRepositoryMetadataProvider
-  Hierarchy = 'Hierarchy', // IOperationsHierarchy
-  Notifications = 'Notifications', // IOperationsNotifications
-}
-
 export interface IAlternateTokenOption {
   alternateToken: string;
 }
-
-export interface IAlternateTokenRequiredOptions extends ICacheOptions, IAlternateTokenOption {}
 
 export interface IPagedCrossOrganizationCacheOptions extends IPagedCacheOptions {
   individualMaxAgeSeconds?: number | null | undefined;

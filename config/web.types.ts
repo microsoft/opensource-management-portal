@@ -9,4 +9,5 @@ export type ConfigRootWeb = {
 
 export type ConfigWeb = {
   app: string;
+  largeApiPayloadLimit: string;
 };

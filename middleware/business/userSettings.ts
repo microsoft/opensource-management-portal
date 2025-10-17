@@ -5,11 +5,11 @@
 
 import type { NextFunction, Response } from 'express';
 
-import type { ReposAppRequestWithUserSettings } from '../../interfaces/middleware';
+import type { ReposAppRequestWithUserSettings } from '../../interfaces/middleware.js';
 
-import { UserSettings } from '../../business/entities/userSettings';
-import { ErrorHelper, getProviders } from '../../lib/transitional';
-import { IndividualContext } from '../../business/user';
+import { UserSettings } from '../../business/entities/userSettings.js';
+import { ErrorHelper, getProviders } from '../../lib/transitional.js';
+import { IndividualContext } from '../../business/user/index.js';
 
 export async function getUserSettings(
   req: ReposAppRequestWithUserSettings,

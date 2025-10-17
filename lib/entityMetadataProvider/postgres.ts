@@ -5,7 +5,7 @@
 
 // Note: numbers are cast to strings
 
-import { Pool as PostgresPool } from 'pg';
+import type { Pool as PostgresPool } from 'pg';
 
 import {
   IEntityMetadataProvider,
@@ -13,17 +13,17 @@ import {
   IEntityMetadataDeserializationHelper,
   SerializeObjectToEntityMetadata,
   DeserializeEntityMetadataToObjectSetCollection,
-} from './entityMetadataProvider';
-import { IEntityMetadata, EntityMetadataType, EntityMetadataTypes } from './entityMetadata';
-import { PostgresPoolQuerySingleRowAsync, PostgresPoolQueryAsync } from '../postgresHelpers';
-import { IEntityMetadataFixedQuery } from './query';
+} from './entityMetadataProvider.js';
+import { IEntityMetadata, EntityMetadataType, EntityMetadataTypes } from './entityMetadata.js';
+import { PostgresPoolQuerySingleRowAsync, PostgresPoolQueryAsync } from '../postgresHelpers.js';
+import { IEntityMetadataFixedQuery } from './query.js';
 import {
   EntityMetadataMappings,
   MetadataMappingDefinition,
   MetadataMappingDefinitionBase,
-} from './declarations';
-import { CreateError } from '../transitional';
-import { IDictionary } from '../../interfaces';
+} from './declarations.js';
+import { CreateError } from '../transitional.js';
+import { IDictionary } from '../../interfaces/index.js';
 
 const MetadataColumnName = 'metadata';
 
@@ -57,8 +57,6 @@ interface IExtractedFieldObjects {
   metadata: IDictionary<any>;
   leftovers: IDictionary<any>;
 }
-
-interface IExtractedRowObjects extends IExtractedFieldObjects {}
 
 class PostgresInternals {
   private static _byType: Map<EntityMetadataType, PostgresInternals> = new Map();
@@ -149,7 +147,7 @@ class PostgresInternals {
   extractEntityToRowObjects(
     serializedAlready: IEntityMetadata,
     throwIfLeftovers: boolean
-  ): IExtractedRowObjects {
+  ): IExtractedFieldObjects {
     const internals = PostgresInternals.instance(serializedAlready.entityType);
     const natives = internals.getNativeColumnsAsSet();
     //const nativeFieldSet = internals.getNativePropertyNamesAsSet();
@@ -329,7 +327,11 @@ function stripEntityIdentities(type: EntityMetadataType, entity: any) {
   return { entity: combined, entityTypeString, entityId, entityCreated, entityFieldNames, leftovers };
 }
 
-function rowToMetadataObject(type: EntityMetadataType, row: any): IEntityMetadata {
+function rowToMetadataObject(
+  type: EntityMetadataType,
+  row: any,
+  additionalMappingsFromRow?: Record<string, string>
+): IEntityMetadata {
   const { entity, entityId, entityCreated, entityFieldNames } = stripEntityIdentities(type, row);
   const entityIdentity: IEntityMetadata = {
     entityType: type,
@@ -338,6 +340,14 @@ function rowToMetadataObject(type: EntityMetadataType, row: any): IEntityMetadat
     entityCreated,
   };
   const newMetadataObject: IEntityMetadata = Object.assign(entity, entityIdentity);
+  if (additionalMappingsFromRow) {
+    for (const key in additionalMappingsFromRow) {
+      const value = row[key];
+      if (value !== undefined) {
+        newMetadataObject[key] = value;
+      }
+    }
+  }
   return newMetadataObject;
 }
 
@@ -601,8 +611,22 @@ export class PostgresEntityMetadataProvider implements IEntityMetadataProvider {
     query: IEntityMetadataFixedQuery
   ): Promise<IEntityMetadata[]> {
     const tableName = this.getTableName(type);
-    const { sql, values, skipEntityMapping } = this.createQueryFromFixedQueryEnum(tableName, type, query);
-    return await this.sqlQueryToMetadataArray(type, sql, values, skipEntityMapping);
+    const { sql, values, skipEntityMapping, additionalMappingsFromRow } = this.createQueryFromFixedQueryEnum(
+      tableName,
+      type,
+      query
+    );
+    const data = await this.sqlQueryToMetadataArray(
+      type,
+      sql,
+      values,
+      skipEntityMapping,
+      additionalMappingsFromRow
+    );
+    if (additionalMappingsFromRow) {
+      (data as any).additionalMappingsFromRow = additionalMappingsFromRow;
+    }
+    return data;
   }
 
   getSerializationHelper(type: EntityMetadataType): IEntityMetadataSerializationHelper {
@@ -640,7 +664,7 @@ export class PostgresEntityMetadataProvider implements IEntityMetadataProvider {
       false
     ) as string[];
     const dateColumns = new Set(dateColumnNames || []);
-    return function postgresEntityToObject(entity: IEntityMetadata): any {
+    return function postgresEntityToObject(entity: IEntityMetadata, options?: any): any {
       const approval = EntityMetadataMappings.InstantiateObject(type);
       const toSet = DeserializeEntityMetadataToObjectSetCollection(
         entity,
@@ -655,6 +679,14 @@ export class PostgresEntityMetadataProvider implements IEntityMetadataProvider {
             approval[property] = dateParsed;
           } catch (ignored) {
             /* ignored */
+          }
+        }
+      }
+      if (options?.additionalMappingsFromRow) {
+        for (const key in options.additionalMappingsFromRow) {
+          const value = entity[key];
+          if (value !== undefined) {
+            approval[options.additionalMappingsFromRow[key]] = value;
           }
         }
       }
@@ -701,18 +733,30 @@ export class PostgresEntityMetadataProvider implements IEntityMetadataProvider {
   //   return stripEntityIdentities(type, entity);
   // }
 
-  private rowToMetadataObject(type: EntityMetadataType, row: any): IEntityMetadata {
-    return rowToMetadataObject(type, row);
+  private rowToMetadataObject(
+    type: EntityMetadataType,
+    row: any,
+    additionalMappingsFromRow?: Record<string, string>
+  ): IEntityMetadata {
+    return rowToMetadataObject(type, row, additionalMappingsFromRow);
   }
 
-  private async sqlQueryToMetadataArray(type, sql, values, skipEntityMapping): Promise<IEntityMetadata[]> {
+  private async sqlQueryToMetadataArray(
+    type,
+    sql,
+    values,
+    skipEntityMapping: boolean,
+    additionalMappingsFromRow: Record<string, string>
+  ): Promise<IEntityMetadata[]> {
     try {
       const result = await PostgresPoolQueryAsync(this._pool, sql, values);
       const rows = result['rows'];
       if (!rows) {
         throw new Error('No rows or empty rows returned');
       }
-      return skipEntityMapping ? rows : rows.map((row) => this.rowToMetadataObject(type, row));
+      return skipEntityMapping
+        ? rows
+        : rows.map((row: unknown) => this.rowToMetadataObject(type, row, additionalMappingsFromRow));
     } catch (error) {
       console.dir(error);
       throw error;

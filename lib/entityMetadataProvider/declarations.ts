@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { EntityMetadataType } from './entityMetadata';
+import { EntityMetadataType } from './entityMetadata.js';
 
 export abstract class MetadataMappingDefinitionBase {
   alternateRuntimeValidateMapping: Map<string, string>;

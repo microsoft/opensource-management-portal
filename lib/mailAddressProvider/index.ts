@@ -3,9 +3,9 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import microsoftMailAddressProvider from './microsoftMailAddressProvider';
-import mockMailAddressProvider from './mockMailAddressProvider';
-import passthroughMailAddressProvider from './passthroughMailAddressProvider';
+import microsoftMailAddressProvider from './microsoftMailAddressProvider.js';
+import mockMailAddressProvider from './mockMailAddressProvider.js';
+import passthroughMailAddressProvider from './passthroughMailAddressProvider.js';
 
 const supportedProvidersMapping = {
   microsoftMailAddressProvider,

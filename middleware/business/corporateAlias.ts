@@ -3,10 +3,10 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { jsonError } from '..';
-import { IProviders, ReposAppRequest } from '../../interfaces';
-import { getProviders } from '../../lib/transitional';
-import { IndividualContext } from '../../business/user';
+import { jsonError } from '../index.js';
+import { IProviders, ReposAppRequest } from '../../interfaces/index.js';
+import { CreateError, getProviders } from '../../lib/transitional.js';
+import { IndividualContext } from '../../business/user/index.js';
 
 const cachedCorporateAliasRequestKey = '__corporateAlias';
 
@@ -27,14 +27,14 @@ export async function getCorporateAliasFromActiveContext(
 ): Promise<string> {
   const { graphProvider } = providers;
   if (!activeContext.corporateIdentity || !activeContext.corporateIdentity.id) {
-    throw jsonError('No corporate identity', 401);
+    throw CreateError.NotAuthenticated('No corporate identity');
   }
   let corporateAlias = activeContext?.link?.corporateAlias;
   if (!corporateAlias) {
     const id = activeContext.corporateIdentity.id;
     const entry = await graphProvider.getUserById(id);
     if (!entry || !entry.mailNickname) {
-      throw jsonError('Invalid corporate identity', 401);
+      throw CreateError.InvalidParameters('Invalid corporate identity (no alias or mailNickname)');
     }
     corporateAlias = entry.mailNickname;
   }

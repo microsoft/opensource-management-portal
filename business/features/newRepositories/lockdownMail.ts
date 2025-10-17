@@ -3,11 +3,15 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Operations, Repository } from '../..';
-import { ICachedEmployeeInformation, ICorporateLink, RepositoryLockdownState } from '../../../interfaces';
-import { IMail } from '../../../lib/mailProvider';
-import getCompanySpecificDeployment from '../../../middleware/companySpecificDeployment';
-import { ILockdownResult, IMailToLockdownRepo, RepositoryLockdownCreateType } from './interfaces';
+import { Operations, Repository } from '../../index.js';
+import {
+  ICachedEmployeeInformation,
+  ICorporateLink,
+  RepositoryLockdownState,
+} from '../../../interfaces/index.js';
+import { IMail } from '../../../lib/mailProvider/index.js';
+import getCompanySpecificDeployment from '../../../middleware/companySpecificDeployment.js';
+import { ILockdownResult, IMailToLockdownRepo, RepositoryLockdownCreateType } from './interfaces.js';
 
 const defaultMailTemplate = 'newrepolockdown';
 
@@ -109,33 +113,29 @@ export async function sendLockdownMails(
         const mailToCreator: IMail = {
           to: mailAddress,
           subject,
-          content: await operations.emailRender(mailView, {
-            reason,
-            headline,
-            notification: isForkAdministratorLocked ? 'action' : 'information',
-            app: `${companyName} GitHub`,
-            hasAccountInformationSection: true,
-            //
-            isMailToCreator: true,
-            lockdownMailContent,
-            isForkAdministratorLocked,
-            isForkDeleted,
-            isForkParentManagedBySystem,
-            upstreamLogin,
-            upstreamRepositoryName,
-            linkToAdministrativeUnlockRepository:
-              companySpecific?.urls?.getAdministrativeUnlockUrl(repository) || defaultAdministrativeUnlockUrl,
-            action,
-            username,
-            forkUnlockMail,
-            operationsMail: operationsMails.join(','),
-            transferSourceRepositoryLogin,
-          }),
         };
-        if (managerInfo && managerInfo.managerMail) {
-          mailToCreator.cc = managerInfo.managerMail;
-        }
-        await operations.sendMail(mailToCreator);
+        await operations.emailRenderSend(mailView, mailToCreator, {
+          reason,
+          headline,
+          notification: isForkAdministratorLocked ? 'action' : 'information',
+          app: `${companyName} GitHub`,
+          hasAccountInformationSection: true,
+          //
+          isMailToCreator: true,
+          lockdownMailContent,
+          isForkAdministratorLocked,
+          isForkDeleted,
+          isForkParentManagedBySystem,
+          upstreamLogin,
+          upstreamRepositoryName,
+          linkToAdministrativeUnlockRepository:
+            companySpecific?.urls?.getAdministrativeUnlockUrl(repository) || defaultAdministrativeUnlockUrl,
+          action,
+          username,
+          forkUnlockMail,
+          operationsMail: operationsMails.join(','),
+          transferSourceRepositoryLogin,
+        });
         lockdownLog.push(
           `sent an e-mail to the person who ${repoActionType} the repository ${mailAddress} (corporate username: ${link.corporateUsername})`
         );
@@ -155,24 +155,23 @@ export async function sendLockdownMails(
       const mailToOperations: IMail = {
         to: operationsMails,
         subject,
-        content: await operations.emailRender(mailView, {
-          reason: `A user just ${repoActionType} this repository directly on GitHub. As the operations contact for this system, you are receiving this e-mail.
-                    This mail was sent to: ${operationsMails.join(', ')}`,
-          headline: isForkAdministratorLocked
-            ? `Fork ${organization.name}/${repository.name} by ${username}`
-            : `Repo (${stateVerb}) ${organization.name}/${repository.name} ${repoActionType} by ${username}`,
-          notification: 'information',
-          app: `${operations.config.brand.companyName} GitHub`,
-          isMailToOperations: true,
-          lockdownMailContent,
-          forkUnlockMail,
-          transferSourceRepositoryLogin,
-          action,
-          mailSentToCreator,
-          isForkAdministratorLocked,
-        }),
       };
-      await operations.sendMail(mailToOperations);
+      await operations.emailRenderSend(mailView, mailToOperations, {
+        reason: `A user just ${repoActionType} this repository directly on GitHub. As the operations contact for this system, you are receiving this e-mail.
+                  This mail was sent to: ${operationsMails.join(', ')}`,
+        headline: isForkAdministratorLocked
+          ? `Fork ${organization.name}/${repository.name} by ${username}`
+          : `Repo (${stateVerb}) ${organization.name}/${repository.name} ${repoActionType} by ${username}`,
+        notification: 'information',
+        app: `${operations.config.brand.companyName} GitHub`,
+        isMailToOperations: true,
+        lockdownMailContent,
+        forkUnlockMail,
+        transferSourceRepositoryLogin,
+        action,
+        mailSentToCreator,
+        isForkAdministratorLocked,
+      });
       lockdownLog.push(`sent an e-mail to the operations contact(s): ${operationsMails.join(', ')}`);
     } catch (mailIssue) {
       console.dir(mailIssue);

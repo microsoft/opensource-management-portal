@@ -3,16 +3,13 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import asyncHandler from 'express-async-handler';
 import { NextFunction, Response } from 'express';
 
-import { ReposAppRequest, AccountJsonFormat } from '../../interfaces';
-import { IGraphEntry } from '../../lib/graphProvider';
+import { ReposAppRequest, AccountJsonFormat } from '../../interfaces/index.js';
+import { IGraphEntry } from '../../lib/graphProvider/index.js';
+import { CreateError, ErrorHelper, getProviders } from '../../lib/transitional.js';
 
-import { jsonError } from '../../middleware';
-import { CreateError, ErrorHelper, getProviders } from '../../lib/transitional';
-
-const getPerson = asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
+const getPerson = async (req: ReposAppRequest, res: Response, next: NextFunction) => {
   const providers = getProviders(req);
   const { operations, queryCache, graphProvider } = providers;
   const login = req.params.login as string;
@@ -80,6 +77,6 @@ const getPerson = asyncHandler(async (req: ReposAppRequest, res: Response, next:
         : CreateError.InvalidParameters(`Invalid issue retrieving user ${login}: ${error.message}`)
     );
   }
-});
+};
 
 export { getPerson };

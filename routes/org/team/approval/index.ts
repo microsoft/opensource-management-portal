@@ -4,15 +4,13 @@
 //
 
 import { NextFunction, Response, Router } from 'express';
-import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
-import { ErrorHelper, getProviders } from '../../../../lib/transitional';
-import { Team } from '../../../../business';
-import { PermissionWorkflowEngine } from '../approvals';
-import RenderHtmlMail from '../../../../lib/emailRender';
-import { IndividualContext } from '../../../../business/user';
-import { ReposAppRequest, UserAlertType, IProviders } from '../../../../interfaces';
+import { ErrorHelper, getProviders } from '../../../../lib/transitional.js';
+import { Team } from '../../../../business/index.js';
+import { PermissionWorkflowEngine } from '../approvals.js';
+import { IndividualContext } from '../../../../business/user/index.js';
+import { ReposAppRequest, UserAlertType, IProviders } from '../../../../interfaces/index.js';
 
 interface ILocalRequest extends ReposAppRequest {
   team2?: any;
@@ -60,45 +58,42 @@ router.get('/setNote/:action', function (req: ILocalRequest, res) {
   });
 });
 
-router.post(
-  '/',
-  asyncHandler(async (req: ILocalRequest, res: Response, next: NextFunction) => {
-    const providers = getProviders(req);
-    const { individualContext } = req;
-    const engine = req.approvalEngine as PermissionWorkflowEngine;
-    const message = req.body.text as string;
-    const teamBaseUrl = req.teamUrl as string;
-    let decision: TeamApprovalDecision = null;
-    if (req.body.reopen) {
-      decision = TeamApprovalDecision.Reopen;
-    } else if (req.body.approve || req.body.approveWithComment) {
-      decision = TeamApprovalDecision.Approve;
-    } else if (req.body.deny) {
-      decision = TeamApprovalDecision.Deny;
-    }
-    if (!decision) {
-      throw new Error('No valid decision');
-    }
-    const outcome = await postActionDecision(
-      providers,
-      individualContext,
-      engine,
-      teamBaseUrl,
-      decision,
-      message
-    );
-    if (outcome.message) {
-      req.individualContext.webContext.saveUserAlert(outcome.message, engine.typeName, UserAlertType.Success);
-    }
-    if (outcome.error) {
-      req.insights.trackException({
-        exception: outcome.error,
-      });
-      return next(outcome.error);
-    }
-    return res.redirect(outcome.redirect || teamBaseUrl);
-  })
-);
+router.post('/', async (req: ILocalRequest, res: Response, next: NextFunction) => {
+  const providers = getProviders(req);
+  const { individualContext } = req;
+  const engine = req.approvalEngine as PermissionWorkflowEngine;
+  const message = req.body.text as string;
+  const teamBaseUrl = req.teamUrl as string;
+  let decision: TeamApprovalDecision = null;
+  if (req.body.reopen) {
+    decision = TeamApprovalDecision.Reopen;
+  } else if (req.body.approve || req.body.approveWithComment) {
+    decision = TeamApprovalDecision.Approve;
+  } else if (req.body.deny) {
+    decision = TeamApprovalDecision.Deny;
+  }
+  if (!decision) {
+    throw new Error('No valid decision');
+  }
+  const outcome = await postActionDecision(
+    providers,
+    individualContext,
+    engine,
+    teamBaseUrl,
+    decision,
+    message
+  );
+  if (outcome.message) {
+    req.individualContext.webContext.saveUserAlert(outcome.message, engine.typeName, UserAlertType.Success);
+  }
+  if (outcome.error) {
+    req.insights.trackException({
+      exception: outcome.error,
+    });
+    return next(outcome.error);
+  }
+  return res.redirect(outcome.redirect || teamBaseUrl);
+});
 
 export enum TeamApprovalDecision {
   Approve = 'Approved',
@@ -207,44 +202,36 @@ export async function postActionDecision(
     }
     // req.individualContext.webContext.saveUserAlert('Thanks for your ' + action.toUpperCase() + ' decision.', engine.typeName, 'success');
     const getDecisionEmailViewName = engine.getDecisionEmailViewName();
-    let content = null;
+    const { operations } = providers;
     try {
-      content = await RenderHtmlMail(
-        config.typescript.appDirectory,
-        getDecisionEmailViewName,
-        contentOptions,
-        config
-      );
+      await operations.emailTestRender(getDecisionEmailViewName, contentOptions);
     } catch (renderError) {}
-    if (content) {
-      const mail = {
-        to: [userMailAddress],
-        subject: engine.getDecisionEmailSubject(wasApproved, pendingRequest),
-        content,
-        correlationId: individualContext.webContext?.correlationId,
-      };
-      try {
-        const mailResult = await mailProvider.sendMail(mail);
-        insights?.trackEvent({
-          name: 'ReposRequestDecisionMailSuccess',
-          properties: Object.assign(
-            {
-              receipt: mailResult,
-            },
-            contentOptions
-          ),
-        });
-      } catch (mailError) {
-        insights?.trackException({
-          exception: mailError,
-          properties: Object.assign(
-            {
-              eventName: 'ReposRequestDecisionMailFailure',
-            },
-            contentOptions
-          ),
-        });
-      }
+    const mail = {
+      to: [userMailAddress],
+      subject: engine.getDecisionEmailSubject(wasApproved, pendingRequest),
+      correlationId: individualContext.webContext?.correlationId,
+    };
+    try {
+      const mailResult = await operations.emailRenderSend(getDecisionEmailViewName, mail, contentOptions);
+      insights?.trackEvent({
+        name: 'ReposRequestDecisionMailSuccess',
+        properties: Object.assign(
+          {
+            receipt: mailResult,
+          },
+          contentOptions
+        ),
+      });
+    } catch (mailError) {
+      insights?.trackException({
+        exception: mailError,
+        properties: Object.assign(
+          {
+            eventName: 'ReposRequestDecisionMailFailure',
+          },
+          contentOptions
+        ),
+      });
     }
   }
   return { message, redirect: teamBaseUrl };

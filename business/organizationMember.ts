@@ -3,19 +3,13 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import {
-  IOperationsInstance,
-  ICorporateLink,
-  throwIfNotCapable,
-  IOperationsLinks,
-  CoreCapability,
-  IOperationsProviders,
-} from '../interfaces';
-import { Organization } from './organization';
+import type { ICorporateLink } from '../interfaces/index.js';
+import { Operations } from './operations/index.js';
+import { Organization } from './organization.js';
 
 export class OrganizationMember {
   private _organization: Organization;
-  private _operations: IOperationsInstance;
+  private _operations: Operations;
   private _organizationProfile: any;
   private _entity;
 
@@ -23,7 +17,7 @@ export class OrganizationMember {
   public link: ICorporateLink; // Allow get and set on the object
   public corporate: any;
 
-  constructor(organization: Organization, entity: any, operations: IOperationsInstance) {
+  constructor(organization: Organization, entity: any, operations: Operations) {
     this._organization = organization;
     if (entity) {
       this._entity = entity;
@@ -77,8 +71,7 @@ export class OrganizationMember {
     if (!this.id) {
       throw new Error('No organization member ID');
     }
-    const operations = throwIfNotCapable<IOperationsLinks>(this._operations, CoreCapability.Links);
-    const opsProvs = throwIfNotCapable<IOperationsProviders>(this._operations, CoreCapability.Providers);
+    const operations = this._operations as Operations;
     const link = await operations.getLinkByThirdPartyId(String(this.id));
     if (!link || !link.corporateId) {
       throw new Error(`Organization member ID ${this.id} is not linked.`);
@@ -88,7 +81,7 @@ export class OrganizationMember {
         `Organization member ID ${this.id} is linked to corporate ID ${link.corporateId} but does not have a corporate username.`
       );
     }
-    const providers = opsProvs.providers;
+    const providers = operations.providers;
     if (!providers.mailAddressProvider) {
       throw new Error('No mailAddressProvider is available in this application instance');
     }

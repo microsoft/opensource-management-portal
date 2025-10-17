@@ -3,42 +3,73 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Repository } from './repository';
-import { AppPurpose, AppPurposeTypes } from '../lib/github/appPurposes';
-import { createCacheOptions, popPurpose, symbolizeApiResponse } from '.';
+import { Repository } from './repository.js';
+import { AppPurpose, AppPurposeTypes } from '../lib/github/appPurposes.js';
+import { createCacheOptions, Operations, popPurpose, symbolizeApiResponse } from './index.js';
 import {
-  IOperationsInstance,
   PurposefulGetAuthorizationHeader,
-  throwIfNotGitHubCapable,
   GetAuthorizationHeader,
   ICacheOptionsWithPurpose,
-} from '../interfaces';
-import { OrganizationCustomPropertySetPropertyValue } from './organizationProperties';
+} from '../interfaces/index.js';
+import { OrganizationCustomPropertySetPropertyValue } from './organizationProperties.js';
 
 export class RepositoryProperties {
   private _defaultPurpose = AppPurpose.Data;
-  private _getSpecificAuthorizationHeader: PurposefulGetAuthorizationHeader;
+  private _getAuthorizationHeader: PurposefulGetAuthorizationHeader;
 
   constructor(
-    public readonly repository: Repository,
-    private operations: IOperationsInstance,
-    getSpecificAuthorizationHeader: PurposefulGetAuthorizationHeader
+    private readonly repository: Repository,
+    private operations: Operations,
+    getAuthorizationHeader: PurposefulGetAuthorizationHeader
   ) {
-    this._getSpecificAuthorizationHeader = getSpecificAuthorizationHeader;
+    this._getAuthorizationHeader = getAuthorizationHeader;
   }
 
-  createOrUpdateProperties(
+  async createOrUpdateProperties(
     propertiesAndValues: Record<string, string>,
     purpose?: AppPurposeTypes
   ): Promise<void> {
-    const names = [this.repository.name];
-    const organizationProperties = this.repository.organization.customProperties;
-    return organizationProperties.createOrUpdateRepositoriesProperties(names, propertiesAndValues, purpose);
+    const operations = this.operations as Operations;
+    const { github } = operations;
+    const { rest } = operations.github.octokit;
+    const requirements = operations.github.createRequirementsForFunction(
+      this.authorize(purpose || AppPurpose.Data),
+      rest.repos.createOrUpdateCustomPropertiesValues,
+      'repos.createOrUpdateCustomPropertiesValues',
+      {
+        permissions: {
+          permission: 'repository_custom_properties',
+          access: 'write',
+        },
+        permissionsMatchRequired: true,
+      }
+    );
+    const parameters = {
+      owner: this.repository.organization.name,
+      repo: this.repository.name,
+      properties: this.setPropertiesRecordToArray(propertiesAndValues),
+    };
+    await github.postWithRequirements(
+      requirements,
+      parameters as unknown as Record<string, string | number | boolean>
+    );
+  }
+
+  setPropertiesRecordToArray(propertiesAndValues: Record<string, string>) {
+    const keys = Object.getOwnPropertyNames(propertiesAndValues);
+    const properties: OrganizationCustomPropertySetPropertyValue[] = [];
+    for (const key of keys) {
+      properties.push({
+        property_name: key,
+        value: propertiesAndValues[key],
+      });
+    }
+    return properties;
   }
 
   async getProperties(options?: ICacheOptionsWithPurpose): Promise<Record<string, string>> {
     options = options || {};
-    const operations = throwIfNotGitHubCapable(this.operations);
+    const operations = this.operations as Operations;
     const { github } = operations;
     const purpose = popPurpose(options, this._defaultPurpose);
     const parameters = {
@@ -47,9 +78,19 @@ export class RepositoryProperties {
     };
     const cacheOptions = createCacheOptions(operations, options);
     try {
-      const responseArray = await github.request(
-        this.authorize(purpose),
-        'GET /repos/:owner/:repo/properties/values',
+      const { rest } = github.octokit;
+      const responseArray = await github.callWithRequirements(
+        github.createRequirementsForFunction(
+          this.authorize(purpose || AppPurpose.Data),
+          rest.repos.getCustomPropertiesValues,
+          'repos.getCustomPropertiesValues',
+          {
+            permissions: {
+              access: 'read',
+              permission: 'metadata',
+            },
+          }
+        ),
         parameters,
         cacheOptions
       );
@@ -60,10 +101,7 @@ export class RepositoryProperties {
   }
 
   private authorize(purpose: AppPurposeTypes): GetAuthorizationHeader | string {
-    const getAuthorizationHeader = this._getSpecificAuthorizationHeader.bind(
-      this,
-      purpose
-    ) as GetAuthorizationHeader;
+    const getAuthorizationHeader = this._getAuthorizationHeader.bind(this, purpose) as GetAuthorizationHeader;
     return getAuthorizationHeader;
   }
 }

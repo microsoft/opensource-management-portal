@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Operations } from '../operations';
+import { Operations } from '../operations/index.js';
 
 export default class LinkManager {
   private _context: any;

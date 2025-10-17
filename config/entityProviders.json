@@ -12,7 +12,5 @@
   "repositoryteamcache": "env://ENTITY_PROVIDER_REPOSITORY_TEAM_CACHE?default=firstconfigured",
   "teamcache": "env://ENTITY_PROVIDER_TEAM_CACHE?default=firstconfigured",
   "teammembercache": "env://ENTITY_PROVIDER_TEAM_MEMBER_CACHE?default=firstconfigured",
-  "usersettings": "env://ENTITY_PROVIDER_USERSETTINGS?default=firstconfigured",
-  "tokens": "env://ENTITY_PROVIDER_TOKENS?default=firstconfigured",
-  "localextensionkey": "env://ENTITY_PROVIDER_LOCALEXTENSIONKEY?default=table"
+  "usersettings": "env://ENTITY_PROVIDER_USERSETTINGS?default=firstconfigured"
 }

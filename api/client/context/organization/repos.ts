@@ -4,17 +4,20 @@
 //
 
 import { NextFunction, Response, Router } from 'express';
-import asyncHandler from 'express-async-handler';
 
-import { Repository } from '../../../../business';
-import { jsonError } from '../../../../middleware';
-import { setContextualRepository } from '../../../../middleware/github/repoPermissions';
+import { Repository } from '../../../../business/index.js';
+import { jsonError } from '../../../../middleware/index.js';
+import { setContextualRepository } from '../../../../middleware/github/repoPermissions.js';
 
-import { OrganizationMembershipState, ReposAppRequest, VoidedExpressRoute } from '../../../../interfaces';
-import { IndividualContext } from '../../../../business/user';
-import { createRepositoryFromClient } from '../../newOrgRepo';
+import {
+  OrganizationMembershipState,
+  ReposAppRequest,
+  VoidedExpressRoute,
+} from '../../../../interfaces/index.js';
+import { IndividualContext } from '../../../../business/user/index.js';
+import { createRepositoryFromClient, setRepositoryCreateSourceThenNext } from '../../newOrgRepo.js';
 
-import routeContextualRepo from './repo';
+import routeContextualRepo from './repo.js';
 
 const router: Router = Router();
 
@@ -36,25 +39,23 @@ async function validateActiveMembership(req: ReposAppRequest, res: Response, nex
 
 router.post(
   '/',
-  asyncHandler(validateActiveMembership),
-  asyncHandler(createRepositoryFromClient as VoidedExpressRoute)
+  validateActiveMembership,
+  setRepositoryCreateSourceThenNext.bind('client'),
+  createRepositoryFromClient as VoidedExpressRoute
 );
 
-router.use(
-  '/:repoName',
-  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
-    const { organization } = req;
-    const { repoName } = req.params;
-    let repository: Repository = null;
-    repository = organization.repository(repoName);
-    setContextualRepository(req, repository);
-    return next();
-  })
-);
+router.use('/:repoName', async (req: ReposAppRequest, res: Response, next: NextFunction) => {
+  const { organization } = req;
+  const { repoName } = req.params;
+  let repository: Repository = null;
+  repository = organization.repository(repoName);
+  setContextualRepository(req, repository);
+  return next();
+});
 
 router.use('/:repoName', routeContextualRepo);
 
-router.use('*', (req, res: Response, next: NextFunction) => {
+router.use('/*splat', (req, res: Response, next: NextFunction) => {
   return next(jsonError('no API or function available for repos', 404));
 });
 

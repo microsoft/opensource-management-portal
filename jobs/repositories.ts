@@ -10,21 +10,29 @@
 // targeting refreshes based on last-cached times. The act of refreshing these entities
 // also helps keep the standard GitHub repository cache up to date.
 
-import throat from 'throat';
+import { throat } from '../vendor/throat/index.js';
 
-import job from '../job';
-import { Organization, sortByRepositoryDate } from '../business';
-import { RepositoryEntity, tryGetRepositoryEntity } from '../business/entities/repository';
-import { IProviders, IReposJobResult } from '../interfaces';
-import { sleep } from '../lib/utils';
+import job from '../job.js';
+import { Organization, sortByRepositoryDate } from '../business/index.js';
+import { RepositoryEntity, tryGetRepositoryEntity } from '../business/entities/repository.js';
+import { IProviders, IReposJobResult } from '../interfaces/index.js';
+import { sleep } from '../lib/utils.js';
 
 const sleepBetweenReposMs = 110;
 const maxParallel = 6;
 
 const shouldUpdateCached = true;
 
+const INSIGHTS_PREFIX = 'JobRefreshRepositories';
+
 async function refreshRepositories(providers: IProviders): Promise<IReposJobResult> {
-  const { config, operations } = providers;
+  const { config, insights, operations } = providers;
+  insights?.trackEvent({
+    name: `${INSIGHTS_PREFIX}Start`,
+    properties: {
+      time: new Date(),
+    },
+  });
   if (config?.jobs?.refreshWrites !== true) {
     console.log('job is currently disabled to avoid metadata refresh/rewrites');
     return;
@@ -33,7 +41,7 @@ async function refreshRepositories(providers: IProviders): Promise<IReposJobResu
   const started = new Date();
   console.log(`Starting at ${started.toISOString()}`);
 
-  const orgs = operations.getOrganizations();
+  const orgs = operations.getOrganizationsIncludingInvisible();
   const throttle = throat(maxParallel);
   await Promise.allSettled(
     orgs.map((organization, index) =>
@@ -45,6 +53,13 @@ async function refreshRepositories(providers: IProviders): Promise<IReposJobResu
 
   // TODO: query all, remove any not processed [recently]
   console.log(`Finished at ${new Date().toISOString()}, started at ${started.toISOString()}`);
+
+  insights?.trackEvent({
+    name: `${INSIGHTS_PREFIX}End`,
+    properties: {
+      time: new Date(),
+    },
+  });
 
   return {};
 }
@@ -94,12 +109,13 @@ async function processOrganization(
         }
         if (replace) {
           await repositoryProvider.replace(repositoryEntity);
-          updatedFields.length > 0 &&
+          if (updatedFields.length > 0) {
             console.log(
               `${prefix}Updated ${updatedFields.length} field${updatedFields.length === 1 ? '' : 's'} for ${
                 organization.name
               }/${repo.name} [${updatedFields.join(', ')}]`
             );
+          }
         }
       } catch (error) {
         console.warn(`${prefix}repo error: ${repo.name} in organization ${organization.name}: ${error}`);
@@ -346,5 +362,5 @@ function setFields(repositoryEntity: RepositoryEntity, entity: any, isNew: boole
 
 job.run(refreshRepositories, {
   timeoutMinutes: 600,
-  insightsPrefix: 'JobRefreshRepositories',
+  insightsPrefix: INSIGHTS_PREFIX,
 });

@@ -5,9 +5,11 @@
 
 import { Application, Response, NextFunction } from 'express';
 
-import type { IProviders } from './providers';
-import type { RuntimeConfiguration, SiteConfiguration } from './config';
-import type { ReposAppRequest } from './web';
+import { EntraIdClientType } from './enums.js';
+
+import type { IProviders } from './providers.js';
+import type { RuntimeConfiguration, SiteConfiguration } from './config.js';
+import type { ReposAppRequest } from './web.js';
 
 export type ApplicationProfile = {
   applicationName: string;
@@ -18,7 +20,7 @@ export type ApplicationProfile = {
     res: Response,
     next: NextFunction
   ) => Promise<void | unknown>;
-  customRoutes?: () => Promise<void>;
+  customRoutes?: (providers: IProviders) => Promise<void>;
   logDependencies: boolean;
   serveClientAssets: boolean;
   serveStaticAssets: boolean;
@@ -45,6 +47,7 @@ export interface IReposApplication extends Application {
 
   initializeApplication: (
     executionEnvironment: ExecutionEnvironment,
+    app: IReposApplication,
     config: SiteConfiguration,
     configurationError: Error
   ) => Promise<IReposApplication>;
@@ -91,4 +94,19 @@ export interface IReposJobOptions {
   parameters?: any;
   enableAllGitHubApps?: boolean;
   name?: string;
+  withWebStack?: boolean;
 }
+
+export type EntraApplicationIdentityPair = {
+  clientId: string;
+  clientSecret?: string;
+};
+
+export type EntraApplicationIdentity = EntraApplicationIdentityPair & {
+  tenantId: string;
+  useDeveloperCli: boolean;
+};
+
+export type EntraApplicationIdentityWithClientType = EntraApplicationIdentity & {
+  clientType: EntraIdClientType;
+};

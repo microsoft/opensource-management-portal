@@ -2,6 +2,7 @@
   "appId": "env://GITHUB_APP_UPDATES_APP_ID",
   "appKey": "env://GITHUB_APP_UPDATES_KEY",
   "appKeyFile": "env://GITHUB_APP_UPDATES_KEY_FILE",
+  "appKeyRemoteJwt": "env://GITHUB_APP_UPDATES_REMOTE_JWT",
   "webhookSecret": "",
   "slug": "env://GITHUB_APP_UPDATES_SLUG",
   "description": "Repository updates"

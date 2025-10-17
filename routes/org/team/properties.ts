@@ -6,10 +6,10 @@
 import { NextFunction, Response, Router } from 'express';
 const router: Router = Router();
 
-import { ReposAppRequest, UserAlertType } from '../../../interfaces';
-import { wrapError } from '../../../lib/utils';
+import { ReposAppRequest, UserAlertType } from '../../../interfaces/index.js';
+import { wrapError } from '../../../lib/utils.js';
 
-import MiddlewareTeamAdminRequired from './teamAdminRequired';
+import MiddlewareTeamAdminRequired from './teamAdminRequired.js';
 
 interface IRequestWithTeamAndLegacy extends ReposAppRequest {
   team2?: any;

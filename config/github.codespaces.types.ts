@@ -24,6 +24,9 @@ export type ConfigGitHubCodespaces = {
         login: string;
       };
     };
+    'entra-id': {
+      enabled: boolean;
+    };
     aad: {
       enabled: boolean;
     };

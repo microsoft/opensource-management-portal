@@ -8,27 +8,24 @@ import fs from 'fs';
 import path from 'path';
 import recursiveReadDirectory from 'recursive-readdir';
 
-import { wrapError, sleep } from '../../lib/utils';
-import { Organization } from '../../business';
-import { RepositoryMetadataEntity } from '../../business/entities/repositoryMetadata/repositoryMetadata';
-import { Repository } from '../../business';
-import { CreateRepositoryEntrypoint, ICreateRepositoryApiResult } from '../../api/createRepo';
+import { wrapError, sleep } from '../../lib/utils.js';
+import { Organization } from '../../business/index.js';
+import { RepositoryMetadataEntity } from '../../business/entities/repositoryMetadata/repositoryMetadata.js';
+import { Repository } from '../../business/index.js';
+import { CreateRepositoryEntrypoint, ICreateRepositoryApiResult } from '../../api/createRepo.js';
 import {
-  CoreCapability,
   GitHubRepositoryPermission,
   GitHubRepositoryPermissions,
   GitHubRepositoryVisibility,
-  IAlternateTokenOption,
-  IOperationsRepositoryMetadataProvider,
   IProviders,
   IReposAppWithTeam,
-  throwIfNotCapable,
-} from '../../interfaces';
-import { ErrorHelper } from '../../lib/transitional';
+} from '../../interfaces/index.js';
+import { CreateError, ErrorHelper } from '../../lib/transitional.js';
 import {
   setupRepositoryReadmeSubstring,
   setupRepositorySubstring,
-} from '../../business/features/newRepositories/strings';
+} from '../../business/features/newRepositories/strings.js';
+import { RepositoryFileWrapper } from '../../lib/github/fileUpdateWrapper.js';
 
 export interface IApprovalPackage {
   id: string;
@@ -57,13 +54,6 @@ export interface IRepositoryWorkflowOutput {
   message?: string;
 }
 
-interface ICommitterOptions {
-  isUsingApp: boolean;
-  alternateTokenOptions: IAlternateTokenOption;
-  alternateToken: string;
-  login: string;
-}
-
 export class RepoWorkflowEngine {
   organization: Organization;
   request: RepositoryMetadataEntity;
@@ -79,15 +69,13 @@ export class RepoWorkflowEngine {
 
   private createEntrypoint: CreateRepositoryEntrypoint;
 
-  private _hasAuthorizedTemplateCommitter = false;
-  private _contentCommitter: ICommitterOptions;
+  private _commitWrapper: RepositoryFileWrapper;
 
   private log: IRepositoryWorkflowOutput[] = [];
-  private repository: Repository;
-
   constructor(
     private providers: IProviders,
     organization: Organization,
+    private repository: Repository,
     approvalPackage: IApprovalPackage
   ) {
     this.request = approvalPackage.repositoryMetadata;
@@ -101,82 +89,11 @@ export class RepoWorkflowEngine {
     this.isFork = approvalPackage.isFork;
     this.isTransfer = approvalPackage.isTransfer;
     this.createEntrypoint = approvalPackage.createEntrypoint;
-  }
-
-  private async getTemplateCommitter() {
-    if (this._contentCommitter) {
-      return this._contentCommitter;
-    }
-    const { config } = this.providers;
-    this._contentCommitter = {
-      isUsingApp: true,
-      login: null,
-      alternateTokenOptions: null,
-      alternateToken: null,
-    };
-    if (config?.github?.user?.initialCommit?.username && config.github.user.initialCommit.token) {
-      const login = config.github.user.initialCommit.username;
-      const alternateToken = config.github.user.initialCommit.token;
-      const alternateTokenOptions = {
-        alternateToken,
-      };
-      if (!this._hasAuthorizedTemplateCommitter) {
-        try {
-          await this.authorizeTemplateCommitter({
-            login,
-            alternateToken,
-            alternateTokenOptions,
-            isUsingApp: false,
-          });
-        } catch (error) {
-          this.log.push({
-            error: new Error(`Error trying to authorize template committer ${login}: ${error}`),
-          });
-        }
-      }
-    }
-    return this._contentCommitter;
+    this._commitWrapper = new RepositoryFileWrapper(this.providers, this.repository, this.log);
   }
 
   private async finalizeCommitter() {
-    if (!this._hasAuthorizedTemplateCommitter) {
-      return;
-    }
-    const { login } = await this.getTemplateCommitter();
-    if (login && this.repository) {
-      try {
-        await this.repository.removeCollaborator(login);
-        this.log.push({ message: `Temporary committer ${login} removed` });
-      } catch (error) {
-        this.log.push({ error: new Error(`Error removing committer ${login}: ${error}`) });
-      }
-    }
-    this._hasAuthorizedTemplateCommitter = false;
-  }
-
-  private async authorizeTemplateCommitter(options: ICommitterOptions) {
-    if (!options.login) {
-      return;
-    }
-    const invitation = await this.repository.addCollaborator(options.login, GitHubRepositoryPermission.Push);
-    let hadError = false;
-    if (invitation?.id) {
-      try {
-        await this.repository.acceptCollaborationInvite(invitation.id, options.alternateTokenOptions);
-      } catch (error) {
-        hadError = true;
-        this.log.push({
-          error: new Error(
-            `The collaboration invitation could not be accepted for ${options.login}: ${error}`
-          ),
-        });
-      }
-    }
-    if (!hadError) {
-      this.log.push({ message: `Temporarily invited ${options.login} to commit to the repository` });
-      this._contentCommitter = options;
-      this._hasAuthorizedTemplateCommitter = true;
-    }
+    await this._commitWrapper.finalizeCommit();
   }
 
   editGet(req, res) {
@@ -193,11 +110,7 @@ export class RepoWorkflowEngine {
 
   editPost(req: IReposAppWithTeam, res: Response, next: NextFunction) {
     const { operations } = this.providers;
-    const ops = throwIfNotCapable<IOperationsRepositoryMetadataProvider>(
-      operations,
-      CoreCapability.RepositoryMetadataProvider
-    );
-    const repositoryMetadataProvider = ops.repositoryMetadataProvider;
+    const repositoryMetadataProvider = operations.repositoryMetadataProvider;
     const visibility = req.body.repoVisibility;
     if (!(visibility === 'public' || visibility === 'private' || visibility === 'internal')) {
       return next(new Error('Visibility for the repo request must be provided.'));
@@ -226,8 +139,6 @@ export class RepoWorkflowEngine {
 
   async executeNewRepositoryChores(): Promise<IRepositoryWorkflowOutput[] /* output */> {
     const request = this.request;
-    const repositoryName = request.repositoryName;
-    this.repository = this.organization.repository(repositoryName);
     for (let i = 0; i < request.initialTeamPermissions.length; i++) {
       let { teamId, permission, teamName } = request.initialTeamPermissions[i];
       if (teamId && !teamName) {
@@ -439,11 +350,26 @@ export class RepoWorkflowEngine {
   ): Promise<void> {
     const { config } = this.providers;
     const templatePath = config.github.templates.directory;
-    const { alternateTokenOptions } = await this.getTemplateCommitter();
+    const { alternateToken } = await this._commitWrapper.authorizeCommitter();
+    const getErrorMessage = (error: Error) => error.message || error.toString();
     try {
-      const templateRoot = path.join(templatePath, templateName);
+      const validTemplateNames = Object.getOwnPropertyNames(config.github.templates.definitions || {});
+      const validatedTemplateName = validTemplateNames.find(
+        (name) => name.toLowerCase() === templateName.toLowerCase()
+      );
+      if (!validatedTemplateName) {
+        throw CreateError.InvalidParameters(
+          `Template '${templateName}' is not one of the supported template choices: ${validTemplateNames.join(', ')}`
+        );
+      }
+      const templateRoot = path.join(templatePath, validatedTemplateName);
       const fileNames = await this.getTemplateFilenames(templateRoot);
-      const fileContents = await this.getFileContents(templateRoot, templatePath, templateName, fileNames);
+      const fileContents = await this.getFileContents(
+        templateRoot,
+        templatePath,
+        validatedTemplateName,
+        fileNames
+      );
       const uploadedFiles = [];
       if (isFork || isTransfer) {
         const subMessage = isFork ? 'is a fork' : 'was transferred';
@@ -453,6 +379,7 @@ export class RepoWorkflowEngine {
         return;
       }
       try {
+        const fileErrors = [];
         for (let i = 0; i < fileContents.length; i++) {
           const item = fileContents[i];
           let sha = null;
@@ -470,31 +397,46 @@ export class RepoWorkflowEngine {
             }
           }
           // }
+          const alternateTokenOptions = {
+            alternateToken,
+          };
           const fileOptions = sha ? { ...alternateTokenOptions, sha } : alternateTokenOptions;
           const message = sha ? `${item.path} updated to template` : `${item.path} committed`;
-          await this.repository.createFile(item.path, item.content, message, fileOptions);
-          uploadedFiles.push(item.path);
+          try {
+            await this.repository.createFile(item.path, item.content, message, fileOptions);
+            uploadedFiles.push(item.path);
+          } catch (fileError) {
+            fileErrors.push(fileError);
+          }
+        }
+        if (uploadedFiles.length) {
+          this.log.push({
+            message: `Placed template files: ${uploadedFiles.join(', ')}`,
+          });
+        }
+        if (fileErrors.length > 0) {
+          throw fileErrors[0];
         }
       } catch (error) {
         const notUploaded = fileContents.map((fc) => fc.path).filter((f) => !uploadedFiles.includes(f));
         if (uploadedFiles.length) {
           this.log.push({
-            error,
+            error: getErrorMessage(error),
             message: `Initial commit of ${uploadedFiles.join(', ')} template files to the ${
               this.repository.name
-            } repo partially succeeded. Not uploaded: ${notUploaded.join(', ')}. Error: ${error.message}`,
+            } repo partially succeeded. Not uploaded: ${notUploaded.join(', ')}. Error: ${getErrorMessage(error)}.`,
           });
         } else {
           this.log.push({
-            error,
+            error: getErrorMessage(error),
             message: `Initial commit of template file(s) to the ${
               this.repository.name
-            } repo failed. Not uploaded: ${notUploaded.join(', ')}. Error: ${error.message}.`,
+            } repo failed. Not uploaded: ${notUploaded.join(', ')}. Error: ${getErrorMessage(error)}.`,
           });
         }
       }
     } catch (error) {
-      this.log.push({ error });
+      this.log.push({ error: getErrorMessage(error) });
     }
   }
 

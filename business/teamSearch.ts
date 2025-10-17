@@ -3,12 +3,13 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+import { CreateError } from '../lib/transitional.js';
+
 const defaultPageSize = 20; // GitHub.com seems to use a value around 33
 
 export default class TeamSearch {
   private teams: any;
   private page: any;
-  private tags: any;
   private pageSize: any;
   private set: any;
   private yourTeamsMap: any;
@@ -30,15 +31,18 @@ export default class TeamSearch {
     this.yourTeamsMap = options.yourTeamsMap || new Map();
   }
 
-  search(tags, page, sort): Promise<void> {
-    this.page = parseInt(page);
-    this.tags = tags;
+  search(page: number, sort?: string): Promise<void> {
+    this.page = page;
     this.sort = sort ? sort.charAt(0).toUpperCase() + sort.slice(1) : 'Alphabet';
-
+    const sortMethodName = 'sortBy' + this.sort;
+    const sortMethod = this[sortMethodName];
+    if (!sortMethod) {
+      throw CreateError.InvalidParameters(`Invalid sort method: ${sortMethodName}`);
+    }
     // prettier-ignore
     return this.filterByType(this.set)
       .filterByPhrase(this.phrase)
-      .determinePages()['sortBy' + this.sort]() // prettier will mangle this
+      .determinePages()[sortMethodName]() // prettier will mangle this; CodeQL: given the explicit check and sortBy prefix on `this`, we are OK with this dynamic call by name.
       .getPage(this.page);
   }
 

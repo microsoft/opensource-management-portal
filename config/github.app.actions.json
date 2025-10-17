@@ -2,6 +2,7 @@
   "appId": "env://GITHUB_APP_ACTIONS_APP_ID",
   "appKey": "env://GITHUB_APP_ACTIONS_KEY",
   "appKeyFile": "env://GITHUB_APP_ACTIONS_KEY_FILE",
+  "appKeyRemoteJwt": "env://GITHUB_APP_ACTIONS_REMOTE_JWT",
   "webhookSecret": "",
   "slug": "env://GITHUB_APP_ACTIONS_SLUG",
   "description": "Optional GitHub Actions Data"

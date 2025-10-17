@@ -3,9 +3,9 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Repository } from '../../..';
-import { ErrorHelper } from '../../../../lib/transitional';
-import { setupRepositoryReadmeSubstring } from '../strings';
+import { Repository } from '../../../index.js';
+import { ErrorHelper } from '../../../../lib/transitional.js';
+import { setupRepositoryReadmeSubstring } from '../strings.js';
 
 export async function tryCreateReadme(repository: Repository, log: string[]): Promise<void> {
   try {

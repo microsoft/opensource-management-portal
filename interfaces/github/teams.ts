@@ -3,8 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { OrganizationMembershipState } from '.';
-import { ICacheOptions, ICacheOptionsPageLimiter, IPagedCrossOrganizationCacheOptions } from './rest';
+import { OrganizationMembershipState } from './index.js';
+import { ICacheOptions, ICacheOptionsPageLimiter, IPagedCrossOrganizationCacheOptions } from './rest.js';
 
 export enum RequestTeamMemberAddType {
   Member = 'member',
@@ -74,6 +74,10 @@ export interface IIsMemberOptions extends ICacheOptions {
 
 export interface IGetMembersOptions extends ICacheOptionsPageLimiter {
   role?: GitHubTeamRole;
+}
+
+export interface IGetMembersOptionsExtended extends IGetMembersOptions {
+  doNotProjectEntities?: boolean;
 }
 
 export enum GitHubTeamRole {

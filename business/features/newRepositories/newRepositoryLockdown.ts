@@ -3,33 +3,34 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Operations, Organization, Repository } from '../..';
-import { IRepositoryMetadataProvider } from '../../entities/repositoryMetadata/repositoryMetadataProvider';
-import { botBracket } from '../../../lib/utils';
+import { Operations, Organization, Repository } from '../../index.js';
+import type { IRepositoryMetadataProvider } from '../../entities/repositoryMetadata/repositoryMetadataProvider.js';
+import { botBracket } from '../../../lib/utils.js';
 import {
-  ICorporateLink,
+  type ICorporateLink,
   RepositoryLockdownState,
   NoCacheNoBackground,
   OrganizationMembershipState,
   OrganizationMembershipRole,
-} from '../../../interfaces';
-import { CreateError } from '../../../lib/transitional';
+} from '../../../interfaces/index.js';
+import { CreateError } from '../../../lib/transitional.js';
 import {
-  ILockdownResult,
+  type ILockdownResult,
   NewRepositoryLockdownSystemOptions,
-  IRepoPatch,
+  type IRepoPatch,
   RepositoryLockdownCreateOptions,
   RepositoryLockdownCreateType,
-} from './interfaces';
-import { sendLockdownMails } from './lockdownMail';
-import { administrativeApproval } from './approve';
-import { selfServiceDeleteLockedRepository } from './selfServiceDelete';
-import { initializeRepositoryMetadata } from './initializeMetadata';
-import { setupRepositorySubstring } from './strings';
-import { immediatelyDeleteFork, tryCreateReadme } from './actions';
-import { repositoryLockdownStatics } from './staticFunctions';
-import { lockdownRepository } from './actions/lockdown';
+} from './interfaces.js';
+import { sendLockdownMails } from './lockdownMail.js';
+import { administrativeApproval } from './approve.js';
+import { selfServiceDeleteLockedRepository } from './selfServiceDelete.js';
+import { initializeRepositoryMetadata } from './initializeMetadata.js';
+import { setupRepositorySubstring } from './strings.js';
+import { immediatelyDeleteFork, tryCreateReadme } from './actions/index.js';
+import { repositoryLockdownStatics } from './staticFunctions.js';
+import { lockdownRepository } from './actions/lockdown.js';
 import { TelemetryClient } from 'applicationinsights';
+import { GitHubWebhookRepositoryEventBody } from './types.js';
 
 export default class NewRepositoryLockdownSystem {
   insights: TelemetryClient;
@@ -79,11 +80,18 @@ export default class NewRepositoryLockdownSystem {
     action: RepositoryLockdownCreateType,
     username: string,
     thirdPartyId: number,
-    transferSourceRepositoryLogin: string
+    transferSourceRepositoryLogin: string,
+    webhookEvent: GitHubWebhookRepositoryEventBody,
+    doNotLockdown?: boolean
   ): Promise<RepositoryLockdownState> {
     let outcome: ILockdownResult = null;
     try {
-      outcome = await this.lockdownIfNecessaryImpl(action, username, transferSourceRepositoryLogin);
+      outcome = await this.lockdownIfNecessaryImpl(
+        action,
+        username,
+        transferSourceRepositoryLogin,
+        doNotLockdown
+      );
       if (!outcome) {
         throw CreateError.ServerError('No lockdown outcome');
       }
@@ -125,19 +133,23 @@ export default class NewRepositoryLockdownSystem {
     };
 
     // Repository metadata
-    await initializeRepositoryMetadata(options);
+    await initializeRepositoryMetadata(options, webhookEvent, doNotLockdown);
 
-    await sendLockdownMails(
-      this.operations,
-      this.repository,
-      outcome,
-      link,
-      action,
-      lockdownLog,
-      lockdownState,
-      username,
-      transferSourceRepositoryLogin
-    );
+    if (doNotLockdown === true) {
+      lockdownLog.push('Not sending lockdown emails due to "doNotLockdown" mode.');
+    } else {
+      await sendLockdownMails(
+        this.operations,
+        this.repository,
+        outcome,
+        link,
+        action,
+        lockdownLog,
+        lockdownState,
+        username,
+        transferSourceRepositoryLogin
+      );
+    }
 
     const insights = this.operations.insights;
     if (insights) {
@@ -159,11 +171,13 @@ export default class NewRepositoryLockdownSystem {
   private async lockdownIfNecessaryImpl(
     action: RepositoryLockdownCreateType,
     username: string,
-    transferSourceRepositoryLogin: string
+    transferSourceRepositoryLogin: string,
+    doNotLockdown?: boolean
   ): Promise<ILockdownResult> {
     const lockdownLog: string[] = [];
     // reconfirm that the new repository system is enabled for this organization
-    if (!this.organization.isNewRepositoryLockdownSystemEnabled()) {
+    const allowProcessingEvenWithoutFlag = doNotLockdown === true;
+    if (!this.organization.isNewRepositoryLockdownSystemEnabled() && !allowProcessingEvenWithoutFlag) {
       return { wasLocked: false, notifyOperations: false };
     }
     // informationalLog.push(
@@ -182,6 +196,9 @@ export default class NewRepositoryLockdownSystem {
     //     'Confirmed that the additional transfer lockdown feature is enabled for this org'
     //   );
     // }
+    if (doNotLockdown === true) {
+      lockdownLog.push('Will not lockdown regardless of outcome due to presence of "doNotLockdown" mode.');
+    }
     const setupUrl = `${this.organization.absoluteBaseUrl}wizard?existingreponame=${this.repository.name}&existingrepoid=${this.repository.id}`;
     const isTransfer = action === RepositoryLockdownCreateType.Transferred;
     if (isTransfer && !this.lockdownTransfers) {
@@ -245,12 +262,20 @@ export default class NewRepositoryLockdownSystem {
 
     if (action === 'created' && isFork && (this.lockdownForks || this.deleteForks)) {
       if (this.lockdownForks && !this.deleteForks) {
-        lockdownLog.push('The repository is a fork and will be administrator locked');
-        lockdownState = RepositoryLockdownState.AdministratorLocked;
+        if (doNotLockdown === true) {
+          lockdownLog.push('The repository is a fork and would have been locked down');
+        } else {
+          lockdownLog.push('The repository is a fork and will be administrator locked');
+          lockdownState = RepositoryLockdownState.AdministratorLocked;
+        }
       } else if (this.deleteForks) {
-        lockdownLog.push('The repository is a fork and will be deleted');
-        lockdownState = RepositoryLockdownState.Deleted;
-        wasLocked = false;
+        if (doNotLockdown === true) {
+          lockdownLog.push('The repository is a fork and would have been deleted');
+        } else {
+          lockdownLog.push('The repository is a fork and will be deleted');
+          lockdownState = RepositoryLockdownState.Deleted;
+          wasLocked = false;
+        }
       }
       if (upstreamLogin && this.operations.isManagedOrganization(upstreamLogin)) {
         lockdownLog.push(
@@ -261,20 +286,39 @@ export default class NewRepositoryLockdownSystem {
     }
 
     if (isFork && this.deleteForks) {
-      await immediatelyDeleteFork(lockdownLog, this.repository);
+      if (doNotLockdown === true) {
+        lockdownLog.push('The repository is a fork and would have been deleted');
+      } else {
+        await immediatelyDeleteFork(lockdownLog, this.repository);
+      }
     } else {
-      await lockdownRepository(lockdownLog, this.repository, systemAccounts, username);
-
+      if (doNotLockdown === true) {
+        lockdownLog.push('The repository would have been locked down');
+      } else {
+        await lockdownRepository(lockdownLog, this.repository, systemAccounts, username);
+      }
       const patchChanges: IRepoPatch = {};
       if (!isFork && !isTransfer && !this.repository.private) {
         // informationalLog.push('Preparing to hide the public repository pending setup');
-        patchChanges.private = true;
+        if (doNotLockdown === true) {
+          lockdownLog.push('The repository would have been made private');
+        } else {
+          patchChanges.private = true;
+        }
       }
       if (!isFork) {
         // informationalLog.push('Updating the description and web site to point at the setup wizard');
         // informationalLog.push(`Will direct the user to ${setupUrl}`);
-        patchChanges.description = setupRepositorySubstring;
-        patchChanges.homepage = setupUrl;
+        if (doNotLockdown === true) {
+          lockdownLog.push(
+            `The repository description would have been updated to include the setup wizard link`
+          );
+          lockdownLog.push(`Description would shift to: ${setupRepositorySubstring}`);
+          lockdownLog.push(`Homepage would shift to: ${setupUrl}`);
+        } else {
+          patchChanges.description = setupRepositorySubstring;
+          patchChanges.homepage = setupUrl;
+        }
       }
       if (Object.getOwnPropertyNames(patchChanges).length > 0) {
         try {
@@ -283,8 +327,14 @@ export default class NewRepositoryLockdownSystem {
               return `${key}=${patchChanges[key]}`;
             })
             .join(', ');
-          lockdownLog.push(`Updating repository with patch ${descriptiveUpdate}`);
-          await this.repository.update(patchChanges);
+          if (doNotLockdown === true) {
+            lockdownLog.push(
+              `The repository would have been updated with the following changes: ${descriptiveUpdate}`
+            );
+          } else {
+            lockdownLog.push(`Updating repository with patch ${descriptiveUpdate}`);
+            await this.repository.update(patchChanges);
+          }
         } catch (hideError) {
           lockdownLog.push(`Error while trying to update the new repo: ${hideError}`);
         }
@@ -293,7 +343,11 @@ export default class NewRepositoryLockdownSystem {
 
     if (!isFork && !isTransfer) {
       try {
-        await tryCreateReadme(this.repository, lockdownLog);
+        if (doNotLockdown === true) {
+          lockdownLog.push('The README would have been updated');
+        } else {
+          await tryCreateReadme(this.repository, lockdownLog);
+        }
       } catch (readmeError) {
         lockdownLog.push(`Error with README updates: ${readmeError}`);
       }

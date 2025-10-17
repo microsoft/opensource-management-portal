@@ -7,7 +7,7 @@ import {
   IEntityMetadata,
   EntityMetadataBase,
   IEntityMetadataBaseOptions,
-} from '../../../lib/entityMetadataProvider/entityMetadata';
+} from '../../../lib/entityMetadataProvider/entityMetadata.js';
 import {
   RepositoryTeamCacheEntity,
   EntityImplementation,
@@ -18,11 +18,9 @@ import {
   RepositoryTeamCacheDeleteByOrganizationId,
   RepositoryTeamCacheGetOrganizationIdsQuery,
   RepositoryTeamCacheDeleteByRepositoryId,
-} from './repositoryTeamCache';
+} from './repositoryTeamCache.js';
 
 const thisProviderType = EntityImplementation.Type;
-
-export interface IRepositoryTeamCacheCreateOptions extends IEntityMetadataBaseOptions {}
 
 export interface IRepositoryTeamCacheProvider {
   initialize(): Promise<void>;
@@ -46,7 +44,7 @@ export interface IRepositoryTeamCacheProvider {
 }
 
 export class RepositoryTeamCacheProvider extends EntityMetadataBase implements IRepositoryTeamCacheProvider {
-  constructor(options: IRepositoryTeamCacheCreateOptions) {
+  constructor(options: IEntityMetadataBaseOptions) {
     super(thisProviderType, options);
     EntityImplementation.EnsureDefinitions();
   }

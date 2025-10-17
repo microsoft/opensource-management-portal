@@ -7,6 +7,19 @@ export type ConfigRootMail = {
   mail: ConfigMail;
 };
 
+export type ConfigMailDirectoryOptions = {
+  entraApplication: {
+    tenantId: string;
+  };
+  authority: string;
+  resource: string;
+  publisherName: string;
+  eventName: string;
+  senderProfile: string;
+  replyTo?: string;
+  appName: string;
+};
+
 export type ConfigMail = {
   provider: string;
   from: string;
@@ -32,15 +45,5 @@ export type ConfigMail = {
     };
   };
 
-  directoryMailService: {
-    clientId: string;
-    clientSecret: string;
-    authority: string;
-    resource: string;
-    publisherName: string;
-    eventName: string;
-    senderProfile: string;
-    replyTo: string;
-    appName: string;
-  };
+  directoryMailService: ConfigMailDirectoryOptions;
 };

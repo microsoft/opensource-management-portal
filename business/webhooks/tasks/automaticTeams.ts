@@ -6,14 +6,14 @@
 const teamTypes = ['read', 'write', 'admin'];
 const defaultLargeAdminTeamSize = 250;
 
-import { WebhookProcessor } from '../organizationProcessor';
-import { Operations } from '../..';
-import { Organization } from '../..';
+import { WebhookProcessor } from '../organizationProcessor.js';
+import { Operations } from '../../index.js';
+import { Organization } from '../../index.js';
 
-import RenderHtmlMail from '../../../lib/emailRender';
-import { IMailProvider } from '../../../lib/mailProvider';
-import getCompanySpecificDeployment from '../../../middleware/companySpecificDeployment';
-import { GitHubRepositoryPermission, IProviders } from '../../../interfaces';
+import getCompanySpecificDeployment from '../../../middleware/companySpecificDeployment.js';
+import { GitHubRepositoryPermission, IProviders, SiteConfiguration } from '../../../interfaces/index.js';
+
+import type { IMailProvider } from '../../../lib/mailProvider/index.js';
 
 interface IAutomaticTeamsMail {
   to: string;
@@ -282,12 +282,11 @@ async function largeTeamPermissionPreventionWarningMail(
   if (!mailAddress) {
     return;
   }
-  const basedir = operations.config.typescript.appDirectory;
   const operationsMail = operations.getOperationsMailAddress();
   const companySpecific = getCompanySpecificDeployment();
   const largeTeamProtectionDetailsLink = companySpecific?.strings?.largeTeamProtectionDetailsLink;
   const config = operations.config;
-  await sendEmail(config, insights, basedir, mailProvider, mailAddress, operationsMail, {
+  await sendEmail(operations, config, insights, mailProvider, mailAddress, operationsMail, {
     repository: repositoryBody,
     whoChangedIt,
     teamName,
@@ -298,11 +297,11 @@ async function largeTeamPermissionPreventionWarningMail(
 }
 
 async function sendEmail(
-  config,
+  operations: Operations,
+  config: SiteConfiguration,
   insights,
-  basedir,
   mailProvider: IMailProvider,
-  to,
+  to: string,
   operationsMail: string,
   body
 ) {
@@ -316,9 +315,8 @@ async function sendEmail(
     subject: `Team permission change for ${body.repository.full_name} repository reverted`,
     category: ['error', 'repos'],
   };
-  let mailContent = null;
   try {
-    mailContent = await RenderHtmlMail(basedir, 'largeTeamProtected', body, config);
+    await operations.emailTestRender('largeTeamProtected', body);
   } catch (renderError) {
     insights.trackException({
       exception: renderError,
@@ -329,13 +327,12 @@ async function sendEmail(
     });
     throw renderError;
   }
-  mail.content = mailContent;
   const customData: ICustomDataEventName = {
     content: body,
     receipt: '',
   };
   try {
-    const mailResult = await mailProvider.sendMail(mail);
+    const mailResult = await operations.emailRenderSend('largeTeamProtected', mail, body);
     customData.receipt = mailResult;
   } catch (mailError) {
     customData.eventName = 'JobAutomaticTeamsLargeTeamPermissionBlockMailFailure';

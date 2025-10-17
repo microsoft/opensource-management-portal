@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { LegacySerializer } from './serializer';
+import { LegacySerializer } from './serializer.js';
 
 // function i() {
 //   console.warn('Plain text session tokens are in use. Not recommended for production.');

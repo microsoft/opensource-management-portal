@@ -10,4 +10,5 @@ export type ConfigRootImpersonation = {
 export type ConfigImpersonation = {
   corporateId: string;
   githubId: string;
+  tenantId: string;
 };

@@ -6,70 +6,72 @@
 import _ from 'lodash';
 
 import { NextFunction, Response, Router } from 'express';
-import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
-import { hasStaticReactClientApp, getProviders } from '../lib/transitional';
-
-import { Organization } from '../business/organization';
+import { hasStaticReactClientApp, getProviders, CreateError } from '../lib/transitional.js';
+import { Organization } from '../business/organization.js';
 
 import {
-  AddLinkToRequest,
+  tryAddLinkToRequest,
   injectReactClient,
   requireAccessTokenClient,
   requireAuthenticatedUserOrSignIn,
   RequireLinkMatchesGitHubSessionExceptPrefixedRoute,
   setIdentity,
-} from '../middleware';
-import { blockEnterpriseManagedUsersAuthentication } from '../middleware/github/blockEnterpriseManagedUsers';
+} from '../middleware/index.js';
+import { blockEnterpriseManagedUsersAuthentication } from '../middleware/github/blockEnterpriseManagedUsers.js';
 
-import linkRoute from './link';
-import linkedUserRoute from './index-linked';
-import linkCleanupRoute from './link-cleanup';
+import routeApprovals from './approvals.js';
+import routeExplore from './explore.js';
+import routeLink from './link.js';
+import routeLinkedUserRoutes from './index-linked.js';
+import routeLinkCleanup from './link-cleanup.js';
+import routePlaceholders from './placeholders.js';
+import routeSettings from './settings/index.js';
 
-import routeSettings from './settings';
-import getCompanySpecificDeployment from '../middleware/companySpecificDeployment';
+import getCompanySpecificDeployment from '../middleware/companySpecificDeployment.js';
 
 const hasReactApp = hasStaticReactClientApp();
-const reactRoute = hasReactApp ? injectReactClient() : undefined;
+const reactFrontend = hasReactApp ? injectReactClient() : undefined;
 
-import routePlaceholders from './placeholders';
-import routeReleasesSpa from './releasesSpa';
-
-import { ReposAppRequest, UserAlertType } from '../interfaces';
-import { Repository } from '../business';
+import { ReposAppRequest, UserAlertType } from '../interfaces/index.js';
+import { Repository } from '../business/index.js';
 
 // - - - Middleware: require that they have a passport - - -
-router.use(asyncHandler(requireAuthenticatedUserOrSignIn));
-router.use(asyncHandler(requireAccessTokenClient));
+router.use(requireAuthenticatedUserOrSignIn);
+router.use(requireAccessTokenClient);
 // - - - Middleware: set the identities we have authenticated  - - -
 router.use(setIdentity);
 // - - - Middleware: resolve whether the corporate user has a link - - -
-router.use(asyncHandler(AddLinkToRequest));
+router.use(tryAddLinkToRequest);
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-router.use(asyncHandler(blockEnterpriseManagedUsersAuthentication));
+router.use(blockEnterpriseManagedUsersAuthentication);
 
+router.use('/approvals', reactFrontend || routeApprovals);
+router.use('/explore', reactFrontend || routeExplore);
+router.use('/link', reactFrontend || routeLink);
+router.use('/link/cleanup', reactFrontend || routeLinkCleanup);
 router.use('/placeholder', routePlaceholders);
-router.use('/link/cleanup', reactRoute || linkCleanupRoute);
-router.use('/link', reactRoute || linkRoute);
-router.use('/releases', reactRoute || routeReleasesSpa);
 
-if (reactRoute) {
+if (reactFrontend) {
   // client-only routes
-  router.use('/support', reactRoute);
-  router.use('/use', reactRoute);
-  router.use('/release', reactRoute);
-  router.use('/unlock', reactRoute);
-  router.use('/new', reactRoute);
-  router.use('/news', reactRoute); // intercept early
+  router.use('/releases', reactFrontend);
+  router.use('/support', reactFrontend);
+  router.use('/use', reactFrontend);
+  router.use('/release', reactFrontend);
+  router.use('/unlock', reactFrontend);
+  router.use('/enable', reactFrontend);
+  router.use('/new', reactFrontend);
+  router.use('/news', reactFrontend); // intercept early
 }
 
 const dynamicStartupInstance = getCompanySpecificDeployment();
-dynamicStartupInstance?.routes?.connectAuthenticatedRoutes &&
-  dynamicStartupInstance.routes.connectAuthenticatedRoutes(router, reactRoute);
+if (dynamicStartupInstance?.routes?.connectAuthenticatedRoutes) {
+  dynamicStartupInstance.routes.connectAuthenticatedRoutes(router, reactFrontend);
+}
 
-router.use('/settings', reactRoute || routeSettings);
+router.use('/settings', reactFrontend || routeSettings);
 
 router.get('/news', (req: ReposAppRequest, res: Response, next: NextFunction) => {
   const config = getProviders(req).config;
@@ -83,39 +85,34 @@ router.get('/news', (req: ReposAppRequest, res: Response, next: NextFunction) =>
   }
 });
 
-router.use(
-  '/',
-  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
-    // Helper method to allow pasting a GitHub URL into the app to go to a repo
-    const { rid, oid, action } = req.query;
-    const { operations } = getProviders(req);
-    if (!rid && !oid) {
-      return next();
-    }
-    const repositoryId = Number(rid);
-    const organizationId = Number(oid);
-    let organization: Organization = null;
-    let repository: Repository = null;
+router.use('/', async (req: ReposAppRequest, res: Response, next: NextFunction) => {
+  // Helper method to allow pasting a GitHub URL into the app to go to a repo
+  const { rid, oid, action } = req.query;
+  const { operations } = getProviders(req);
+  if (!rid && !oid) {
+    return next();
+  }
+  const repositoryId = Number(rid);
+  const organizationId = Number(oid);
+  let organization: Organization = null;
+  let repository: Repository = null;
+  try {
+    organization = operations.getOrganizationById(organizationId);
+  } catch (error) {
+    // no-op continue
+    return next();
+  }
+  if (organization) {
     try {
-      organization = operations.getOrganizationById(organizationId);
+      repository = await organization.getRepositoryById(repositoryId);
+      return res.redirect(`/orgs/${organization.name}/repos/${repository.name}${action ? `/${action}` : ''}`);
     } catch (error) {
       // no-op continue
       return next();
     }
-    if (organization) {
-      try {
-        repository = await organization.getRepositoryById(repositoryId);
-        return res.redirect(
-          `/orgs/${organization.name}/repos/${repository.name}${action ? `/${action}` : ''}`
-        );
-      } catch (error) {
-        // no-op continue
-        return next();
-      }
-    }
-    return next();
-  })
-);
+  }
+  return next();
+});
 
 // Link cleanups and check their signed-in username vs their link
 router.use(RequireLinkMatchesGitHubSessionExceptPrefixedRoute('/unlink'));
@@ -123,8 +120,8 @@ router.use(RequireLinkMatchesGitHubSessionExceptPrefixedRoute('/unlink'));
 // Dual-purpose homepage: if not linked, welcome; otherwise, show things
 router.get(
   '/',
-  reactRoute ||
-    asyncHandler(async function (req: ReposAppRequest, res: Response, next: NextFunction) {
+  reactFrontend ||
+    async function (req: ReposAppRequest, res: Response, next: NextFunction) {
       const onboarding = req.query.onboarding !== undefined;
       const individualContext = req.individualContext;
       const link = individualContext.link;
@@ -224,9 +221,77 @@ router.get(
           groupedAvailableOrganizations: groupedAvailableOrganizations,
         },
       });
-    })
+    }
 );
 
-router.use(linkedUserRoute);
+router.use('/*splat', async (req: ReposAppRequest, res, next) => {
+  // Helper method to allow pasting a GitHub URL into the app to go to a repo
+  const { insights } = getProviders(req);
+  const full = decodeURIComponent(req.baseUrl.slice(1)); // Remove leading `/`
+  // eslint-disable-next-line security/detect-unsafe-regex -- as this is an authenticated route, the value this provides to our authenticated users is worth this
+  const match = full.match(/^https?:\/?\/?github\.com\/([^/]+)\/([^/]+)(\/.*)?$/); // Match includes single forward slash
+  if (match) {
+    const [, org, repo, rest] = match;
+    const { operations } = getProviders(req);
+    if (org && repo) {
+      let organization: Organization = null;
+      try {
+        organization = operations.getOrganization(org);
+      } catch (error) {
+        return next(CreateError.InvalidParameters(`Organization ${org} not managed by this system`));
+      }
+      let repository: Repository = null;
+      try {
+        repository = organization.repository(repo);
+        await repository.getDetails();
+      } catch (error) {
+        insights?.trackEvent({
+          name: 'router.github.splat_error',
+          properties: {
+            error: error.message,
+            org,
+            full,
+            repo,
+            url: req.url,
+            baseUrl: req.baseUrl,
+          },
+        });
+        return next(CreateError.NotFound(`The repository ${org}/${repo} doesn't exist.`));
+      }
+      const destinationUrl = hasReactApp
+        ? `/orgs/${repository.organization.name}/repos/${repository.name}`
+        : repository.baseUrl;
+      insights?.trackMetric({
+        name: 'router.github.splat',
+        value: 1,
+      });
+      insights?.trackEvent({
+        name: 'router.github.splat.success',
+        properties: {
+          org,
+          full,
+          repo,
+          url: req.url,
+          baseUrl: req.baseUrl,
+          destinationUrl,
+        },
+      });
+      return res.redirect(destinationUrl);
+    }
+  } else {
+    insights?.trackEvent({
+      name: 'router.github.splat_skipped',
+      properties: {
+        full,
+        url: req.url,
+        baseUrl: req.baseUrl,
+      },
+    });
+  }
+
+  return next();
+});
+
+router.use(routeLinkedUserRoutes);
 
 export default router;

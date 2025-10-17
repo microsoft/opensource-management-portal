@@ -4,27 +4,23 @@
 //
 
 import { NextFunction, Response, Router } from 'express';
-import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
-import { ReposAppRequest } from '../../interfaces';
-import { getProviders } from '../../lib/transitional';
+import { ReposAppRequest } from '../../interfaces/index.js';
+import { getProviders } from '../../lib/transitional.js';
 
-import getCompanySpecificDeployment from '../../middleware/companySpecificDeployment';
+import getCompanySpecificDeployment from '../../middleware/companySpecificDeployment.js';
 
-import RouteApp from './app';
-import RouteApps from './apps';
+import RouteApp from './app.js';
+import RouteApps from './apps.js';
 
-router.use(
-  '*',
-  asyncHandler(async function (req: ReposAppRequest, res: Response, next: NextFunction) {
-    const { corporateAdministrationProfile } = getProviders(req);
-    if (corporateAdministrationProfile && corporateAdministrationProfile.urls) {
-      req.individualContext.setInitialViewProperty('_corpAdminUrls', corporateAdministrationProfile.urls);
-    }
-    return next();
-  })
-);
+router.use('/*splat', async function (req: ReposAppRequest, res: Response, next: NextFunction) {
+  const { corporateAdministrationProfile } = getProviders(req);
+  if (corporateAdministrationProfile && corporateAdministrationProfile.urls) {
+    req.individualContext.setInitialViewProperty('_corpAdminUrls', corporateAdministrationProfile.urls);
+  }
+  return next();
+});
 
 try {
   const dynamicStartupInstance = getCompanySpecificDeployment();

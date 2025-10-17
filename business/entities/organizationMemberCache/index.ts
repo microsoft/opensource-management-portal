@@ -3,14 +3,14 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+import type { IEntityMetadataBaseOptions } from '../../../lib/entityMetadataProvider/entityMetadata.js';
 import {
   OrganizationMemberCacheProvider,
-  IOrganizationMemberCacheCreateOptions,
   IOrganizationMemberCacheProvider,
-} from './organizationMemberCacheProvider';
+} from './organizationMemberCacheProvider.js';
 
 export async function CreateOrganizationMemberCacheProviderInstance(
-  options?: IOrganizationMemberCacheCreateOptions
+  options?: IEntityMetadataBaseOptions
 ): Promise<IOrganizationMemberCacheProvider> {
   const provider = new OrganizationMemberCacheProvider(options);
   await provider.initialize();

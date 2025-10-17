@@ -3,5 +3,6 @@
   "key": "env://XSTORE_KEY",
   "prefix": "env://XSTORE_PREFIX",
   "encryption": "env://XSTORE_ENCRYPTION?trueIf=encrypt",
-  "encryptionKeyId": "env://XSTORE_ENCRYPTION_KEY_ID"
+  "encryptionKeyId": "env://XSTORE_ENCRYPTION_KEY_ID",
+  "useEntraAuthentication": "env://XSTORE_USE_ENTRA_AUTHENTICATION?trueIf=1"
 }

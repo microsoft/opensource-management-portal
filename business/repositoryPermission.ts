@@ -3,15 +3,15 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import * as common from './common';
+import * as common from './common.js';
 
 import {
   GitHubCollaboratorPermissionLevel,
   ConvertGitHubCollaboratorPermissionLevelToGitHubRepositoryPermission,
   GitHubRepositoryPermission,
   IGitHubCollaboratorPermissions,
-} from '../interfaces';
-import type { CollaboratorAccount, CollaboratorJson } from './collaborator';
+} from '../interfaces/index.js';
+import type { CollaboratorAccount, CollaboratorJson } from './collaborator.js';
 
 // prettier-ignore
 const repoPermissionProperties = [
@@ -68,7 +68,21 @@ export class RepositoryPermission {
   asGitHubLegacyRepositoryPermission(): GitHubRepositoryPermission {
     // GitHub's API will only return "admin", "read", "write"; while the function
     // implements recognition of maintain, etc., it isn't a thing.
-    return ConvertGitHubCollaboratorPermissionLevelToGitHubRepositoryPermission(this._permission);
+    const initial = ConvertGitHubCollaboratorPermissionLevelToGitHubRepositoryPermission(this._permission);
+    if (
+      this._role_name &&
+      initial === GitHubRepositoryPermission.Push &&
+      this._role_name === GitHubRepositoryPermission.Maintain
+    ) {
+      return GitHubRepositoryPermission.Maintain;
+    } else if (
+      this._role_name &&
+      initial === GitHubRepositoryPermission.Pull &&
+      this._role_name === GitHubRepositoryPermission.Triage
+    ) {
+      return GitHubRepositoryPermission.Triage;
+    }
+    return initial;
   }
 
   hasCustomRolePermission() {

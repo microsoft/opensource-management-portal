@@ -4,21 +4,21 @@
 //
 
 import { NextFunction, Response, Router } from 'express';
-import asyncHandler from 'express-async-handler';
+
 const router: Router = Router();
 
-import { getProviders } from '../lib/transitional';
-import { RequestWithSystemwidePermissions, RequestTeamMemberAddType } from '../interfaces';
-import { ensureAllLinksInMemory, getAllLinksFromRequest } from '../middleware/business/allLinks';
+import { CreateError, getProviders } from '../lib/transitional.js';
+import { RequestWithSystemwidePermissions, RequestTeamMemberAddType } from '../interfaces/index.js';
+import { ensureAllLinksInMemory, getAllLinksFromRequest } from '../middleware/business/allLinks.js';
 
-import { Operations, ICrossOrganizationMembersResult } from '../business/operations';
-import { MemberSearch } from '../business';
-import { Team } from '../business';
-import { TeamMember } from '../business';
-import { OrganizationMember } from '../business';
-import { Organization } from '../business';
+import { Operations, type CrossOrganizationMembersResult } from '../business/operations/index.js';
+import { MemberSearch } from '../business/index.js';
+import { Team } from '../business/index.js';
+import { TeamMember } from '../business/index.js';
+import { OrganizationMember } from '../business/index.js';
+import { Organization } from '../business/index.js';
 
-import lowercaser from '../middleware/lowercaser';
+import lowercaser from '../middleware/lowercaser.js';
 
 interface IPeopleSearchRequest extends RequestWithSystemwidePermissions {
   organization?: any;
@@ -36,11 +36,11 @@ interface IOptionalFilter {
 
 interface IGetPeopleResult {
   organizationMembers?: OrganizationMember[];
-  crossOrganizationMembers?: ICrossOrganizationMembersResult;
+  crossOrganizationMembers?: CrossOrganizationMembersResult;
   teamMembers?: TeamMember[];
 }
 
-router.use(asyncHandler(ensureAllLinksInMemory));
+router.use(ensureAllLinksInMemory);
 
 async function getPeopleForOrganization(
   operations: Operations,
@@ -75,7 +75,7 @@ async function getPeopleAcrossOrganizations(
 router.get(
   '/',
   lowercaser(['sort']),
-  asyncHandler(async (req: IPeopleSearchRequest, res: Response, next: NextFunction) => {
+  async (req: IPeopleSearchRequest, res: Response, next: NextFunction) => {
     const linksFromMiddleware = getAllLinksFromRequest(req);
     const { operations } = getProviders(req);
     const org = req.organization ? req.organization.name : null;
@@ -91,10 +91,39 @@ router.get(
     const { crossOrganizationMembers, organizationMembers, teamMembers } = org
       ? await getPeopleForOrganization(operations, org, options, team2)
       : await getPeopleAcrossOrganizations(operations, options, team2);
-    const page = req.query.page_number ? Number(req.query.page_number) : 1;
-    const pageSize = req.query.pageSize ? Number(req.query.pageSize) : undefined;
-    const phrase = req.query.q as string;
-    let type = req.query.type as string;
+    let page = 1;
+    if (req.query.page_number !== undefined) {
+      if (typeof req.query.page_number !== 'string') {
+        return next(CreateError.InvalidParameters('page_number must be a string'));
+      }
+      page = parseInt(req.query.page_number, 10);
+      if (isNaN(page) || page <= 0) {
+        return next(CreateError.InvalidParameters('page_number must be a positive number'));
+      }
+    }
+    let pageSize: number;
+    if (req.query.pageSize !== undefined) {
+      if (typeof req.query.pageSize !== 'string') {
+        return next(CreateError.InvalidParameters('pageSize must be a string'));
+      }
+      pageSize = req.query.pageSize ? Number(req.query.pageSize) : undefined;
+      if (isNaN(pageSize) || pageSize <= 0) {
+        return next(CreateError.InvalidParameters('pageSize must be a positive number'));
+      }
+    }
+    if (req.query.sort !== undefined && typeof req.query.sort !== 'string') {
+      return next(CreateError.InvalidParameters('sort must be a string'));
+    }
+    const sort = typeof req.query.sort === 'string' ? req.query.sort : null;
+    if (req.query.q !== undefined && typeof req.query.q !== 'string') {
+      return next(CreateError.InvalidParameters('q must be a string'));
+    }
+    const phrase = typeof req.query.q === 'string' ? req.query.q : null;
+    let type: string;
+    if (req.query.type !== undefined && typeof req.query.type !== 'string') {
+      return next(CreateError.InvalidParameters('type must be a string'));
+    }
+    type = typeof req.query.type === 'string' ? req.query.type : null;
     const validTypes = new Set([
       'linked',
       'active',
@@ -148,7 +177,7 @@ router.get(
       teamMembers, // Used to filter team members in ./org/ORG/team/TEAM/members and other views
     });
 
-    await search.search(page, req.query.sort as string);
+    await search.search(page, sort);
     let maillist = '';
     search.members.forEach(function (element) {
       if (maillist != '' && element.link != undefined) {
@@ -180,7 +209,7 @@ router.get(
         operations,
       },
     });
-  })
+  }
 );
 
 export default router;

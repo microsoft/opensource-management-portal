@@ -5,11 +5,11 @@
 
 import { DateTime } from 'luxon';
 
-import { Repository } from '../..';
-import { RepositoryMetadataEntity } from '../../entities/repositoryMetadata/repositoryMetadata';
-import { RepositoryLockdownState } from '../../../interfaces';
-import { IndividualContext } from '../../user';
-import { daysInMilliseconds } from '../../../lib/utils';
+import { Repository } from '../../index.js';
+import { RepositoryMetadataEntity } from '../../entities/repositoryMetadata/repositoryMetadata.js';
+import { RepositoryLockdownState } from '../../../interfaces/index.js';
+import { IndividualContext } from '../../user/index.js';
+import { daysInMilliseconds } from '../../../lib/utils.js';
 
 export async function validateUserCanSelfDeleteRepository(
   repository: Repository,

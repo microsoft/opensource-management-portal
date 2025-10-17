@@ -3,10 +3,11 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { OrganizationSudo } from '.';
-import { Organization } from '../..';
-import { IProviders, ICorporateLink } from '../../../interfaces';
-import { ErrorHelper } from '../../../lib/transitional';
+import { Organization } from '../../index.js';
+import { ErrorHelper } from '../../../lib/transitional.js';
+import { OrganizationSudo } from './class.js';
+
+import type { IProviders, ICorporateLink } from '../../../interfaces/index.js';
 
 export const OrganizationFeatureSecurityGroupProperty = 'orgsudosecuritygroup';
 

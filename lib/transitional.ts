@@ -6,10 +6,13 @@
 import crypto from 'crypto';
 import githubUsernameRegex from 'github-username-regex';
 import { AxiosError } from 'axios';
+import fs from 'fs';
+import path from 'path';
 
-import appPackage from '../package.json';
-import type { ICreateRepositoryApiResult } from '../api/createRepo';
-import { Repository } from '../business/repository';
+import appPackage from '../package.json' with { type: 'json' };
+
+import type { ICreateRepositoryApiResult } from '../api/createRepo.js';
+import { Repository } from '../business/repository.js';
 import {
   GitHubRepositoryPermission,
   type ICorporateLink,
@@ -20,16 +23,113 @@ import {
   type ISettledValue,
   type ReposAppRequest,
   SettledState,
-} from '../interfaces';
-import { ITeamRepositoryPermission, Organization } from '../business';
-import { ILinkProvider } from './linkProviders';
-const packageVariableName = 'static-react-package-name';
+} from '../interfaces/index.js';
+import { ITeamRepositoryPermission, Organization } from '../business/index.js';
+import { ILinkProvider } from './linkProviders/index.js';
+import { fileURLToPath } from 'url';
+
+const reactFolderVariableName = 'static-react-folder';
+
+let staticReactFolder: FrontendBuildDetails;
+
+export enum FrontendMode {
+  Serve = 'serve',
+  Proxied = 'proxied',
+  Skip = 'skip',
+}
+
+const frontendModeVariable = 'FRONTEND_MODE';
+const defaultFrontendMode = FrontendMode.Serve;
+
+export function getFrontendMode() {
+  // CONSIDER: support using config and .env
+  const mode = process.env[frontendModeVariable] || defaultFrontendMode;
+  if (mode !== FrontendMode.Serve && mode !== FrontendMode.Proxied && mode !== FrontendMode.Skip) {
+    throw new Error(`Invalid frontend mode: ${mode}`);
+  }
+  return mode;
+}
 
 export function hasStaticReactClientApp() {
-  const staticClientPackageName = appPackage[packageVariableName];
-  if (process.env.ENABLE_REACT_CLIENT && staticClientPackageName) {
-    return staticClientPackageName;
+  const staticClientFolderName = appPackage[reactFolderVariableName];
+  return !!staticClientFolderName;
+}
+
+type FrontendClientPackage = {
+  name: string;
+  version: string;
+  companySpecific?: {
+    directoryName: string;
+    loadingMessage: string;
+    title: string;
+    description: string;
+  };
+  frontendBuildPath: string;
+  continuousDeployment: {
+    build: string;
+    buildId: string;
+    buildNumber: string;
+    branchName: string;
+    commitId: string;
+  };
+  dependencies: Record<string, string>;
+  devDependencies: Record<string, string>;
+  scripts: Record<string, string>;
+};
+
+export type FrontendBuildDetails = {
+  package: FrontendClientPackage;
+  directory: string;
+  hostingRoot: string;
+};
+
+export function getStaticReactClientFolder(): FrontendBuildDetails {
+  const mode = getFrontendMode();
+  if (mode === FrontendMode.Skip || mode === FrontendMode.Proxied) {
+    return null;
   }
+  if (staticReactFolder) {
+    return staticReactFolder;
+  }
+  const staticClientFolderName = appPackage[reactFolderVariableName];
+  if (!staticClientFolderName) {
+    throw CreateError.InvalidParameters(
+      `The ${reactFolderVariableName} variable is not defined in the package.json file, so the static client app cannot be loaded.`
+    );
+  }
+  const filename = fileURLToPath(import.meta.url);
+  const dirname = path.dirname(filename);
+  let clientPath = path.resolve(dirname, '..', staticClientFolderName);
+  const exists = fs.existsSync(clientPath);
+  if (!exists && clientPath.includes(path.sep + 'dist' + path.sep + staticClientFolderName)) {
+    // attempt to resolve from outside the built TypeScript backend
+    clientPath = path.resolve(dirname, '..', '..', staticClientFolderName);
+  }
+  if (!fs.existsSync(clientPath)) {
+    throw CreateError.NotFound(
+      `The ${reactFolderVariableName} variable in the package.json file points to a folder that does not exist: ${clientPath}`
+    );
+  }
+  const packagePath = path.join(clientPath, 'package.json');
+  const details: FrontendBuildDetails = {
+    package: null,
+    directory: clientPath,
+    hostingRoot: clientPath,
+  };
+  if (fs.existsSync(packagePath)) {
+    const value = fs.readFileSync(packagePath, 'utf8');
+    details.package = JSON.parse(value);
+    if (details.package.frontendBuildPath) {
+      details.hostingRoot = path.join(clientPath, details.package.frontendBuildPath);
+    }
+  }
+  if (!details.hostingRoot) {
+    throw CreateError.NotFound(
+      `The ${reactFolderVariableName} package.json file does not have a frontendBuildPath`
+    );
+  }
+  staticReactFolder = details;
+  return staticReactFolder;
 }
 
 export function assertUnreachable(nothing: never): never {
@@ -76,7 +176,7 @@ export function projectCollaboratorPermissionsObjectToGitHubRepositoryPermission
 export async function streamToBuffer(readableStream: NodeJS.ReadableStream): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
-    readableStream.on('data', (data: Buffer | string) => {
+    readableStream.on('data', (data) => {
       chunks.push(data instanceof Buffer ? data : Buffer.from(data));
     });
     readableStream.on('end', () => {
@@ -153,6 +253,14 @@ export class CreateError {
     return error;
   }
 
+  static Wrap(message: string, innerError: Error): Error {
+    const statusCode = ErrorHelper.GetStatus(innerError);
+    if (statusCode) {
+      return CreateError.CreateStatusCodeError(statusCode, message, innerError);
+    }
+    return new Error(message, { cause: innerError });
+  }
+
   static NotFound(message?: string, innerError?: Error): Error {
     return ErrorHelper.SetInnerError(CreateError.CreateStatusCodeError(404, message), innerError);
   }
@@ -175,7 +283,15 @@ export class CreateError {
   }
 
   static NotImplemented(message?: string, cause?: Error): Error {
-    return CreateError.CreateStatusCodeError(500, message || 'This scenario is not yet implemented', cause);
+    return CreateError.CreateStatusCodeError(503, message || 'This scenario is not yet implemented', cause);
+  }
+
+  static Timeout(message?: string, cause?: Error): Error {
+    return CreateError.CreateStatusCodeError(504, message || 'Timed out waiting for a response', cause);
+  }
+
+  static FeatureNotEnabled(message?: string, cause?: Error): Error {
+    return CreateError.CreateStatusCodeError(501, message || 'This feature is not enabled', cause);
   }
 
   static NotAuthorized(message: string, cause?: Error): Error {
@@ -217,9 +333,24 @@ export class ErrorHelper {
     return statusNumber && statusNumber === 404;
   }
 
+  public static IsInvalidParameters(error: Error): boolean {
+    const statusNumber = ErrorHelper.GetStatus(error);
+    return statusNumber && statusNumber === 400;
+  }
+
+  public static IsUnprocessableEntity(error: Error): boolean {
+    const statusNumber = ErrorHelper.GetStatus(error);
+    return statusNumber && statusNumber === 422;
+  }
+
   public static IsServerError(error: Error): boolean {
     const statusNumber = ErrorHelper.GetStatus(error);
     return statusNumber && statusNumber >= 500;
+  }
+
+  public static IsNotAuthenticated(error: Error): boolean {
+    const statusNumber = ErrorHelper.GetStatus(error);
+    return statusNumber && statusNumber === 401;
   }
 
   public static IsNotAuthorized(error: Error): boolean {

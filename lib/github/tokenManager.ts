@@ -3,26 +3,53 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+import lodash from 'lodash';
+const { shuffle } = lodash;
+import { throat } from '../../vendor/throat/index.js';
+
+import type { TelemetryClient } from 'applicationinsights';
+
+import jsonImportAppPermissions from '@octokit/app-permissions';
+
 import Debug from 'debug';
 const debug = Debug('github:tokens');
 
 import {
   AppPurpose,
-  IGitHubAppConfiguration,
-  IGitHubAppsOptions,
+  GitHubAppConfiguration,
+  GitHubAppsOptions,
   GitHubAppAuthenticationType,
   ICustomAppPurpose,
   GitHubAppPurposes,
   AppPurposeTypes,
   getAppPurposeId,
-} from './appPurposes';
-import { GitHubAppTokens } from './appTokens';
-import { AuthorizationHeaderValue, GetAuthorizationHeader, NoCacheNoBackground } from '../../interfaces';
-import { OrganizationSetting } from '../../business/entities/organizationSettings/organizationSetting';
-import { readFileToText } from '../utils';
-import { Operations, OperationsCore, Organization } from '../../business';
-import { CreateError } from '../transitional';
-import { shuffle } from 'lodash';
+} from './appPurposes.js';
+import { GitHubAppTokens } from './appTokens.js';
+import {
+  AuthorizationHeaderValue,
+  GetAuthorizationHeader,
+  NoCacheNoBackground,
+} from '../../interfaces/index.js';
+import {
+  BasicGitHubAppInstallation,
+  OrganizationSetting,
+} from '../../business/entities/organizationSettings/organizationSetting.js';
+import { readFileToText } from '../utils.js';
+import { Operations, Organization } from '../../business/index.js';
+import { CreateError, ErrorHelper } from '../transitional.js';
+import { AppInstallation } from './appInstallation.js';
+import {
+  GitHubAppInformation,
+  GitHubAuthenticationRequirement,
+  GitHubPathPermissionDefinitionsByMethod,
+} from './types.js';
+
+const githubAppPermissions = jsonImportAppPermissions['api.github.com'];
+if (!githubAppPermissions) {
+  throw new Error('No GitHub app permissions data found');
+}
+
+const parallelInstallationLearning = 3;
 
 export type GitHubRateLimit = {
   limit: number;
@@ -30,6 +57,86 @@ export type GitHubRateLimit = {
   reset: number;
   used: number;
 };
+
+export type GitHubRateLimits = {
+  actions_runner_registration: GitHubRateLimit;
+  audit_log: GitHubRateLimit;
+  code_scanning_upload: GitHubRateLimit;
+  code_search: GitHubRateLimit;
+  core: GitHubRateLimit;
+  dependency_snapshots: GitHubRateLimit;
+  graphql: GitHubRateLimit;
+  integration_manifest: GitHubRateLimit;
+  scim: GitHubRateLimit;
+  search: GitHubRateLimit;
+  source_import: GitHubRateLimit;
+};
+
+type GitHubRateLimitResponse = {
+  resources: GitHubRateLimits;
+  rate: GitHubRateLimit; // being deprecated
+};
+
+function parseMethodFromUrl(url: string) {
+  const parts = url.split(' ');
+  return { method: parts[0], url: parts[1] };
+}
+
+const knownParameterTranslations = {
+  ':enterprise': '{enterprise}',
+  ':installation_id': '{installation_id}',
+  ':installationId': '{installation_id}',
+  ':orgName': '{org}',
+  ':org_id': '{org}',
+  ':team_slug': '{team_slug}',
+  ':team_id': '{team_id}',
+  ':team': '{team}',
+  ':username': '{login}',
+  ':id': '', // /repositories/:id
+  ':org': '{org}',
+};
+
+function removeOctokitParametersFromUrl(url: string) {
+  // go through known translations
+  for (const [translation, replacement] of Object.entries(knownParameterTranslations)) {
+    url = url.replaceAll(translation, replacement);
+  }
+
+  if (url.includes(':')) {
+    console.warn(`Unknown parameter in URL: ${url}`);
+  }
+
+  // a parameter is something like :repoId
+  // remove anything like that
+  return url.replace(/:[^/]+/g, '');
+}
+
+function cleanupOctokitLookupUrl(url: string) {
+  // special cases
+  if (url.endsWith('/readme')) {
+    return url + '(?:/(.*))?';
+  }
+  if (url.endsWith('/')) {
+    url = url.substring(0, url.length - 1);
+  }
+  const permissionsExist = githubAppPermissions.paths[url];
+  if (!permissionsExist) {
+    // try removing the last segment
+    const parts = url.split('/');
+    if (parts.length > 1) {
+      parts.pop();
+      // example:
+      // map: '/repos/{owner}/{repo}/collaborators/{username}/permission'
+      // to: '/repos/{owner}/{repo}/collaborators/{username}'
+      const newUrl = parts.join('/');
+      if (githubAppPermissions.paths[newUrl]) {
+        debug(`Found permissions for ${newUrl} (removed last segment)`);
+        return newUrl;
+      }
+    }
+  }
+  return url;
+}
 
 // Installation redirect format:
 // /setup/app/APP_ID?installation_id=INSTALLATION_ID&setup_action=install
@@ -44,8 +151,8 @@ interface InstallationIdPurposePair {
 }
 
 export class GitHubTokenManager {
-  #options: IGitHubAppsOptions;
-  private static _managersForOperations: Map<OperationsCore, GitHubTokenManager> = new Map();
+  #options: GitHubAppsOptions;
+  private static _managersForOperations: Map<Operations, GitHubTokenManager> = new Map();
   private static _forceBackgroundTokens: boolean;
   private _apps = new Map<AppPurposeTypes, GitHubAppTokens>();
   private _appsById = new Map<number, GitHubAppTokens>();
@@ -53,16 +160,18 @@ export class GitHubTokenManager {
   private _appSlugs = new Map<number, string>();
   private _forceInstanceTokensToPurpose: AppPurposeTypes;
   private _allowReadOnlyFallbackToOtherInstallations: boolean;
+  private _insights: TelemetryClient;
+  private _installationInstances = new Map<number, AppInstallation>();
 
-  private static RegisterManagerForOperations(operations: OperationsCore, manager: GitHubTokenManager) {
+  private static RegisterManagerForOperations(operations: Operations, manager: GitHubTokenManager) {
     GitHubTokenManager._managersForOperations.set(operations, manager);
   }
 
-  static TryGetTokenManagerForOperations(operations: OperationsCore) {
+  static TryGetTokenManagerForOperations(operations: Operations) {
     return GitHubTokenManager._managersForOperations.get(operations);
   }
 
-  constructor(options: IGitHubAppsOptions) {
+  constructor(options: GitHubAppsOptions) {
     if (!options) {
       throw new Error('options required');
     }
@@ -71,6 +180,7 @@ export class GitHubTokenManager {
     GitHubTokenManager._forceBackgroundTokens =
       executionEnvironment.isJob && !executionEnvironment.enableAllGitHubApps;
     GitHubTokenManager.RegisterManagerForOperations(options.operations, this);
+    this._insights = options.operations.providers.insights;
   }
 
   private operations() {
@@ -172,7 +282,7 @@ export class GitHubTokenManager {
 
   async ensureConfigurationAppInitialized(
     customPurpose: AppPurposeTypes,
-    customPurposeConfiguration: IGitHubAppConfiguration
+    customPurposeConfiguration: GitHubAppConfiguration
   ): Promise<GitHubAppTokens> {
     const appId = customPurposeConfiguration.appId;
     const asCustomPurpose = this.getCustomPurpose(customPurpose);
@@ -196,19 +306,121 @@ export class GitHubTokenManager {
     organizationName: string,
     preferredPurpose: AppPurposeTypes,
     organizationSettings: OrganizationSetting,
-    appAuthenticationType: GitHubAppAuthenticationType
+    appAuthenticationType: GitHubAppAuthenticationType,
+    requirements?: GitHubAuthenticationRequirement<any>
   ): Promise<AuthorizationHeaderValue> {
-    debug(
-      `getOrganizationAuthorizationHeader(${organizationName}, ${this.getPurposeDisplayId(
-        preferredPurpose
-      )}, ${appAuthenticationType})`
-    );
-    const installationIdPair = this.getPrioritizedOrganizationInstallationId(
-      preferredPurpose,
-      organizationName,
-      organizationSettings,
-      appAuthenticationType
-    );
+    let installationIdPair: InstallationIdPurposePair = null;
+    let foundOptimal = false;
+    if (requirements) {
+      const { octokitFunction: func, octokitRequest: request } = requirements;
+      if (func && request) {
+        throw CreateError.InvalidParameters(
+          'Only one of octokitFunction or octokitRequest can be provided, not both'
+        );
+      }
+      const friendlyName = func ? requirements.octokitFunctionName : requirements.octokitRequest;
+      debug(`Requirements present for ${func ? 'Octokit function' : 'REST API request'} ${friendlyName}`);
+      let httpMethod: string = null;
+      let url: string = null;
+      let parameterLessUrl: string = null;
+      if (func) {
+        const knownFunctionData = func.endpoint.DEFAULTS;
+        httpMethod = knownFunctionData.method;
+        url = knownFunctionData.url;
+        parameterLessUrl = url;
+        // const mapBackName = await endpointToOctokitMethod(httpMethod, url);
+      } else if (request) {
+        const parsedData = parseMethodFromUrl(request);
+        httpMethod = parsedData.method;
+        url = parsedData.url;
+        parameterLessUrl = removeOctokitParametersFromUrl(url);
+      }
+      if (!httpMethod || !url) {
+        throw CreateError.InvalidParameters(
+          `Unable to determine the HTTP method and URL for the request or method to ${friendlyName} call`
+        );
+        // consider: return null; + warn
+      }
+      const cleanedUrl = cleanupOctokitLookupUrl(parameterLessUrl);
+      let permissions = githubAppPermissions.paths[cleanedUrl] as GitHubPathPermissionDefinitionsByMethod;
+      const alternatePermissions = requirements.permissions;
+      const forcePermissionsInLookup = requirements?.permissionsMatchRequired || false;
+      if (
+        !permissions &&
+        requirements.usePermissionsFromAlternateUrl &&
+        githubAppPermissions.paths[requirements.usePermissionsFromAlternateUrl]
+      ) {
+        permissions = githubAppPermissions.paths[
+          requirements.usePermissionsFromAlternateUrl
+        ] as GitHubPathPermissionDefinitionsByMethod;
+      } else if (!permissions && requirements.usePermissionsFromAlternateUrl) {
+        const alt = cleanupOctokitLookupUrl(
+          removeOctokitParametersFromUrl(requirements.usePermissionsFromAlternateUrl)
+        );
+        permissions = githubAppPermissions.paths[alt] as GitHubPathPermissionDefinitionsByMethod;
+      }
+      if (alternatePermissions) {
+        permissions = {
+          [httpMethod]: alternatePermissions,
+        };
+      }
+      if (!permissions) {
+        debug(
+          `No known permissions data for the URL ${url} [lookup via ${cleanedUrl}] (requirements ignored)`
+        );
+        if (forcePermissionsInLookup) {
+          throw CreateError.InvalidParameters(
+            `GitHubTokenManager: no known permissions data for the URL ${url} [lookup via ${cleanedUrl}] while requiring`
+          );
+        }
+        console.warn(`No known permissions data for the URL ${url} [lookup via ${cleanedUrl}]`);
+        this._insights?.trackEvent({
+          name: 'GitHubTokenManagerNoPermissionsData',
+          properties: {
+            url,
+            cleanedUrl,
+          },
+        });
+        // consider: return null; + warn
+      }
+      if (httpMethod === 'GET' && appAuthenticationType === GitHubAppAuthenticationType.BestAvailable) {
+        debug(`Optimal installation requested for a GET request ${friendlyName}`);
+        installationIdPair = await this.getOptimalInstallationPairWithPermission(
+          organizationName,
+          organizationSettings,
+          httpMethod,
+          permissions,
+          forcePermissionsInLookup
+        );
+        if (installationIdPair) {
+          const { purpose } = installationIdPair;
+          debug(
+            `smart header(${organizationName}, ${this.getPurposeDisplayId(purpose)}, ${appAuthenticationType})`
+          );
+          foundOptimal = true;
+        } else if (forcePermissionsInLookup) {
+          // only auditing for now
+          console.warn(
+            `GitHubTokenManager: no installations found with the required permissions for the URL ${url} [lookup via ${cleanedUrl}]`
+          );
+        }
+      }
+    } else {
+      debug('No requirements present');
+    }
+    if (!installationIdPair) {
+      debug(
+        `getOrganizationAuthorizationHeader(${organizationName}, ${this.getPurposeDisplayId(
+          preferredPurpose
+        )}, ${appAuthenticationType})`
+      );
+      installationIdPair = this.getPrioritizedOrganizationInstallationId(
+        preferredPurpose,
+        organizationName,
+        organizationSettings,
+        appAuthenticationType
+      );
+    }
     if (!installationIdPair) {
       throw CreateError.InvalidParameters(
         `GitHubTokenManager: organization ${organizationName} does not have a configured GitHub App installation, or, the installation information is not in this environment. The API preferred purpose was ${getAppPurposeId(
@@ -218,7 +430,8 @@ export class GitHubTokenManager {
     }
     if (
       appAuthenticationType === GitHubAppAuthenticationType.BestAvailable &&
-      installationIdPair.purpose !== preferredPurpose
+      installationIdPair.purpose !== preferredPurpose &&
+      !foundOptimal
     ) {
       debug(
         `preferred GitHub App type ${preferredPurpose} not configured for organization ${organizationName}, falling back to ${installationIdPair.purpose}`
@@ -228,7 +441,7 @@ export class GitHubTokenManager {
     const asStandardPurpose =
       !asCustomPurpose?.getForOrganizationName && (installationIdPair.purpose as AppPurpose);
     let app: GitHubAppTokens = null;
-    let customPurposeConfiguration: IGitHubAppConfiguration = null;
+    let customPurposeConfiguration: GitHubAppConfiguration = null;
     if (asCustomPurpose?.getForOrganizationName) {
       customPurposeConfiguration = asCustomPurpose?.getForOrganizationName(organizationName);
       if (customPurposeConfiguration?.appId) {
@@ -263,7 +476,7 @@ export class GitHubTokenManager {
       );
     }
     debug(
-      `getting installation token for installation ID ${installationIdPair.installationId} and organization ${organizationName}`
+      `getting installation token for installation ID ${installationIdPair.installationId} and target ${organizationName}`
     );
     const value = await app.getInstallationToken(installationIdPair.installationId, organizationName);
     debug(
@@ -286,26 +499,36 @@ export class GitHubTokenManager {
     return app.getInstallationToken(installationId, organizationName);
   }
 
-  getAppForPurpose(purpose: AppPurposeTypes, organizationName?: string) {
+  async getAppForPurpose(purpose: AppPurposeTypes, organizationName?: string) {
     const asCustomPurpose = this.getCustomPurpose(purpose);
     if (asCustomPurpose?.getForOrganizationName) {
       const configForOrganization = asCustomPurpose.getForOrganizationName(organizationName);
       const appId = configForOrganization.appId;
       if (appId) {
-        return this._appsById.get(appId);
+        let instance = this._appsById.get(appId);
+        if (instance) {
+          return instance;
+        }
+        instance = await this.initializeApp(asCustomPurpose, configForOrganization);
+        return instance;
       }
     } else if (asCustomPurpose?.getApplicationConfigurationForInitialization) {
       const config = asCustomPurpose.getApplicationConfigurationForInitialization();
       const appId = config.appId;
       if (appId) {
-        return this._appsById.get(appId);
+        let instance = this._appsById.get(appId);
+        if (instance) {
+          return instance;
+        }
+        instance = await this.initializeApp(asCustomPurpose, config);
+        return instance;
       }
     }
     return this._apps.get(purpose);
   }
 
   getAnyConfiguredInstallationIdForAppId(operations: Operations, appId: number) {
-    const orgs = operations.getOrganizations();
+    const orgs = operations.getOrganizationsIncludingInvisible();
     for (const org of orgs) {
       const settings = org.getDynamicSettings();
       if (settings?.installations) {
@@ -319,7 +542,7 @@ export class GitHubTokenManager {
   }
 
   getAnyConfiguredInstallationIdForAnyApp(operations: Operations) {
-    const orgs = shuffle(operations.getOrganizations());
+    const orgs = shuffle(operations.getOrganizationsIncludingInvisible());
     for (const org of orgs) {
       const settings = org.getDynamicSettings();
       if (settings?.installations) {
@@ -333,16 +556,39 @@ export class GitHubTokenManager {
   }
 
   getInstallationIdForOrganization(purpose: AppPurposeTypes, organization: Organization) {
-    const settings = organization.getDynamicSettings();
+    let settings: OrganizationSetting = null;
+    try {
+      settings = organization.getSettings();
+    } catch (error) {
+      if (!ErrorHelper.IsNotFound(error)) {
+        throw error;
+      }
+    }
+    let expectedAppId: number = null;
+    const asCustomPurpose = this.getCustomPurpose(purpose);
+    if (asCustomPurpose?.getForOrganizationName) {
+      const configForOrganization = asCustomPurpose.getForOrganizationName(organization.name);
+      if (configForOrganization.appId) {
+        expectedAppId =
+          typeof configForOrganization.appId === 'string'
+            ? parseInt(configForOrganization.appId, 10)
+            : configForOrganization.appId;
+      }
+    }
     if (settings?.installations) {
       for (const { appId, installationId } of settings.installations) {
-        const purposeForApp = this._appIdToPurpose.get(appId);
-        if (this._appsById.has(appId) && purposeForApp && purposeForApp === purpose) {
-          return installationId;
+        const appIdNumber = typeof appId === 'number' ? appId : parseInt(appId, 10);
+        const purposeForApp = this._appIdToPurpose.get(appIdNumber);
+        if (
+          (expectedAppId && expectedAppId === appIdNumber) ||
+          (this._appsById.has(appIdNumber) && purposeForApp && purposeForApp === purpose)
+        ) {
+          const installIdNumber =
+            typeof installationId === 'number' ? installationId : parseInt(installationId, 10);
+          return { installationId: installIdNumber, appId: appIdNumber, purpose };
         }
       }
     }
-    const asCustomPurpose = this.getCustomPurpose(purpose);
     if (asCustomPurpose?.getForOrganizationName) {
       const configForOrganization = asCustomPurpose.getForOrganizationName(organization.name);
       if (configForOrganization.slug) {
@@ -362,6 +608,9 @@ export class GitHubTokenManager {
   }
 
   getAuthorizationHeaderForAnyApp(): Promise<AuthorizationHeaderValue> {
+    // CONSIDER: with some of the logic in the org-specific installations code, this
+    // could be a bit more selective to find apps used significantly less often vs
+    // a truly random select as it is now.
     const anyConfigured = this.getAnyConfiguredInstallationIdForAnyApp(this.operations());
     if (anyConfigured) {
       return this.getInstallationAuthorizationHeader(
@@ -374,7 +623,7 @@ export class GitHubTokenManager {
   }
 
   async getAppInformation(purpose: AppPurposeTypes, organizationName?: string) {
-    const appTokens = this.getAppForPurpose(purpose, organizationName);
+    const appTokens = await this.getAppForPurpose(purpose, organizationName);
     if (!appTokens) {
       throw CreateError.InvalidParameters(`No app configured yet for purpose ${purpose}`);
     }
@@ -385,7 +634,7 @@ export class GitHubTokenManager {
     return this.getAppInformationBySlug(this.operations(), slug);
   }
 
-  async getAppInformationBySlug(operations: Operations, slug: string) {
+  async getAppInformationBySlug(operations: Operations, slug: string): Promise<GitHubAppInformation> {
     let appId: number = null;
     for (const entry of this._appSlugs.entries()) {
       if (entry[1] === slug) {
@@ -425,28 +674,42 @@ export class GitHubTokenManager {
     const value = await operations.github.post(authorizationHeader, 'apps.getBySlug', {
       app_slug: slug,
     });
-    return value;
+    return value as GitHubAppInformation;
+  }
+
+  async getInstallationRateLimitInformation(
+    operations: Operations,
+    organizationName: string,
+    appId: number,
+    installationId: number
+  ) {
+    const { github } = operations;
+    const { rest } = github.octokit;
+    const header = await this.getInstallationAuthorizationHeader(appId, installationId, organizationName);
+    const value: GitHubRateLimitResponse = await github.callWithRequirements(
+      github.createRequirementsForFunction(header.value, rest.rateLimit.get, 'rateLimit.get'),
+      {},
+      NoCacheNoBackground
+    );
+    return value?.resources;
   }
 
   async getRateLimitInformation(purpose: AppPurposeTypes, organization: Organization) {
+    const operations = organization.operations as Operations;
     const settings = organization.getDynamicSettings();
     if (settings?.installations) {
       for (const { appId, installationId } of settings.installations) {
         const purposeForApp = this._appIdToPurpose.get(appId);
         if (this._appsById.has(appId) && purposeForApp && purposeForApp === purpose) {
           try {
-            const header = await this.getInstallationAuthorizationHeader(
+            const value = await this.getInstallationRateLimitInformation(
+              operations,
+              organization.name,
               appId,
-              installationId,
-              organization.name
+              installationId
             );
-            const value = await (organization.operations as Operations).github.post(
-              header.value,
-              'rateLimit.get',
-              NoCacheNoBackground
-            );
-            if (value?.rate) {
-              return value.rate as GitHubRateLimit;
+            if (value?.core) {
+              return value.core;
             }
             console.warn(value);
             throw CreateError.InvalidParameters('No rate limit information returned');
@@ -462,6 +725,214 @@ export class GitHubTokenManager {
         `Organization ${organization.name} does not have dynamic settings, which is currently required for this capability`
       );
     }
+  }
+
+  private async getOptimalInstallationPairWithPermission(
+    organizationName: string,
+    organizationSettings: OrganizationSetting,
+    httpMethod: string,
+    neededPermissions: GitHubPathPermissionDefinitionsByMethod,
+    forcePermissionsInLookup: boolean
+  ): Promise<InstallationIdPurposePair> {
+    if (this._forceInstanceTokensToPurpose) {
+      console.warn(
+        `This instance of TokenManager forced the purpose to ${this._forceInstanceTokensToPurpose}`
+      );
+      return null;
+    }
+    if (!organizationSettings || !organizationSettings.installations) {
+      return null;
+    }
+    const installations = await this.getAvailableInstallations(
+      organizationName,
+      organizationSettings.installations
+    );
+    let installationsWithPermissions = installations.filter((installation) => {
+      return installation.supportsPermission(httpMethod, neededPermissions, installation);
+    });
+    debug(
+      `Found ${installationsWithPermissions.length} installations with the needed permissions (${JSON.stringify(neededPermissions)}) and ${installations.length - installationsWithPermissions.length} without`
+    );
+    installationsWithPermissions = shuffle(installationsWithPermissions);
+    // slowing down the quick lookup to reduce console output
+    for (const installation of installationsWithPermissions) {
+      if (!installation.hasTriedInitializing()) {
+        await installation.tryInitializeRateLimits();
+      }
+    }
+    // quick lookup
+    for (const installation of installationsWithPermissions) {
+      const stats = installation.getRecentGoodRateLimitAvailableWithStats();
+      const statsDisplay = stats
+        ? `available=${stats.remaining}, percent=${stats.percent.toFixed(2)}, id=${stats.installationId}`
+        : 'n/a';
+      if (stats && stats.outcome === true) {
+        debug(
+          `Choosing shuffled installation ${installation.id} with good rate limit ${statsDisplay} and purpose ${this.getPurposeDisplayId(installation.purpose) || 'unknown'}`
+        );
+        return installation.asPairWithPurpose();
+      } else {
+        if (stats === false) {
+          debug(
+            `UNKNOWN RATE LIMIT: Installation ${installation.id} ${statsDisplay} ${this.getPurposeDisplayId(installation.purpose) || 'unknown'}`
+          );
+        } else {
+          debug(
+            `LOW/UNKNOWN RATE LIMIT: Installation ${installation.id} ${statsDisplay} ${this.getPurposeDisplayId(installation.purpose) || 'unknown'}`
+          );
+        }
+      }
+    }
+    // slower lookup
+    for (const installation of installationsWithPermissions) {
+      await installation.getRecentRateLimits();
+      if (installation.hasRecentGoodRateLimitAvailable()) {
+        debug(
+          `Choosing shuffled installation ${installation.id} with good rate limit availability and purpose ${this.getPurposeDisplayId(installation.purpose) || 'unknown'}`
+        );
+        return installation.asPairWithPurpose();
+      } else {
+        debug(
+          `LOW RATE LIMIT: Installation ${installation.id} not much available ${this.getPurposeDisplayId(installation.purpose) || 'unknown'}`
+        );
+      }
+    }
+    // no great entries...
+    for (const installation of installationsWithPermissions) {
+      if (installation.hasAnyRateLimitRemaining()) {
+        debug(
+          `Choosing shuffled installation ${installation.id} with any rate limit remaining and purpose ${this.getPurposeDisplayId(installation.purpose) || 'unknown'}`
+        );
+        debug(
+          `LOW RATE LIMIT: Installation ${installation.id} has some rate limit remaining and will be used`
+        );
+        this._insights?.trackEvent({
+          name: 'GitHubTokenManagerLowRateLimit',
+          properties: {
+            installationId: installation.id,
+            organizationName,
+            purpose: this.getPurposeDisplayId(installation.purpose),
+          },
+        });
+        return installation.asPairWithPurpose();
+      }
+    }
+    if (forcePermissionsInLookup) {
+      // only auditing for now
+      console.warn(`GitHubTokenManager: no installations found with the required permissions`);
+    }
+    return null;
+  }
+
+  private async getAvailableInstallations(organizationName: string, installs: BasicGitHubAppInstallation[]) {
+    const { insights } = this.operations().providers;
+    const knownInstallations = installs
+      .map((install) => this._installationInstances.get(install.installationId))
+      .filter((i) => i);
+    if (knownInstallations.length === installs.length) {
+      return knownInstallations.filter((i) => i.valid);
+    }
+    const unknownInstallations = installs.filter(
+      (install) => !this._installationInstances.has(install.installationId)
+    );
+    const unknownClonedInstallations: BasicGitHubAppInstallation[] = [];
+    for (const install of unknownInstallations) {
+      const clonedInstall = { ...install };
+      const purposeForApp = this._appIdToPurpose.get(install.appId);
+      if (!clonedInstall.appPurposeId && purposeForApp) {
+        clonedInstall.appPurposeId = getAppPurposeId(purposeForApp);
+      }
+      unknownClonedInstallations.push(clonedInstall);
+    }
+    const throttle = throat(parallelInstallationLearning);
+
+    await throttle(() => {
+      return Promise.all(
+        unknownClonedInstallations.map(async (install) => {
+          const installationInstance = await this.learnAboutInstall(organizationName, install);
+          if (!installationInstance || !installationInstance.valid) {
+            console.warn(
+              `Former appId=${install.appId}, installationId=${install.installationId}, target=${organizationName}`
+            );
+            insights?.trackEvent({
+              name: 'GitHubTokenManagerMissingInstall',
+              properties: {
+                appId: install.appId,
+                installationId: install.installationId,
+                organizationName,
+              },
+            });
+            insights?.trackMetric({
+              name: 'GitHubTokenManagerMissingInstalls',
+              value: 1,
+            });
+          }
+        })
+      );
+    });
+
+    {
+      const knownInstallations = installs
+        .map((install) => this._installationInstances.get(install.installationId))
+        .filter((i) => i);
+      return knownInstallations.filter((i) => i.valid);
+    }
+  }
+
+  async getInstallationForOrganization(organization: Organization, purpose: AppPurposeTypes) {
+    const { installationId } = this.getInstallationIdForOrganization(purpose, organization);
+    if (!installationId) {
+      throw CreateError.InvalidParameters(
+        `No installation ID found for target ${organization.name} and purpose ${purpose}`
+      );
+    }
+    const appForOrg = await this.getAppForPurpose(purpose, organization.name);
+    if (!appForOrg) {
+      throw CreateError.InvalidParameters(`No app configured for purpose ${purpose}`);
+    }
+    const availableInstalls = await this.getAvailableInstallations(organization.name, [
+      { installationId, appId: appForOrg.appId },
+    ]);
+    if (availableInstalls.length === 0) {
+      throw CreateError.InvalidParameters(
+        `No installation found for target ${organization.name} and purpose ${purpose}`
+      );
+    }
+    return availableInstalls[0];
+  }
+
+  private async learnAboutInstall(
+    organizationName: string,
+    install: BasicGitHubAppInstallation
+  ): Promise<AppInstallation> {
+    let installation: AppInstallation = this._installationInstances.get(install.installationId);
+    if (installation?.information) {
+      return installation;
+    }
+    const operations = this.operations();
+    const { appId } = install;
+    try {
+      const purpose = this._appIdToPurpose.get(appId);
+      installation = new AppInstallation(operations, organizationName, install, purpose);
+      this._installationInstances.set(install.installationId, installation);
+      await installation.initialize();
+      if (!installation.valid) {
+        console.warn(
+          `The installation ${install.installationId} of app ID ${install.appId} for ${organizationName}, purpose ${install.appPurposeId || 'unknown'}, isn't valid and will be ignored.`
+        );
+      }
+    } catch (error) {
+      if (ErrorHelper.IsServerError(error)) {
+        console.warn(
+          `GitHub unicorn learning about installation ${install.installationId} for ${organizationName}`
+        );
+      } else {
+        console.warn(
+          `Error learning about installation ${install.installationId} for ${organizationName}: ${error.message}`
+        );
+      }
+    }
+    return installation;
   }
 
   private getPrioritizedOrganizationInstallationId(
@@ -521,7 +992,7 @@ export class GitHubTokenManager {
     return null;
   }
 
-  private async initializeApp(purpose: AppPurposeTypes, appConfig: IGitHubAppConfiguration) {
+  private async initializeApp(purpose: AppPurposeTypes, appConfig: GitHubAppConfiguration) {
     const customPurpose = purpose as ICustomAppPurpose;
     const purposeAppId = getAppPurposeId(purpose);
     if (!appConfig || !appConfig.appId) {
@@ -532,26 +1003,48 @@ export class GitHubTokenManager {
     if (this._appsById.has(appId)) {
       return this._appsById.get(appId);
     }
+    const providers = this.operations().providers;
     debug(`Initializing ${purposeAppId} GitHub App with ID=${appId}`);
-    let key = appConfig.appKey;
-    let skipDecodingBase64 = false;
-    if (appConfig.appKeyFile) {
-      key = await readFileToText(appConfig.appKeyFile);
-      skipDecodingBase64 = true;
-    }
-    if (!key) {
-      throw new Error(`appKey or appKeyFile required for ${purposeAppId} GitHub App configuration`);
-    }
-    if (key?.includes('-----BEGIN RSA')) {
-      // Not base64-encoded, use the CreateFromString method.
-      skipDecodingBase64 = true;
-    }
     const slug = appConfig.slug;
     const friendlyName = customPurpose?.name || appConfig.description || 'Unknown';
     const baseUrl = appConfig.baseUrl;
-    const app = skipDecodingBase64
-      ? GitHubAppTokens.CreateFromString(purpose, slug, friendlyName, appId, key, baseUrl)
-      : GitHubAppTokens.CreateFromBase64EncodedFileString(purpose, slug, friendlyName, appId, key, baseUrl);
+    let key = appConfig.appKey;
+    let skipDecodingBase64 = false;
+    let app: GitHubAppTokens;
+    if (appConfig.appKeyRemoteJwt) {
+      app = GitHubAppTokens.CreateWithExternalJwtSigning(
+        providers,
+        purpose,
+        slug,
+        friendlyName,
+        appId,
+        appConfig.appKeyRemoteJwt,
+        baseUrl
+      );
+    } else {
+      if (appConfig.appKeyFile) {
+        key = await readFileToText(appConfig.appKeyFile);
+        skipDecodingBase64 = true;
+      }
+      if (!key) {
+        throw new Error(`appKey or appKeyFile required for ${purposeAppId} GitHub App configuration`);
+      }
+      if (key?.includes('-----BEGIN RSA')) {
+        // Not base64-encoded, use the CreateFromString method.
+        skipDecodingBase64 = true;
+      }
+      app = skipDecodingBase64
+        ? GitHubAppTokens.CreateFromString(providers, purpose, slug, friendlyName, appId, key, baseUrl)
+        : GitHubAppTokens.CreateFromBase64EncodedFileString(
+            providers,
+            purpose,
+            slug,
+            friendlyName,
+            appId,
+            key,
+            baseUrl
+          );
+    }
     const hasCustomConfigurationByOrganization = customPurpose?.getForOrganizationName;
     const standardPurpose = purpose as AppPurpose;
     if (!hasCustomConfigurationByOrganization) {
@@ -561,10 +1054,10 @@ export class GitHubTokenManager {
     this._appSlugs.set(appId, appConfig.slug);
     this._appIdToPurpose.set(appId, purpose);
     if (customPurpose?.isCustomAppPurpose === true) {
-      console.log(
+      debug(
         `Custom GitHub App, ${customPurpose.name} (id=${customPurpose.id}, appId=${appId}, slug=${
           appConfig.slug
-        }${hasCustomConfigurationByOrganization ? ', org-specific-variance' : ''}) initialized`
+        }${hasCustomConfigurationByOrganization ? ', target-specific-variance' : ''}) initialized`
       );
     }
     return app;

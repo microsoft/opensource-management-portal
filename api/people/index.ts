@@ -5,12 +5,12 @@
 
 import { NextFunction, Response, Router } from 'express';
 
-import { json404 } from '../../middleware/jsonError';
+import { json404 } from '../../middleware/jsonError.js';
 
 const router: Router = Router();
 
-import LinksRoute from './links';
-import UnlinkRoute from './unlink';
+import LinksRoute from './links.js';
+import UnlinkRoute from './unlink.js';
 
 router.use('/links', LinksRoute);
 router.use('/unlink', UnlinkRoute);

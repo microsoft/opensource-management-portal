@@ -18,6 +18,5 @@ export type ConfigImmutable = {
 export type ConfigImmutableAzureBlobStorage = {
   enabled: boolean;
   account: string;
-  key: string;
   container: string;
 };

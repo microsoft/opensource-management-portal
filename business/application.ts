@@ -3,15 +3,13 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { OrganizationSetting } from './entities/organizationSettings/organizationSetting';
-import {
-  IOperationsGitHubRestLibrary,
-  IOperationsDefaultCacheTimes,
-  GetAuthorizationHeader,
-  IGitHubAppInstallation,
-  ICacheOptions,
-} from '../interfaces';
-import { wrapError } from '../lib/utils';
+import { OrganizationSetting } from './entities/organizationSettings/organizationSetting.js';
+import { GetAuthorizationHeader, IGitHubAppInstallation, ICacheOptions } from '../interfaces/index.js';
+import { wrapError } from '../lib/utils.js';
+import { Operations } from './operations/index.js';
+import { GitHubTokenManager } from '../lib/github/tokenManager.js';
+
+import type { GetAwaitedString } from '../lib/github/appPurposes.js';
 
 const primaryInstallationProperties = [
   'id',
@@ -46,10 +44,11 @@ export function isInstallationConfigured(
 
 export default class GitHubApplication {
   constructor(
-    private operations: IOperationsGitHubRestLibrary & IOperationsDefaultCacheTimes,
+    private operations: Operations,
     public id: number,
     public slug: string,
     public friendlyName: string,
+    public getCertificateSha256: GetAwaitedString,
     private getAuthorizationHeader: GetAuthorizationHeader
   ) {}
 
@@ -88,10 +87,15 @@ export default class GitHubApplication {
       installation_id: installationId.toString(),
     };
     const cacheOptions = { ...options };
+    const github = operations.github;
+    const { rest } = github.octokit;
     try {
-      const entity = await operations.github.call(
-        this.authorize(),
-        'apps.getInstallation',
+      const entity = await operations.github.callWithRequirements(
+        github.createRequirementsForFunction(
+          this.authorize(),
+          rest.apps.getInstallation,
+          'apps.getInstallation'
+        ),
         parameters,
         cacheOptions
       );
@@ -122,14 +126,30 @@ export default class GitHubApplication {
       backgroundRefresh: false,
       // pageRequestDelay: options.pageRequestDelay,
     };
-    const installations = await github.collections.getAppInstallations(
-      getAuthorizationHeader,
+    const { rest } = github.octokit;
+    const installations = await github.collections.collectAllPagesWithRequirements<any, any>(
+      'appInstallations',
+      github.createRequirementsForFunction(
+        getAuthorizationHeader,
+        rest.apps.listInstallations,
+        'apps.listInstallations'
+      ),
       {
         app_id: this.id.toString(),
       },
       caching
     );
     return installations;
+  }
+
+  async getInstallationRateLimit(operations: Operations, organizationName: string, installationId: number) {
+    const tokenManager = GitHubTokenManager.TryGetTokenManagerForOperations(operations);
+    return await tokenManager.getInstallationRateLimitInformation(
+      operations,
+      organizationName,
+      this.id,
+      installationId
+    );
   }
 
   private authorize(): GetAuthorizationHeader | string {

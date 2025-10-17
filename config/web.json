@@ -1,3 +1,4 @@
 {
-  "app": "env://WEB_APP?default=repos"
+  "app": "env://WEB_APP?default=repos",
+  "largeApiPayloadLimit": "env://EXPRESS_AUTHORIZED_API_PAYLOAD_LIMIT"
 }

@@ -7,13 +7,11 @@ import {
   IEntityMetadata,
   EntityMetadataBase,
   IEntityMetadataBaseOptions,
-} from '../../../lib/entityMetadataProvider/entityMetadata';
-import { OrganizationSetting, OrganizationSettingFixedQueryAll } from './organizationSetting';
-import { EntityImplementation } from './organizationSetting';
+} from '../../../lib/entityMetadataProvider/entityMetadata.js';
+import { OrganizationSetting, OrganizationSettingFixedQueryAll } from './organizationSetting.js';
+import { EntityImplementation } from './organizationSetting.js';
 
 const thisProviderType = EntityImplementation.Type;
-
-export interface IOrganizationSettingCreateOptions extends IEntityMetadataBaseOptions {}
 
 export interface IOrganizationSettingProvider {
   initialize(): Promise<void>;
@@ -26,7 +24,7 @@ export interface IOrganizationSettingProvider {
 }
 
 export class OrganizationSettingProvider extends EntityMetadataBase implements IOrganizationSettingProvider {
-  constructor(options: IOrganizationSettingCreateOptions) {
+  constructor(options: IEntityMetadataBaseOptions) {
     super(thisProviderType, options);
     EntityImplementation.EnsureDefinitions();
   }

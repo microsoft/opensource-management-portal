@@ -3,22 +3,17 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { AppPurpose, AppPurposeTypes } from '../lib/github/appPurposes';
-import { Organization } from '.';
-import {
-  IOperationsInstance,
-  PurposefulGetAuthorizationHeader,
-  throwIfNotGitHubCapable,
-  GetAuthorizationHeader,
-} from '../interfaces';
+import { AppPurpose, AppPurposeTypes } from '../lib/github/appPurposes.js';
+import { Operations, Organization } from './index.js';
+import { PurposefulGetAuthorizationHeader, GetAuthorizationHeader } from '../interfaces/index.js';
 import {
   decorateIterable,
   IteratorPickerResponse,
   IteratorResponse,
   PaginationPageSizeOptions,
-} from './iterable';
-import { DefaultGraphqlPageSize } from '../lib/transitional';
-import { OrganizationProject } from './project';
+} from './iterable.js';
+import { DefaultGraphqlPageSize } from '../lib/transitional.js';
+import { OrganizationProject } from './project.js';
 
 type ProjectResponse = {
   id: string;
@@ -33,7 +28,7 @@ type ProjectsListIteratorResponse = {
 
 export class OrganizationProjects {
   private _organization: Organization;
-  private _operations: IOperationsInstance;
+  private _operations: Operations;
 
   private _getAuthorizationHeader: PurposefulGetAuthorizationHeader;
   private _getSpecificAuthorizationHeader: PurposefulGetAuthorizationHeader;
@@ -41,7 +36,7 @@ export class OrganizationProjects {
 
   constructor(
     organization: Organization,
-    operations: IOperationsInstance,
+    operations: Operations,
     getAuthorizationHeader: PurposefulGetAuthorizationHeader,
     getSpecificAuthorizationHeader: PurposefulGetAuthorizationHeader
   ) {
@@ -71,7 +66,7 @@ export class OrganizationProjects {
   }
 
   async create(title: string): Promise<any> {
-    const operations = throwIfNotGitHubCapable(this._operations);
+    const operations = this._operations as Operations;
     const ownerId = await this._organization.getGraphQlNodeId();
     const mutation = `
       mutation createProject($ownerId:ID!, $title:String!) {
@@ -97,7 +92,7 @@ export class OrganizationProjects {
   }
 
   async getAll(): Promise<any> {
-    const operations = throwIfNotGitHubCapable(this._operations);
+    const operations = this._operations as Operations;
     const pageSize = DefaultGraphqlPageSize;
     try {
       const result = await operations.github.graphql(
@@ -119,7 +114,7 @@ export class OrganizationProjects {
   async iterate(
     options: PaginationPageSizeOptions = { pageSize: DefaultGraphqlPageSize }
   ): Promise<AsyncIterable<ProjectsListIteratorResponse> & IteratorPickerResponse<ProjectResponse>> {
-    const operations = throwIfNotGitHubCapable(this._operations);
+    const operations = this._operations as Operations;
     const pageSize = options?.pageSize || DefaultGraphqlPageSize;
     try {
       const result = (await operations.github.graphqlIteration(this.authorize(), query.all(pageSize), {

@@ -3,8 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { IProviders } from '../../interfaces';
-import { Repository } from '..';
+import { IProviders } from '../../interfaces/index.js';
+import { Repository } from '../index.js';
 
 // TODO: refresh occasionally.
 

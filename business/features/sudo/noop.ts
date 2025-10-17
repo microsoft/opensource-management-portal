@@ -3,9 +3,10 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { OrganizationSudo } from '.';
-import { Organization } from '../..';
-import { ICorporateLink, IProviders } from '../../../interfaces';
+import { Organization } from '../../index.js';
+import { OrganizationSudo } from './class.js';
+
+import type { ICorporateLink, IProviders } from '../../../interfaces/index.js';
 
 export class OrganizationSudoNoop extends OrganizationSudo {
   constructor(

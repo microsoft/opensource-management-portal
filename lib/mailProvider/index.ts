@@ -6,10 +6,11 @@
 import { promises as fs } from 'fs';
 import { randomUUID } from 'crypto';
 
-import MockMailService from './mockMailService';
-import SmtpMailService from './smtpMailService';
-import getCompanySpecificDeployment from '../../middleware/companySpecificDeployment';
-import { SiteConfiguration } from '../../interfaces';
+import MockMailService from './mockMailService.js';
+import SmtpMailService from './smtpMailService.js';
+import getCompanySpecificDeployment from '../../middleware/companySpecificDeployment.js';
+import type { IProviders, SiteConfiguration } from '../../interfaces/index.js';
+import ConsoleMailService from './consoleMailService.js';
 
 export interface IMail {
   from?: string;
@@ -80,7 +81,7 @@ function patchOverride(provider, newToAddress, htmlOrNot) {
   const sendMail = provider.sendMail.bind(provider);
   provider.sendMail = (mailOptions: IMail): Promise<any> => {
     let originalTo = mailOptions.to;
-    if (typeof originalTo !== 'string' && originalTo.join) {
+    if (typeof originalTo !== 'string' && originalTo && Array.isArray(originalTo) && originalTo.join) {
       originalTo = originalTo.join(', ');
     }
     if (!mailOptions.content) {
@@ -109,20 +110,29 @@ function patchOverride(provider, newToAddress, htmlOrNot) {
     }
     const initialContent = mailOptions.content;
     const redirectMessage = `This mail was intended for ${originalTo} but was instead sent to ${newToAddress} per a configuration override.\n`;
-    mailOptions.content = htmlOrNot
-      ? `${initialContent}\n<p><em>${redirectMessage}</em></p>`
-      : `${initialContent}\n${redirectMessage}`;
+    // does the htmlOrNot value include </html> ?
+    const htmlOrNot =
+      typeof initialContent === 'string' &&
+      initialContent.includes('</html>') &&
+      initialContent.includes('</body>');
+    // if HTML, append the message before the ending </body> tag.
+    const bodyEnd = initialContent.lastIndexOf('</body>');
+    if (htmlOrNot && bodyEnd > -1) {
+      mailOptions.content = `${initialContent.slice(0, bodyEnd)}<p><em>${redirectMessage}</em></p>${initialContent.slice(bodyEnd)}`;
+    } else {
+      mailOptions.content = `${initialContent}\n${redirectMessage}\n`;
+    }
     return sendMail(mailOptions);
   };
   return provider;
 }
 
-export function createMailProviderInstance(config: SiteConfiguration): IMailProvider {
+export function createMailProviderInstance(providers: IProviders, config: SiteConfiguration): IMailProvider {
   const deployment = getCompanySpecificDeployment();
   let mailProvider: IMailProvider = null;
   const mailConfig = config.mail;
   if (deployment?.features?.mailProvider?.tryCreateInstance) {
-    mailProvider = deployment.features.mailProvider.tryCreateInstance(config);
+    mailProvider = deployment.features.mailProvider.tryCreateInstance(providers, config);
     if (mailProvider) {
       if (mailConfig.debug.overrideRecipient) {
         patchOverride(mailProvider, mailConfig.debug.overrideRecipient, mailProvider.html);
@@ -144,6 +154,10 @@ export function createMailProviderInstance(config: SiteConfiguration): IMailProv
     }
     case 'mockMailService': {
       mailProvider = new MockMailService(config);
+      break;
+    }
+    case 'console': {
+      mailProvider = new ConsoleMailService(config);
       break;
     }
     default: {

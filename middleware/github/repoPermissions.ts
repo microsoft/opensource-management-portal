@@ -5,16 +5,21 @@
 
 import { NextFunction, Response } from 'express';
 
-import { ErrorHelper, getProviders } from '../../lib/transitional';
-import { Repository } from '../../business/repository';
-import { GitHubIdentitySource, IIndividualContextOptions, IndividualContext } from '../../business/user';
-import getCompanySpecificDeployment from '../companySpecificDeployment';
+import { ErrorHelper, getProviders } from '../../lib/transitional.js';
+import { Repository } from '../../business/repository.js';
+import {
+  GitHubIdentitySource,
+  IIndividualContextOptions,
+  IndividualContext,
+} from '../../business/user/index.js';
+import getCompanySpecificDeployment from '../companySpecificDeployment.js';
 import {
   ReposAppRequest,
   IProviders,
   GitHubCollaboratorPermissionLevel,
   ICorporateLink,
-} from '../../interfaces';
+  GitHubRepositoryPermission,
+} from '../../interfaces/index.js';
 
 const repoPermissionsCacheKeyName = 'repoPermissions';
 const requestScopedRepositoryKeyName = 'repository';
@@ -22,7 +27,9 @@ const requestScopedRepositoryKeyName = 'repository';
 export interface IContextualRepositoryPermissions {
   allowAdministration: boolean;
   admin: boolean;
+  maintain: boolean;
   write: boolean;
+  triage: boolean;
   read: boolean;
   sudo: boolean;
   isLinked: boolean;
@@ -98,17 +105,20 @@ export async function getComputedRepositoryPermissions(
     isLinked: false,
     allowAdministration: false,
     admin: false,
+    maintain: false,
     sudo: false,
     write: false,
+    triage: false,
     read: false,
   };
   const companySpecific = getCompanySpecificDeployment();
-  companySpecific?.middleware?.repoPermissions?.afterPermissionsInitialized &&
+  if (companySpecific?.middleware?.repoPermissions?.afterPermissionsInitialized) {
     companySpecific?.middleware?.repoPermissions?.afterPermissionsInitialized(
       providers,
       repoPermissions,
       activeContext
     );
+  }
   const isPortalSudoer = await activeContext.isPortalAdministrator();
   if (isPortalSudoer) {
     repoPermissions.sudo = true;
@@ -125,11 +135,25 @@ export async function getComputedRepositoryPermissions(
     try {
       const collaborator = await repository.getCollaborator(login);
       if (collaborator) {
-        if (collaborator.permission === GitHubCollaboratorPermissionLevel.Admin) {
-          repoPermissions.admin = repoPermissions.read = repoPermissions.write = true;
-        } else if (collaborator.permission === GitHubCollaboratorPermissionLevel.Write) {
+        const consolidated = collaborator.asGitHubLegacyRepositoryPermission();
+        if (consolidated === GitHubRepositoryPermission.Admin) {
+          repoPermissions.admin =
+            repoPermissions.maintain =
+            repoPermissions.read =
+            repoPermissions.triage =
+            repoPermissions.write =
+              true;
+        } else if (consolidated === GitHubRepositoryPermission.Maintain) {
+          repoPermissions.maintain =
+            repoPermissions.write =
+            repoPermissions.triage =
+            repoPermissions.read =
+              true;
+        } else if (consolidated === GitHubRepositoryPermission.Push) {
           repoPermissions.read = repoPermissions.write = true;
-        } else if (collaborator.permission === GitHubCollaboratorPermissionLevel.Read) {
+        } else if (consolidated === GitHubRepositoryPermission.Triage) {
+          repoPermissions.triage = repoPermissions.read = true;
+        } else if (consolidated === GitHubRepositoryPermission.Pull) {
           repoPermissions.read = true;
         }
       }
@@ -140,13 +164,14 @@ export async function getComputedRepositoryPermissions(
   if (repoPermissions.admin || repoPermissions.sudo) {
     repoPermissions.allowAdministration = true;
   }
-  companySpecific?.middleware?.repoPermissions?.afterPermissionsComputed &&
-    (await companySpecific?.middleware?.repoPermissions?.afterPermissionsComputed(
+  if (companySpecific?.middleware?.repoPermissions?.afterPermissionsComputed) {
+    await companySpecific?.middleware?.repoPermissions?.afterPermissionsComputed(
       providers,
       repoPermissions,
       activeContext,
       repository
-    ));
+    );
+  }
   return repoPermissions;
 }
 

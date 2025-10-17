@@ -4,16 +4,15 @@
 //
 
 import _ from 'lodash';
-import asyncHandler from 'express-async-handler';
 import { NextFunction, Response } from 'express';
 
-import { getProviders } from '../lib/transitional';
-import { Operations } from '../business';
-import { Team } from '../business';
-import { UserContext } from '../business/user/aggregate';
+import { CreateError, getProviders } from '../lib/transitional.js';
+import { Operations } from '../business/index.js';
+import { Team } from '../business/index.js';
+import { UserContext } from '../business/user/aggregate.js';
 
-import TeamSearch from '../business/teamSearch';
-import { ICrossOrganizationMembershipByOrganization, ReposAppRequest } from '../interfaces';
+import TeamSearch from '../business/teamSearch.js';
+import { ICrossOrganizationMembershipByOrganization, ReposAppRequest } from '../interfaces/index.js';
 
 function sortOrgs(orgs) {
   return _.sortBy(orgs, ['name']);
@@ -77,7 +76,7 @@ function reduceTeams(collections, property, map) {
   });
 }
 
-export default asyncHandler(async function (req: ReposAppRequest, res: Response, next: NextFunction) {
+export default async function (req: ReposAppRequest, res: Response, next: NextFunction) {
   const { operations } = getProviders(req);
   const isCrossOrg = req.teamsPagerMode === 'orgs';
   const aggregations = req.individualContext.aggregations;
@@ -87,14 +86,31 @@ export default asyncHandler(async function (req: ReposAppRequest, res: Response,
     operations,
     aggregations
   );
-  const page = req.query.page_number ? Number(req.query.page_number) : 1;
-  const phrase = req.query.q;
-
-  let set = req.query.set;
+  let page = 1;
+  if (req.query.page_number !== undefined) {
+    if (typeof req.query.page_number !== 'string') {
+      return next(CreateError.InvalidParameters('page_number must be a string'));
+    }
+    page = parseInt(req.query.page_number, 10);
+    if (isNaN(page) || page <= 0) {
+      return next(CreateError.InvalidParameters('page_number must be a positive number'));
+    }
+  }
+  if (req.query.q !== undefined && typeof req.query.q !== 'string') {
+    return next(CreateError.InvalidParameters('q must be a string'));
+  }
+  const phrase = req.query.q as string;
+  if (req.query.set !== undefined && typeof req.query.set !== 'string') {
+    return next(CreateError.InvalidParameters('set must be a string'));
+  }
+  let set = req.query.set as string;
   if (set !== 'all' && set !== 'available' && set !== 'your') {
     set = 'all';
   }
-
+  if (req.query.sort !== undefined && typeof req.query.sort !== 'string') {
+    return next(CreateError.InvalidParameters('sort must be a string'));
+  }
+  const sort = typeof req.query.sort === 'string' ? req.query.sort : null;
   const filters = [];
   if (phrase) {
     filters.push({
@@ -103,14 +119,12 @@ export default asyncHandler(async function (req: ReposAppRequest, res: Response,
       displayPrefix: 'matching',
     });
   }
-
   const search = new TeamSearch(teams, {
     phrase: phrase,
     set: set,
     yourTeamsMap: yourTeamsMap,
   });
-  await search.search(null, page, req.query.sort);
-
+  await search.search(page, sort);
   const onboardingOrJoining = req.query.joining || req.query.onboarding;
   req.individualContext.webContext.render({
     view: 'teams/',
@@ -134,4 +148,4 @@ export default asyncHandler(async function (req: ReposAppRequest, res: Response,
       onboardingOrJoining,
     },
   });
-});
+}

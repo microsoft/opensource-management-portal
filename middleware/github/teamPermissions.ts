@@ -5,17 +5,17 @@
 
 import { NextFunction, Response } from 'express';
 
-import { Team } from '../../business';
+import { Team } from '../../business/index.js';
 import {
   GitHubTeamRole,
   ITeamMembershipRoleState,
   NoCacheNoBackground,
   OrganizationMembershipState,
   ReposAppRequest,
-} from '../../interfaces';
-import { getProviders } from '../../lib/transitional';
-import { IndividualContext } from '../../business/user';
-import getCompanySpecificDeployment from '../companySpecificDeployment';
+} from '../../interfaces/index.js';
+import { getProviders } from '../../lib/transitional.js';
+import { IndividualContext } from '../../business/user/index.js';
+import getCompanySpecificDeployment from '../companySpecificDeployment.js';
 
 // --- team2 context
 
@@ -113,12 +113,13 @@ export async function AddTeamPermissionsToRequest(req: ReposAppRequest, res: Res
     sudo: false,
   };
   const companySpecific = getCompanySpecificDeployment();
-  companySpecific?.middleware?.teamPermissions?.afterPermissionsInitialized &&
+  if (companySpecific?.middleware?.teamPermissions?.afterPermissionsInitialized) {
     companySpecific.middleware.teamPermissions.afterPermissionsInitialized(
       providers,
       teamPermissions,
       activeContext
     );
+  }
   req[teamPermissionsCacheKeyName] = teamPermissions;
   if (activeContext.link) {
     teamPermissions.isLinked = true;
@@ -157,12 +158,13 @@ export async function AddTeamPermissionsToRequest(req: ReposAppRequest, res: Res
   if (teamPermissions.maintainer || teamPermissions.sudo) {
     teamPermissions.allowAdministration = true;
   }
-  companySpecific?.middleware?.teamPermissions?.afterPermissionsComputed &&
-    (await companySpecific.middleware.teamPermissions.afterPermissionsComputed(
+  if (companySpecific?.middleware?.teamPermissions?.afterPermissionsComputed) {
+    await companySpecific.middleware.teamPermissions.afterPermissionsComputed(
       providers,
       teamPermissions,
       activeContext,
       team2
-    ));
+    );
+  }
   return next();
 }

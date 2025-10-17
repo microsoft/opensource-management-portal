@@ -3,21 +3,21 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import type { ICacheOptions, IPagedCacheOptions, IAccountBasics, IGitHubTeamBasics } from '.';
-import type { IGitHubWebhookEnterprise } from './apps';
+import type { ICacheOptions, IPagedCacheOptions, IAccountBasics, IGitHubTeamBasics } from './index.js';
+import type { IGitHubWebhookEnterprise } from './apps.js';
 import {
   IPersonalizedUserAggregateRepositoryPermission,
   TeamRepositoryPermission,
   GraphManager,
-} from '../../business';
-import type { IRepositoryMetadataProvider } from '../../business/entities/repositoryMetadata/repositoryMetadataProvider';
+} from '../../business/index.js';
+import type { IRepositoryMetadataProvider } from '../../business/entities/repositoryMetadata/repositoryMetadataProvider.js';
 import {
   GitHubPullRequestState,
   GitHubPullRequestSort,
   GitHubSortDirection,
-} from '../../lib/github/collections';
-import type { IRequestTeamPermissions } from '../../middleware/github/teamPermissions';
-import { CreateError } from '../../lib/transitional';
+} from '../../lib/github/collections.js';
+import type { IRequestTeamPermissions } from '../../middleware/github/teamPermissions.js';
+import { CreateError } from '../../lib/transitional.js';
 
 export enum GitHubRepositoryPermission {
   Pull = 'pull',
@@ -176,6 +176,47 @@ export interface IGitHubBranchDetailed {
   };
 }
 
+export type RepositoryRuleset = {
+  // many of these string values are actually enums
+  id: number;
+  name: string;
+  source_type: string;
+  source: string;
+  enforcement: string;
+  node_id: string;
+  _links: unknown;
+  created_at: string; // iso8601
+  updated_at: string; // iso8601
+};
+
+export type RepositoryRulesetBypassOperator = {
+  actor_id: number;
+  actor_type: string;
+  bypass_mode: string;
+};
+
+export type RepositoryRulesetDefinition = {
+  // many of these string values are actually enums
+  id: number;
+  name: string;
+  target: string;
+  source_type: string;
+  source: string;
+  enforcement: string;
+  bypass_actors: RepositoryRulesetBypassOperator[];
+  conditions: {
+    ref_name: {
+      include: string[];
+      exclude: string[];
+    };
+  };
+  rules: unknown[];
+  node_id: string;
+  _links: unknown;
+  created_at: string; // iso8601
+  updated_at: string; // iso8601
+};
+
 export type RepositoryBranchAccessProtections = {
   required_signatures: {
     enabled: boolean;
@@ -310,18 +351,18 @@ export type GitHubSecurityAnalysisFeatures = {
   secret_scanning_validity_checks: GitHubAdvancedSecurityFeatureStatusValue;
 };
 
-export enum GitHubRepositoryOwnerType {
+export enum GitHubAccountType {
   Organization = 'Organization',
   User = 'User',
 }
 
-export type GitHubRepositoryOwner = {
+export type GitHubAccountWithType = {
   login: string;
   id: number;
-  node_id: string;
   avatar_url: string;
-  url: string;
-  type: GitHubRepositoryOwnerType;
+  type: GitHubAccountType;
+  // node_id: string;
+  // url: string;
 };
 
 export type GitHubRepositoryLicense = {
@@ -332,23 +373,64 @@ export type GitHubRepositoryLicense = {
   node_id: string;
 };
 
-export type GitHubRepositoryDetails = {
+export type GitHubRepositoryApiUrls = {
+  url: string;
+  forks_url: string;
+  keys_url: string;
+  collaborators_url: string;
+  teams_url: string;
+  hooks_url: string;
+  issue_events_url: string;
+  events_url: string;
+  assignees_url: string;
+  branches_url: string;
+  tags_url: string;
+  blobs_url: string;
+  git_tags_url: string;
+  git_refs_url: string;
+  trees_url: string;
+  statuses_url: string;
+  languages_url: string;
+  stargazers_url: string;
+  contributors_url: string;
+  subscribers_url: string;
+  subscription_url: string;
+  commits_url: string;
+  git_commits_url: string;
+  comments_url: string;
+  issue_comment_url: string;
+  contents_url: string;
+  compare_url: string;
+  merges_url: string;
+  archive_url: string;
+  downloads_url: string;
+  issues_url: string;
+  pulls_url: string;
+  milestones_url: string;
+  notifications_url: string;
+  labels_url: string;
+  releases_url: string;
+  deployments_url: string;
+};
+
+export type GitHubRepositoryBaseDetails = {
   id: number;
   node_id: string;
   name: string;
   full_name: string;
   private: boolean;
-  owner: GitHubRepositoryOwner;
+  owner: GitHubAccountWithType;
   html_url: string;
   description: string;
   fork: boolean;
-  url: string;
+  // [then the API URLs]
   created_at: string;
   updated_at: string;
   pushed_at: string;
   git_url: string;
   ssh_url: string;
   clone_url: string;
+  // svn_url: going away
   homepage: string | null;
   size: number;
   stargazers_count: number;
@@ -374,6 +456,11 @@ export type GitHubRepositoryDetails = {
   open_issues: number;
   watchers: number;
   default_branch: string;
+  custom_properties: Record<string, string>;
+  parent?: GitHubRepositoryDetails;
+};
+
+export type GitHubRepositorySettingDetails = {
   // permissions: admin / maintain / push / triage / pull
   // temp_clone_token: ...
   allow_squash_merge: boolean;
@@ -388,9 +475,10 @@ export type GitHubRepositoryDetails = {
   merge_commit_message: string;
   merge_commit_title: string;
   template_repository: GitHubRepositoryDetails;
-  organization?: GitHubRepositoryOwner;
+  organization?: GitHubAccountWithType;
   security_and_analysis?: GitHubSecurityAnalysisFeatures;
   network_count: number;
   subscribers_count: number;
-  parent?: GitHubRepositoryDetails;
 };
+
+export type GitHubRepositoryDetails = GitHubRepositoryBaseDetails & GitHubRepositorySettingDetails;

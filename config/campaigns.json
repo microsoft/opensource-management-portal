@@ -7,6 +7,7 @@
     "endpoint": "env://CAMPAIGN_STATE_COSMOSDB_ENDPOINT",
     "key": "env://CAMPAIGN_STATE_COSMOSDB_KEY",
     "database": "env://CAMPAIGN_STATE_COSMOSDB_DATABASE",
-    "collection": "env://CAMPAIGN_STATE_COSMOSDB_COLLECTION"
+    "collection": "env://CAMPAIGN_STATE_COSMOSDB_COLLECTION",
+    "useManagedIdentity": "env://CAMPAIGN_STATE_COSMOSDB_USE_MANAGED_IDENTITY?trueIf=1"
   }
 }

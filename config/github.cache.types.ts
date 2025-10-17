@@ -11,7 +11,8 @@ export type ConfigGitHubCache = {
   provider: string;
   cosmosdb: {
     endpoint: string;
-    key: string;
+    useManagedIdentity: boolean;
+    key?: string;
     database: string;
     collection: string;
     blobFallback: {

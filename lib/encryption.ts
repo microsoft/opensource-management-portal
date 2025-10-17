@@ -11,7 +11,7 @@
 
 import crypto from 'crypto';
 import jose from 'node-jose';
-import { IKeyVaultSecretResolver } from './keyVaultResolver';
+import { IKeyVaultSecretResolver } from './keyVaultResolver.js';
 
 export interface IEncryptionOptions {
   keyEncryptionKeyId?: string;

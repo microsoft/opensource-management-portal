@@ -4,9 +4,11 @@
 //
 
 import objectPath from 'object-path';
+import os from 'os';
 import { promises as fs } from 'fs';
 import path from 'path';
-import { IPainlessConfigGet, IProviderOptions } from '.';
+
+import type { IPainlessConfigGet, IProviderOptions } from './index.js';
 
 // Volume Assumptions:
 // For now, the simple model, the volume is defined in PCR_VOLUME_MOUNT.
@@ -14,6 +16,8 @@ import { IPainlessConfigGet, IProviderOptions } from '.';
 
 const pcrVolumeMountVariable = 'PCR_VOLUME_MOUNT';
 const volumeFilePrefix = 'volumefile:';
+
+let pcrVolumeResolved: string = null;
 
 function getAsVolumeFile(value: string) {
   if (value?.startsWith && value.startsWith(volumeFilePrefix)) {
@@ -24,15 +28,27 @@ function getAsVolumeFile(value: string) {
   return undefined;
 }
 
-async function resolveVolumeFile(provider: IPainlessConfigGet, volumeFile: string) {
-  const volumePath = provider.get(pcrVolumeMountVariable);
-  if (!volumePath) {
-    throw new Error(`Unable to resolve volume path ${volumeFile}, no defined ${pcrVolumeMountVariable}`);
+function getPcrVolume(provider: IPainlessConfigGet) {
+  if (pcrVolumeResolved) {
+    return pcrVolumeResolved;
   }
+  let volumePath = provider.get(pcrVolumeMountVariable);
+  if (!volumePath) {
+    throw new Error(`Unable to resolve volume path ${volumePath}, no defined ${pcrVolumeMountVariable}`);
+  }
+  if (volumePath.startsWith('~/')) {
+    volumePath = path.join(os.homedir(), volumePath.slice(2));
+  }
+  pcrVolumeResolved = volumePath;
+  return volumePath;
+}
+
+async function resolveVolumeFile(provider: IPainlessConfigGet, volumeFile: string) {
+  const volumePath = getPcrVolume(provider);
   const combined = path.resolve(volumePath, volumeFile);
   try {
     const contents = await fs.readFile(combined, 'utf8');
-    return contents;
+    return contents.trim();
   } catch (error) {
     throw new Error(`Unable to resolve volume file ${volumeFile} from ${pcrVolumeMountVariable}: ${error}`);
   }
@@ -62,6 +78,7 @@ async function identifyPaths(provider: IPainlessConfigGet, node: any, prefix?: s
 
 function defaultProvider() {
   return {
+    providerName: 'default process.env',
     get: (key: string) => {
       return process.env[key];
     },
@@ -72,6 +89,7 @@ function createClient(options?: IProviderOptions) {
   options = options || {};
   const provider = options.provider || defaultProvider();
   return {
+    providerName: 'volume configuration resolver',
     resolveVolumeFile,
     isVolumeFile: getAsVolumeFile,
     resolveVolumeFiles: async (object: any) => {

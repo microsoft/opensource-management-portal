@@ -7,7 +7,8 @@ import { promises as fs } from 'fs';
 import objectPath from 'object-path';
 import path from 'path';
 import { jsonc } from 'jsonc';
-import { ILibraryOptions } from '.';
+import { ILibraryOptions } from './index.js';
+import { importPathSchemeChangeIfWindows } from '../utils.js';
 
 const supportedExtensions = new Map([
   ['.js', scriptProcessor],
@@ -16,12 +17,15 @@ const supportedExtensions = new Map([
 ]);
 
 async function scriptProcessor(api: ILibraryOptions, config: any, p: string) {
-  const script = require(p);
+  const alteredImport = importPathSchemeChangeIfWindows(p);
+  const imported = await import(alteredImport);
+  const script = imported.default || imported;
   return typeof script === 'function' ? script(api, config) : script;
 }
 
 async function jsonProcessor(api: ILibraryOptions, config: any, p: string) {
-  return require(p);
+  const raw = await fs.readFile(p, 'utf8');
+  return JSON.parse(raw);
 }
 
 async function jsoncProcessor(api: ILibraryOptions, config: any, p: string) {

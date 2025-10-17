@@ -3,21 +3,16 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { AppPurpose, AppPurposeTypes } from '../lib/github/appPurposes';
-import { Organization } from '.';
-import {
-  IOperationsInstance,
-  PurposefulGetAuthorizationHeader,
-  throwIfNotGitHubCapable,
-  GetAuthorizationHeader,
-} from '../interfaces';
+import { AppPurpose, AppPurposeTypes } from '../lib/github/appPurposes.js';
+import { Operations, Organization } from './index.js';
+import { PurposefulGetAuthorizationHeader, GetAuthorizationHeader } from '../interfaces/index.js';
 import {
   decorateIterable,
   IteratorPickerResponse,
   IteratorResponse,
   PaginationPageSizeOptions,
-} from './iterable';
-import { DefaultGraphqlPageSize } from '../lib/transitional';
+} from './iterable.js';
+import { DefaultGraphqlPageSize } from '../lib/transitional.js';
 
 type DomainResponse = {
   id: string;
@@ -42,7 +37,7 @@ type DomainsListIteratorResponse = {
 
 export class OrganizationDomains {
   private _organization: Organization;
-  private _operations: IOperationsInstance;
+  private _operations: Operations;
 
   private _getAuthorizationHeader: PurposefulGetAuthorizationHeader;
   private _getSpecificAuthorizationHeader: PurposefulGetAuthorizationHeader;
@@ -50,7 +45,7 @@ export class OrganizationDomains {
 
   constructor(
     organization: Organization,
-    operations: IOperationsInstance,
+    operations: Operations,
     getAuthorizationHeader: PurposefulGetAuthorizationHeader,
     getSpecificAuthorizationHeader: PurposefulGetAuthorizationHeader
   ) {
@@ -72,10 +67,9 @@ export class OrganizationDomains {
   // get: not implemented, see projects.ts for similar pattern
 
   async getAll(): Promise<any> {
-    const operations = throwIfNotGitHubCapable(this._operations);
     const pageSize = DefaultGraphqlPageSize;
     try {
-      const result = await operations.github.graphql(
+      const result = await this._operations.github.graphql(
         this.authorize(),
         domainQueries.all(pageSize),
         {
@@ -94,10 +88,9 @@ export class OrganizationDomains {
   async iterate(
     options: PaginationPageSizeOptions = { pageSize: DefaultGraphqlPageSize }
   ): Promise<AsyncIterable<DomainsListIteratorResponse> & IteratorPickerResponse<DomainResponse>> {
-    const operations = throwIfNotGitHubCapable(this._operations);
     const pageSize = options?.pageSize || DefaultGraphqlPageSize;
     try {
-      const result = (await operations.github.graphqlIteration(
+      const result = (await this._operations.github.graphqlIteration(
         this.authorize(),
         domainQueries.all(pageSize),
         {

@@ -6,7 +6,7 @@
 // I no longer believe this file FYI... I don't think we need this any longer.
 
 import { NextFunction, Response } from 'express';
-import { getProviders } from '../lib/transitional';
+import { getProviders } from '../lib/transitional.js';
 
 // Office uses a specialized pre-fetch to learn more about hyperlinks before
 // opening. As a result, if the Office user agent is in use, and the
@@ -40,7 +40,7 @@ export default function supportOfficeHyperlinks(req, res: Response, next: NextFu
     });
     return res.send(
       `When using Microsoft Office, you need to open the hyperlink in your browser to authenticate if needed`
-    );
+    ) as unknown as void;
   }
   return next();
 }

@@ -7,14 +7,15 @@ import _ from 'lodash';
 import { randomUUID } from 'crypto';
 import moment from 'moment';
 
-import { RestLibrary } from '.';
-import { AuthorizationHeaderValue } from '../../interfaces';
-import { sleep } from '../utils';
+import { RestLibrary } from './index.js';
+import { AuthorizationHeaderValue } from '../../interfaces/index.js';
+import { sleep } from '../utils.js';
 
-import cost from './cost';
-import { ErrorHelper } from '../transitional';
+import cost from './cost.js';
+import { ErrorHelper } from '../transitional.js';
 
 import Debug from 'debug';
+import { AppInstallations } from './appInstallations.js';
 const debug = Debug.debug('restapi');
 
 const delayBeforeRefreshMilliseconds = 1000;
@@ -41,16 +42,18 @@ const headerKeysWanted = [
   'x-ratelimit-remaining',
   'x-ratelimit-reset',
   'x-ratelimit-used',
+  'x-ratelimit-resource',
 ];
 
 export type GitHubRestInterestingHeaders = {
   etag?: string;
   ['last-modified']?: string;
   ['x-github-request-id']?: string;
-  ['x-ratelimit-limit']?: string;
-  ['x-ratelimit-remaining']?: string;
-  ['x-ratelimit-reset']?: string;
-  ['x-ratelimit-used']?: string;
+  ['x-ratelimit-limit']?: number;
+  ['x-ratelimit-remaining']?: number;
+  ['x-ratelimit-reset']?: number;
+  ['x-ratelimit-used']?: number;
+  ['x-ratelimit-resource']?: string;
 };
 
 export type WithGitHubRestHeaders<T> = T & {
@@ -67,6 +70,11 @@ export type GitHubRestSpecializedCollectionHeaders = {
   updated?: string;
   changed?: string;
   ['last-modified']?: string;
+  ['x-ratelimit-limit']?: number;
+  ['x-ratelimit-remaining']?: number;
+  ['x-ratelimit-reset']?: number;
+  ['x-ratelimit-used']?: number;
+  ['x-ratelimit-resource']?: string;
 };
 
 export type RestMetadata = {
@@ -75,7 +83,7 @@ export type RestMetadata = {
   updated?: string;
   changed?: string;
   refreshing?: string;
-  headers?: GitHubRestSpecializedCollectionHeaders; // IDictionary<string>;
+  headers?: GitHubRestSpecializedCollectionHeaders;
   status?: number;
   pages?: string[];
 };
@@ -195,7 +203,6 @@ export abstract class IntelligentEngine {
         await this.reduceObjectExpirationWindow(apiContext, response);
       } catch (err) {
         console.log(`Background async work (cacheResponseAsync): ${err}`);
-        console.dir(err);
       }
     };
     backgroundAsyncWork()
@@ -469,6 +476,12 @@ export abstract class IntelligentEngine {
     debug('Cache should not be served. Reading the response metadata');
     ++apiContext.cost.github.usedApiTokens;
     const metadata = this.getResponseMetadata(apiContext, response);
+    if (response?.headers['x-ratelimit-remaining'] && apiContext?.tokenSource?.installationId) {
+      const installationRef = AppInstallations.Instance.get(apiContext.tokenSource.installationId);
+      if (installationRef && response.headers) {
+        installationRef.updateRateLimitsFromHeaders(response.headers);
+      }
+    }
     if (metadata) {
       const responseToCache = this.optionalStripResponse(apiContext, response);
       debug('Caching the live response and metadata');

@@ -9,23 +9,28 @@ import os from 'os';
 import { DateTime } from 'luxon';
 
 import ProcessOrganizationWebhook, {
-  IGitHubWebhookProperties,
-} from '../business/webhooks/organizationProcessor';
-import {
+  GitHubWebhookProperties,
+} from '../business/webhooks/organizationProcessor.js';
+import { sleep } from '../lib/utils.js';
+import getCompanySpecificDeployment from '../middleware/companySpecificDeployment.js';
+import job from '../job.js';
+
+import type { IQueueMessage } from '../lib/queues/index.js';
+import type {
   IGitHubAppInstallation,
   IGitHubWebhookEnterprise,
   IProviders,
   IReposJob,
   IReposJobResult,
-} from '../interfaces';
-import { sleep } from '../lib/utils';
-import { IQueueMessage } from '../lib/queues';
-import getCompanySpecificDeployment from '../middleware/companySpecificDeployment';
-import job from '../job';
+} from '../interfaces/index.js';
 
 const runningAsOngoingDeployment = true;
 
 const hardAbortMs = 1000 * 60 * 5; // 5 minutes
+
+const EVENTS_TO_COMPLETELY_IGNORE = ['installation', 'ping', 'star', 'watch'];
+const USER_ACTIONS_TO_HANDLE = ['transferred', 'created'];
+const EVENTS_TO_ALWAYS_HANDLE = ['repository_advisory'];
 
 job.run(firehose, {
   insightsPrefix: 'JobFirehose',
@@ -41,8 +46,9 @@ async function firehose(providers: IProviders, { started }: IReposJob): Promise<
     : 5;
   const runtimeSeconds =
     (jobMinutesFrequency - 1) * 60 + 30; /* 30 second flex in the last minute instead of 60s */
-  config.github?.webhooks?.serviceBus?.queue &&
+  if (config.github?.webhooks?.serviceBus?.queue) {
     console.log(`bus: ${config.github.webhooks.serviceBus.queue}`);
+  }
   if (runningAsOngoingDeployment) {
     console.log('webhook processor is configured to keep running, it will not exit');
   } else {
@@ -133,7 +139,6 @@ async function firehose(providers: IProviders, { started }: IReposJob): Promise<
     }
     console.log(`[thread ${threadNumber}] started`);
     try {
-      // eslint-disable-next-line no-constant-condition
       while (true) {
         await iterate(providers, threadNumber);
       }
@@ -193,19 +198,28 @@ async function firehose(providers: IProviders, { started }: IReposJob): Promise<
       ? DateTime.fromISO(message.customProperties.started)
       : null;
     if (logicAppStarted) {
-      // const enqueued = lockedMessage && lockedMessage.brokerProperties ? lockedMessage.brokerProperties.EnqueuedTimeUtc : null;
-      // const serviceBusDelay = moment.utc(enqueued, 'ddd, DD MMM YYYY HH:mm:ss'); // console.log('delays - bus delay: ' + serviceBusDelay.fromNow() + ', logic app to now: ' + logicAppStarted.fromNow() + ', total ms: ' + totalMs.toString());
       totalSeconds = DateTime.utc().diff(logicAppStarted, 'seconds').seconds;
       insights.trackMetric({ name: 'JobFirehoseQueueDelay', value: totalSeconds });
     }
     let deletedAlready = false;
+
+    const webhook = message.body as any;
+    const eventType = message.customProperties['event'] || '';
+    const action = webhook?.action || '';
+    const installation = webhook.installation as IGitHubAppInstallation;
+    const enterprise = webhook.enterprise as IGitHubWebhookEnterprise;
+
     const acknowledgeEvent = function () {
       if (deletedAlready) {
-        console.warn(`[message ${message.identifier} was already deleted] [start latency ${totalSeconds}s]`);
+        console.warn(
+          `\t\t\t\t\t[message ${message.identifier} was already deleted] [start latency ${totalSeconds}s] event=${eventType} action=${action}`
+        );
         return;
       }
       deletedAlready = true;
-      console.log(`[message ${message.identifier}] deleted [start latency ${totalSeconds}s]`);
+      console.log(
+        `\t\t\t\t\t[message ${message.identifier}] deleted [start latency ${totalSeconds}s] event=${eventType} action=${action}`
+      );
       webhookQueueProcessor
         .deleteMessage(message)
         .then((ok) => {
@@ -215,12 +229,29 @@ async function firehose(providers: IProviders, { started }: IReposJob): Promise<
           console.dir(deleteError);
         });
     };
-    const webhook = message.body as any;
-    const eventType = message.customProperties['event'] || '';
+
     let organization = null;
-    const installation = webhook.installation as IGitHubAppInstallation;
-    const enterprise = webhook.enterprise as IGitHubWebhookEnterprise;
     let orgName = null;
+    if (EVENTS_TO_ALWAYS_HANDLE.includes(eventType)) {
+      // always process these events
+    } else if (EVENTS_TO_COMPLETELY_IGNORE.includes(eventType)) {
+      acknowledgeEvent();
+      return;
+    } else if (webhook?.sender?.type === 'User' && !USER_ACTIONS_TO_HANDLE.includes(action)) {
+      acknowledgeEvent();
+      insights?.trackEvent({
+        name: 'job.webhook.event.user_type.ignored',
+        properties: {
+          eventType,
+          action,
+          target_type: installation?.target_type || '',
+        },
+      });
+      console.log(
+        `Ignored user event ${message.identifier}: event=${eventType} action=${action} target_type=${installation?.target_type || ''}`
+      );
+      return;
+    }
     const deployment = getCompanySpecificDeployment();
     const processedElsewhere = deployment?.features?.firehose?.processWebhook
       ? await deployment.features.firehose.processWebhook(
@@ -259,12 +290,7 @@ async function firehose(providers: IProviders, { started }: IReposJob): Promise<
     }
     if (!orgName) {
       acknowledgeEvent();
-      if (eventType === 'ping' || eventType === 'installation') {
-        // common events
-        return;
-      } else {
-        throw new Error('No organization.login present in the event body');
-      }
+      throw new Error('No organization.login present in the event body');
     }
     try {
       organization = operations.getOrganization(orgName);
@@ -295,7 +321,7 @@ async function firehose(providers: IProviders, { started }: IReposJob): Promise<
       providers,
       organization,
       event: {
-        properties: message.customProperties as unknown as IGitHubWebhookProperties,
+        properties: message.customProperties as unknown as GitHubWebhookProperties,
         rawBody: message.unparsedBody,
         body: message.body,
       },

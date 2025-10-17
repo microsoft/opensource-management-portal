@@ -4,27 +4,26 @@
 //
 
 import { NextFunction, Response, Router } from 'express';
-import asyncHandler from 'express-async-handler';
 
-import { jsonError } from '../../../middleware/jsonError';
-import {
-  AuthorizeOnlyCorporateAdministrators,
-  checkIsCorporateAdministrator,
-  getIsCorporateAdministrator,
-} from '../../../middleware';
+import { jsonError } from '../../../middleware/jsonError.js';
+import { checkIsCorporateAdministrator } from '../../../middleware/index.js';
 import {
   IReposAppRequestWithOrganizationManagementType,
   OrganizationManagementType,
-} from '../../../middleware/business/organization';
+} from '../../../middleware/business/organization.js';
 import {
   IOrganizationAnnotationChange,
   OrganizationAnnotation,
   getOrganizationAnnotationRestrictedPropertyNames,
-} from '../../../business/entities/organizationAnnotation';
-import { CreateError, ErrorHelper, getProviders } from '../../../lib/transitional';
-import { IndividualContext } from '../../../business/user';
-import { IProviders } from '../../../interfaces';
-import { ensureOrganizationProfileMiddleware } from '../../../middleware/github/ensureOrganizationProfile';
+} from '../../../business/entities/organizationAnnotation.js';
+import { CreateError, ErrorHelper, getProviders } from '../../../lib/transitional.js';
+import { IndividualContext } from '../../../business/user/index.js';
+import { IProviders } from '../../../interfaces/index.js';
+import { ensureOrganizationProfileMiddleware } from '../../../middleware/github/ensureOrganizationProfile.js';
+import {
+  authorizeOnlyPrivilegedOrganizationAnnotationsWriters,
+  getCanViewPrivilegedOrganizationAnnotations,
+} from '../../../lib/annotations.js';
 
 const router: Router = Router();
 
@@ -35,7 +34,7 @@ type IRequestWithOrganizationAnnotations = IReposAppRequestWithOrganizationManag
 router.use(
   '/',
   checkIsCorporateAdministrator,
-  asyncHandler(async (req: IRequestWithOrganizationAnnotations, res: Response, next: NextFunction) => {
+  async (req: IRequestWithOrganizationAnnotations, res: Response, next: NextFunction) => {
     const { organizationAnnotationsProvider } = getProviders(req);
     const { organization, organizationManagementType, organizationProfile } = req;
     const organizationId =
@@ -50,25 +49,24 @@ router.use(
       }
     }
     return next();
-  })
+  }
 );
 
-router.get(
-  '/',
-  asyncHandler(async (req: IRequestWithOrganizationAnnotations, res: Response, next: NextFunction) => {
-    const { annotations } = req;
-    // Limited redaction
-    const annotation = { ...annotations };
-    const isSystemAdministrator = await getIsCorporateAdministrator(req);
-    for (const propertyToRedact of getOrganizationAnnotationRestrictedPropertyNames(isSystemAdministrator)) {
-      delete annotation[propertyToRedact];
-    }
-    return res.json({
-      isSystemAdministrator,
-      annotations: annotation,
-    }) as unknown as void;
-  })
-);
+router.get('/', async (req: IRequestWithOrganizationAnnotations, res: Response, next: NextFunction) => {
+  const { annotations } = req;
+  // Limited redaction
+  const annotation = { ...annotations };
+  const canViewPrivilegedAnnotations = await getCanViewPrivilegedOrganizationAnnotations(req);
+  for (const propertyToRedact of getOrganizationAnnotationRestrictedPropertyNames(
+    canViewPrivilegedAnnotations
+  )) {
+    delete annotation[propertyToRedact];
+  }
+  return res.json({
+    canViewPrivilegedAnnotations,
+    annotations: annotation,
+  }) as unknown as void;
+});
 
 router.use(ensureOrganizationProfileMiddleware);
 
@@ -92,18 +90,16 @@ async function ensureAnnotations(
   return next();
 }
 
-router.patch('*', AuthorizeOnlyCorporateAdministrators, ensureAnnotations);
-router.put('*', AuthorizeOnlyCorporateAdministrators, ensureAnnotations);
+router.patch('/*splat', authorizeOnlyPrivilegedOrganizationAnnotationsWriters, ensureAnnotations);
+router.put('/*splat', authorizeOnlyPrivilegedOrganizationAnnotationsWriters, ensureAnnotations);
+router.delete('/*splat', authorizeOnlyPrivilegedOrganizationAnnotationsWriters);
 
-router.put(
-  '/',
-  asyncHandler(async (req: IRequestWithOrganizationAnnotations, res: Response, next: NextFunction) => {
-    // No-op mostly, since ensureAnnotations precedes
-    return res.json({
-      annotations: req.annotations,
-    }) as unknown as void;
-  })
-);
+router.put('/', async (req: IRequestWithOrganizationAnnotations, res: Response, next: NextFunction) => {
+  // No-op mostly, since ensureAnnotations precedes
+  return res.json({
+    annotations: req.annotations,
+  }) as unknown as void;
+});
 
 function addChangeNote(
   changes: IOrganizationAnnotationChange[],
@@ -133,7 +129,7 @@ function addChangeNote(
 
 router.put(
   '/property/:propertyName',
-  asyncHandler(async (req: IRequestWithOrganizationAnnotations, res: Response, next: NextFunction) => {
+  async (req: IRequestWithOrganizationAnnotations, res: Response, next: NextFunction) => {
     const { annotations } = req;
     const providers = getProviders(req);
     const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
@@ -155,12 +151,12 @@ router.put(
       annotations,
       updated,
     }) as unknown as void;
-  })
+  }
 );
 
 router.delete(
   '/property/:propertyName',
-  asyncHandler(async (req: IRequestWithOrganizationAnnotations, res: Response, next: NextFunction) => {
+  async (req: IRequestWithOrganizationAnnotations, res: Response, next: NextFunction) => {
     const { annotations } = req;
     const providers = getProviders(req);
     const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
@@ -184,14 +180,14 @@ router.delete(
       annotations,
       updated,
     }) as unknown as void;
-  })
+  }
 );
 
 // Feature flags
 
 router.put(
   '/feature/:flag',
-  asyncHandler(async (req: IRequestWithOrganizationAnnotations, res: Response, next: NextFunction) => {
+  async (req: IRequestWithOrganizationAnnotations, res: Response, next: NextFunction) => {
     const { annotations } = req;
     const providers = getProviders(req);
     const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
@@ -214,12 +210,12 @@ router.put(
       annotations,
       updated,
     }) as unknown as void;
-  })
+  }
 );
 
 router.delete(
   '/feature/:flag',
-  asyncHandler(async (req: IRequestWithOrganizationAnnotations, res: Response, next: NextFunction) => {
+  async (req: IRequestWithOrganizationAnnotations, res: Response, next: NextFunction) => {
     const { annotations } = req;
     const providers = getProviders(req);
     const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
@@ -242,40 +238,37 @@ router.delete(
       annotations,
       updated,
     }) as unknown as void;
-  })
+  }
 );
 
 // General values patch
 
-router.patch(
-  '/',
-  asyncHandler(async (req: IRequestWithOrganizationAnnotations, res: Response, next: NextFunction) => {
-    const { annotations } = req;
-    const providers = getProviders(req);
-    const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
-    const changes: IOrganizationAnnotationChange[] = [];
-    const { administratorNotes, notes } = req.body;
-    if (administratorNotes !== undefined && administratorNotes !== annotations.administratorNotes) {
-      addChangeNote(
-        changes,
-        activeContext,
-        'administrator notes',
-        annotations.administratorNotes,
-        administratorNotes
-      );
-      annotations.administratorNotes = administratorNotes;
-    }
-    if (notes !== undefined && notes !== annotations.notes) {
-      addChangeNote(changes, activeContext, 'notes', annotations.notes, notes);
-      annotations.notes = notes;
-    }
-    const updated = await applyPatch(providers, annotations, changes);
-    return res.json({
-      annotations,
-      updated,
-    }) as unknown as void;
-  })
-);
+router.patch('/', async (req: IRequestWithOrganizationAnnotations, res: Response, next: NextFunction) => {
+  const { annotations } = req;
+  const providers = getProviders(req);
+  const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
+  const changes: IOrganizationAnnotationChange[] = [];
+  const { administratorNotes, notes } = req.body;
+  if (administratorNotes !== undefined && administratorNotes !== annotations.administratorNotes) {
+    addChangeNote(
+      changes,
+      activeContext,
+      'administrator notes',
+      annotations.administratorNotes,
+      administratorNotes
+    );
+    annotations.administratorNotes = administratorNotes;
+  }
+  if (notes !== undefined && notes !== annotations.notes) {
+    addChangeNote(changes, activeContext, 'notes', annotations.notes, notes);
+    annotations.notes = notes;
+  }
+  const updated = await applyPatch(providers, annotations, changes);
+  return res.json({
+    annotations,
+    updated,
+  }) as unknown as void;
+});
 
 async function applyPatch(
   providers: IProviders,
@@ -296,7 +289,7 @@ async function applyPatch(
 // features, properties
 // flag
 
-router.use('*', (req, res: Response, next: NextFunction) => {
+router.use('/*splat', (req, res: Response, next: NextFunction) => {
   return next(jsonError('no API or function available within the organization annotations route', 404));
 });
 

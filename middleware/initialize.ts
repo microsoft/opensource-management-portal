@@ -6,84 +6,86 @@
 import { Express, NextFunction, Response } from 'express';
 import path from 'path';
 
-import CosmosSessionStore from '../lib/cosmosSession';
-
-import { createAndInitializeLinkProviderInstance } from '../lib/linkProviders';
-
-import { Operations } from '../business';
+import { createAndInitializeLinkProviderInstance } from '../lib/linkProviders/index.js';
+import { Operations } from '../business/index.js';
 import {
   createAndInitializeEntityMetadataProviderInstance,
   IEntityMetadataProvidersOptions,
-} from '../lib/entityMetadataProvider';
-import { createAndInitializeRepositoryMetadataProviderInstance } from '../business/entities/repositoryMetadata';
-import createAndInitializeOrganizationAnnotationProviderInstance from '../business/entities/organizationAnnotation';
-import { createMailAddressProviderInstance, IMailAddressProvider } from '../lib/mailAddressProvider';
+} from '../lib/entityMetadataProvider/index.js';
+import { createAndInitializeRepositoryMetadataProviderInstance } from '../business/entities/repositoryMetadata/index.js';
+import createAndInitializeOrganizationAnnotationProviderInstance from '../business/entities/organizationAnnotation.js';
+import { createMailAddressProviderInstance, IMailAddressProvider } from '../lib/mailAddressProvider/index.js';
+import ErrorRoutes from './errorRoutes.js';
+import viewServices from '../lib/pugViewServices.js';
 
-import ErrorRoutes from './errorRoutes';
+// NOTE: there are 2 dynamic imports in this file to '../routes/' and './alternateApps'
 
-import { createClient, RedisClientType } from 'redis';
-import { Pool as PostgresPool } from 'pg';
+import pg from 'pg';
+const { Pool: PostgresPool } = pg;
 
 import Debug from 'debug';
 const debug = Debug.debug('startup');
 const pgDebug = Debug.debug('pgpool');
 const nowDebug = Debug.debug('now');
 
-import appInsights from './appInsights';
-import keyVault from './keyVault';
+import appInsights from './appInsights.js';
+import keyVault from './keyVault.js';
 
-import healthCheck from './healthCheck';
+import healthCheck from './healthCheck.js';
 
-import expressRoutes from '../routes/';
-import alternateRoutes from './alternateApps';
+import { createAndInitializeApprovalProviderInstance } from '../business/entities/teamJoinApproval/index.js';
+import { CreateGraphProviderInstance, IGraphProvider } from '../lib/graphProvider//index.js';
+import initializeCorporateViews from './corporateViews.js';
 
-import RedisHelper from '../lib/caching/redis';
-import { createTokenProvider } from '../business/entities/token';
-import { createAndInitializeApprovalProviderInstance } from '../business/entities/teamJoinApproval';
-import { CreateLocalExtensionKeyProvider } from '../business/entities/localExtensionKey';
-import { CreateGraphProviderInstance, IGraphProvider } from '../lib/graphProvider/';
-import initializeCorporateViews from './corporateViews';
+import keyVaultResolver, { IKeyVaultSecretResolver } from '../lib/keyVaultResolver.js';
 
-import keyVaultResolver, { IKeyVaultSecretResolver } from '../lib/keyVaultResolver';
+import { createMailProviderInstance } from '../lib/mailProvider//index.js';
+import { RestLibrary } from '../lib/github/index.js';
+import { CreateRepositoryCacheProviderInstance } from '../business/entities/repositoryCache/index.js';
+import { CreateRepositoryCollaboratorCacheProviderInstance } from '../business/entities/repositoryCollaboratorCache/index.js';
+import { CreateTeamCacheProviderInstance } from '../business/entities/teamCache/index.js';
+import { CreateTeamMemberCacheProviderInstance } from '../business/entities/teamMemberCache/index.js';
+import { CreateRepositoryTeamCacheProviderInstance } from '../business/entities/repositoryTeamCache/index.js';
+import { CreateOrganizationMemberCacheProviderInstance } from '../business/entities/organizationMemberCache/index.js';
+import QueryCache from '../business/queryCache.js';
+import { createAndInitializeOrganizationSettingProviderInstance } from '../business/entities/organizationSettings/index.js';
+import { IEntityMetadataProvider } from '../lib/entityMetadataProvider/entityMetadataProvider.js';
+import { createAndInitializeAuditLogRecordProviderInstance } from '../business/entities/auditLogRecord/index.js';
+import BlobCache from '../lib/caching/blob.js';
+import { StatefulCampaignProvider } from '../lib/campaignState/campaigns.js';
+import { SimplifiedCosmosHelper } from '../lib/cosmosHelper.js';
+import { IQueueProcessor } from '../lib/queues/index.js';
+import ServiceBusQueueProcessor from '../lib/queues/servicebus.js';
+import AzureQueuesProcessor from '../lib/queues/azurequeue.js';
+import { UserSettingsProvider } from '../business/entities/userSettings.js';
+import getCompanySpecificDeployment from './companySpecificDeployment.js';
 
-import { createMailProviderInstance } from '../lib/mailProvider/';
-import { RestLibrary } from '../lib/github';
-import { CreateRepositoryCacheProviderInstance } from '../business/entities/repositoryCache';
-import { CreateRepositoryCollaboratorCacheProviderInstance } from '../business/entities/repositoryCollaboratorCache';
-import { CreateTeamCacheProviderInstance } from '../business/entities/teamCache';
-import { CreateTeamMemberCacheProviderInstance } from '../business/entities/teamMemberCache';
-import { CreateRepositoryTeamCacheProviderInstance } from '../business/entities/repositoryTeamCache';
-import { CreateOrganizationMemberCacheProviderInstance } from '../business/entities/organizationMemberCache';
-import QueryCache from '../business/queryCache';
-import { createAndInitializeOrganizationSettingProviderInstance } from '../business/entities/organizationSettings';
-import { IEntityMetadataProvider } from '../lib/entityMetadataProvider/entityMetadataProvider';
-import { createAndInitializeAuditLogRecordProviderInstance } from '../business/entities/auditLogRecord';
-import CosmosCache from '../lib/caching/cosmosdb';
-import BlobCache from '../lib/caching/blob';
-import { StatefulCampaignProvider } from '../lib/campaigns';
-import CosmosHelper from '../lib/cosmosHelper';
-import { IQueueProcessor } from '../lib/queues';
-import ServiceBusQueueProcessor from '../lib/queues/servicebus';
-import AzureQueuesProcessor from '../lib/queues/azurequeue';
-import { UserSettingsProvider } from '../business/entities/userSettings';
-import getCompanySpecificDeployment from './companySpecificDeployment';
+import routeCorrelationId from './correlationId.js';
+import routeHsts from './hsts.js';
+import routeSslify from './sslify.js';
 
-import routeCorrelationId from './correlationId';
-import routeHsts from './hsts';
-import routeSslify from './sslify';
+import middlewareIndex from './index.js';
+import initializeRepositoryProvider from '../business/entities/repository.js';
+import { tryGetImmutableStorageProvider } from '../lib/immutable.js';
+import { GitHubAppPurposes } from '../lib/github/appPurposes.js';
+import {
+  getEntraApplicationIdentity,
+  tryGetEntraApplicationTokenCredential,
+} from '../lib/applicationIdentity.js';
+import { importPathSchemeChangeIfWindows } from '../lib/utils.js';
 
-import middlewareIndex from '.';
-import type { ICacheHelper } from '../lib/caching';
+import type { ICacheHelper } from '../lib/caching/index.js';
 import type {
   ExecutionEnvironment,
   ApplicationProfile,
   IProviders,
   IReposApplication,
   SiteConfiguration,
-} from '../interfaces';
-import initializeRepositoryProvider from '../business/entities/repository';
-import { tryGetImmutableStorageProvider } from '../lib/immutable';
-import { GitHubAppPurposes } from '../lib/github/appPurposes';
+} from '../interfaces/index.js';
+import type { ConfigDataPostgres } from '../config/data.postgres.types.js';
+import { prepareSessionMiddleware } from './session/index.js';
+import { initializeRestCache } from './cache/index.js';
+import { CreateError } from '../lib/transitional.js';
 
 const DefaultApplicationProfile: ApplicationProfile = {
   applicationName: 'Open Source Management Portal',
@@ -108,25 +110,12 @@ async function initializeAsync(
   rootdir: string,
   config: SiteConfiguration
 ): Promise<void> {
-  providers.postgresPool = await ConnectPostgresPool(config.data.postgres);
+  const companySpecific = getCompanySpecificDeployment();
+  providers.postgresPool = await connectPostgresPool(config.data.postgres);
   providers.linkProvider = await createAndInitializeLinkProviderInstance(providers, config);
-  if (config.github.cache.provider === 'cosmosdb') {
-    const cosmosCache = new CosmosCache(config.github.cache.cosmosdb);
-    await cosmosCache.initialize();
-    providers.cacheProvider = cosmosCache;
-  } else if (config.github.cache.provider === 'blob') {
-    const blobCache = new BlobCache(config.github.cache.blob);
-    await blobCache.initialize();
-    providers.cacheProvider = blobCache;
-  } else if (config.github.cache.provider === 'redis') {
-    const redisClient = await connectRedis(config, config.redis, 'cache');
-    const redisHelper = new RedisHelper({ redisClient, prefix: config.redis.prefix });
-    providers.cacheProvider = redisHelper;
-  } else {
-    throw new Error('No cache provider available');
-  }
+  await initializeRestCache(providers);
 
-  const immutable = tryGetImmutableStorageProvider(config);
+  const immutable = tryGetImmutableStorageProvider(providers, config);
   if (immutable) {
     await immutable.initialize();
     providers.immutable = immutable;
@@ -135,7 +124,7 @@ async function initializeAsync(
   providers.graphProvider = await createGraphProvider(providers, config);
   providers.mailAddressProvider = await createMailAddressProvider(config, providers);
 
-  const mailProvider = createMailProviderInstance(config);
+  const mailProvider = createMailProviderInstance(providers, config);
   if (mailProvider) {
     const mailInitializedMessage = await mailProvider.initialize();
     debug(`mail provider type=${config.mail.provider} ${mailInitializedMessage}`);
@@ -148,9 +137,11 @@ async function initializeAsync(
 
   // always check if config exists to prevent crashing because of trying to access an undefined object
   const emOptions: IEntityMetadataProvidersOptions = {
+    providers,
     tableOptions: {
       account: config.github?.links?.table?.account,
       key: config.github?.links?.table?.key,
+      useEntraAuthentication: config.github?.links?.table?.useEntraAuthentication,
       prefix: config.github?.links?.table?.prefix,
       encryption: {
         keyEncryptionKeyId: config.github?.links?.table?.encryptionKeyId,
@@ -161,12 +152,11 @@ async function initializeAsync(
       pool: providers.postgresPool,
     },
   };
-  const tableProviderEnabled =
-    emOptions.tableOptions && emOptions.tableOptions.account && emOptions.tableOptions.key;
-  const postgresProviderEnabled = emOptions.postgresOptions && emOptions.postgresOptions.pool;
+  const tableProviderEnabled = emOptions.tableOptions && emOptions.tableOptions.account;
   const tableEntityMetadataProvider = tableProviderEnabled
     ? await createAndInitializeEntityMetadataProviderInstance(emOptions, 'table')
     : null;
+  const postgresProviderEnabled = emOptions.postgresOptions && emOptions.postgresOptions.pool;
   const pgEntityMetadataProvider = postgresProviderEnabled
     ? await createAndInitializeEntityMetadataProviderInstance(emOptions, 'postgres')
     : null;
@@ -195,23 +185,18 @@ async function initializeAsync(
   providers.approvalProvider = await createAndInitializeApprovalProviderInstance({
     entityMetadataProvider: providerNameToInstance(config.entityProviders.teamjoin),
   });
-  providers.tokenProvider = await createTokenProvider({
-    entityMetadataProvider: providerNameToInstance(config.entityProviders.tokens),
-  });
-  providers.localExtensionKeyProvider = await CreateLocalExtensionKeyProvider({
-    entityMetadataProvider: providerNameToInstance(config.entityProviders.localextensionkey),
-  });
   providers.organizationMemberCacheProvider = await CreateOrganizationMemberCacheProviderInstance({
     entityMetadataProvider: providerNameToInstance(config.entityProviders.organizationmembercache),
   });
   providers.organizationSettingsProvider = await createAndInitializeOrganizationSettingProviderInstance({
     entityMetadataProvider: providerNameToInstance(config.entityProviders.organizationsettings),
   });
-  providers.organizationAnnotationsProvider = await createAndInitializeOrganizationAnnotationProviderInstance(
-    {
-      entityMetadataProvider: providerNameToInstance(config.entityProviders.organizationannotations),
-    }
-  );
+  if (config?.github?.annotations?.enabled) {
+    providers.organizationAnnotationsProvider =
+      await createAndInitializeOrganizationAnnotationProviderInstance({
+        entityMetadataProvider: providerNameToInstance(config.entityProviders.organizationannotations),
+      });
+  }
   providers.repositoryCacheProvider = await CreateRepositoryCacheProviderInstance({
     entityMetadataProvider: providerNameToInstance(config.entityProviders.repositorycache),
   });
@@ -238,52 +223,67 @@ async function initializeAsync(
   });
   await providers.userSettingsProvider.initialize();
   providers.queryCache = new QueryCache(providers);
-  if (config.campaigns && config.campaigns.provider === 'cosmosdb') {
-    const campaignCosmosStore = new CosmosHelper({
-      endpoint: config.campaigns.cosmosdb.endpoint,
-      key: config.campaigns.cosmosdb.key,
-      database: config.campaigns.cosmosdb.database,
-      collection: config.campaigns.cosmosdb.collection,
-    });
-    await campaignCosmosStore.initialize();
-    providers.campaignStateProvider = new StatefulCampaignProvider(campaignCosmosStore);
+  if (config?.campaigns?.provider) {
+    if (companySpecific?.features?.campaignStateProvider) {
+      providers.campaignStateProvider =
+        await companySpecific.features.campaignStateProvider.tryCreateInstance(providers, config);
+    }
+    if (!providers.campaignStateProvider) {
+      if (config.campaigns.provider === 'cosmosdb') {
+        const campaignCosmosStore = new SimplifiedCosmosHelper(providers, config.campaigns.cosmosdb);
+        await campaignCosmosStore.initialize();
+        providers.campaignStateProvider = new StatefulCampaignProvider(campaignCosmosStore);
+      } else if (config.campaigns.provider) {
+        throw new Error(`Campaigns provider ${config.campaigns.provider} is not supported`);
+      }
+    }
   }
-  if (config.session.provider === 'cosmosdb') {
-    const cosmosStore = new CosmosSessionStore({
-      endpoint: config.session.cosmosdb.endpoint,
-      key: config.session.cosmosdb.key,
-      database: config.session.cosmosdb.database,
-      collection: config.session.cosmosdb.collection,
-      ttl: config.session.cosmosdb.ttl,
-    });
-    await cosmosStore.initialize();
-    providers.session = cosmosStore;
-  } else if (config.session.provider === 'redis') {
-    const redisSessionClient = await connectRedis(config, config.session.redis, 'session');
-    providers.sessionRedisClient = redisSessionClient;
-  }
-  if (config?.diagnostics?.blob?.key) {
+  await prepareSessionMiddleware(providers);
+  if (config?.diagnostics?.blob?.account) {
     providers.diagnosticsDrop = new BlobCache({
-      key: config.diagnostics.blob.key,
       account: config.diagnostics.blob.account,
       container: config.diagnostics.blob.container,
+      tokenCredential: tryGetEntraApplicationTokenCredential(providers, 'diagnostics'),
     });
     await providers.diagnosticsDrop.initialize();
   }
-  providers.corporateAdministrationProfile = getCompanySpecificDeployment()?.administrationSection;
+  providers.corporateAdministrationProfile = companySpecific?.administrationSection;
   providers.corporateViews = await initializeCorporateViews(providers, rootdir);
 
   await dynamicStartup(executionEnvironment, config, providers, rootdir);
 
   const webhooksConfig = config.github.webhooks;
-  if (webhooksConfig && webhooksConfig.provider) {
+  if (webhooksConfig?.provider) {
+    const isJob = executionEnvironment.isJob;
     let webhooksProvider: IQueueProcessor = null;
-    if (webhooksConfig.provider === 'servicebus') {
-      const serviceBusConfig = webhooksConfig.serviceBus;
-      webhooksProvider = new ServiceBusQueueProcessor(serviceBusConfig);
-    } else if (webhooksConfig.provider === 'azurequeues') {
-      const queuesConfig = webhooksConfig.azureQueues;
-      webhooksProvider = new AzureQueuesProcessor(queuesConfig);
+    if (companySpecific?.features?.queues) {
+      webhooksProvider = await companySpecific.features.queues.tryCreateInstance(providers, config);
+    }
+    if (!webhooksProvider) {
+      switch (webhooksConfig.provider) {
+        case 'servicebus': {
+          const serviceBusConfig = webhooksConfig.serviceBus;
+          // If any web APIs need to connect to the bus, they will use a separate
+          // AMQP mode with Service Bus.
+          const options = {
+            ...serviceBusConfig,
+            ...{
+              immediatelyDeleteMessages: !isJob,
+              maximumMessagesPerRequest: isJob ? undefined : 1,
+            },
+          };
+          webhooksProvider = new ServiceBusQueueProcessor(providers, options);
+          break;
+        }
+        case 'azurequeues': {
+          const queuesConfig = webhooksConfig.azureQueues;
+          webhooksProvider = new AzureQueuesProcessor(providers, queuesConfig);
+          break;
+        }
+        default: {
+          throw CreateError.InvalidParameters(`Unsupported webhooks provider: ${webhooksConfig.provider}`);
+        }
+      }
     }
     if (webhooksProvider) {
       await webhooksProvider.initialize();
@@ -329,13 +329,16 @@ function configureGitHubLibrary(cacheProvider: ICacheHelper, config: SiteConfigu
 export default async function initialize(
   executionEnvironment: ExecutionEnvironment,
   app: IReposApplication,
-  express: Express,
   rootdir: string,
   config: SiteConfiguration,
   exception: Error
 ): Promise<ExecutionEnvironment> {
   if (exception) {
-    console.warn(`Startup exception: ${exception}`, exception?.stack);
+    if (`${exception}` === '[object Object]') {
+      console.dir(exception);
+    } else {
+      console.warn(`Startup exception: ${exception}`);
+    }
   }
   if (!config || Object.getOwnPropertyNames(config).length === 0) {
     throw new Error('Empty configuration object');
@@ -343,10 +346,19 @@ export default async function initialize(
   if (app && !app.runtimeConfiguration) {
     app.runtimeConfiguration = {};
   }
-  const applicationProfile =
-    config?.web?.app && config.web.app !== 'repos'
-      ? await alternateRoutes(config, app, config.web.app)
-      : DefaultApplicationProfile;
+  let applicationProfile: ApplicationProfile = null;
+  if (config?.web?.app === 'repos') {
+    applicationProfile = DefaultApplicationProfile;
+  } else {
+    try {
+      const alternateRoutes = await import('./alternateApps.js');
+      applicationProfile = await alternateRoutes.initializeAlternateApps(config, app, config.web.app);
+    } catch (alternateRoutesError) {
+      throw new Error(`Alternate routes could not be loaded: ${alternateRoutesError}`, {
+        cause: alternateRoutesError,
+      });
+    }
+  }
   const web = false === executionEnvironment.skipModules.has('web');
   if (applicationProfile.webServer && !web) {
     applicationProfile.webServer = false;
@@ -363,7 +375,9 @@ export default async function initialize(
   debug(`environment: ${config?.debug?.environmentName || 'Unknown'}`);
   if (config?.continuousDeployment) {
     const values = Object.values(config.continuousDeployment).filter((x) => x);
-    values.length > 0 && debug(`build: ${values.join(', ')}`);
+    if (values.length > 0) {
+      debug(`build: ${values.join(', ')}`);
+    }
   }
 
   const codespacesConfig = (config as SiteConfiguration)?.github?.codespaces;
@@ -410,7 +424,7 @@ export default async function initialize(
     app.providers = providers;
     app.set('runtimeConfig', config);
   }
-  providers.healthCheck = healthCheck(app, config);
+  providers.healthCheck = await healthCheck(app, config);
   if (applicationProfile.webServer) {
     if (!app) {
       throw new Error('app (Express) is required for web applications');
@@ -418,6 +432,9 @@ export default async function initialize(
       throw new Error(`app.startServer is required for web applications`);
     }
     await app.startServer();
+    if (executionEnvironment.isJob) {
+      debug('Server started alongside job preparation.');
+    }
   }
   if (app) {
     app.use(routeCorrelationId);
@@ -430,11 +447,11 @@ export default async function initialize(
     );
   }
   if (app) {
-    app.use('*', (req, res: Response, next: NextFunction) => {
+    app.use('/*splat', (req, res: Response, next: NextFunction) => {
       if (providers.healthCheck.ready) {
         return next();
       }
-      return res.send('Service not ready.');
+      return res.send('Service not ready.') as unknown as void;
     });
   }
   // See docs/configuration.md for all this
@@ -449,30 +466,24 @@ export default async function initialize(
     } else {
       debug('non-container production mode: HTTP: redirect to HTTPS, HSTS: on');
       const sslifyRouter = routeSslify(config.webServer);
-      sslifyRouter && app.use(sslifyRouter);
+      if (sslifyRouter) {
+        app.use(sslifyRouter);
+      }
     }
   }
   if (!exception) {
-    const kvConfig = {
-      clientId: config?.activeDirectory?.clientId,
-      clientSecret: config?.activeDirectory?.clientSecret,
-      tenantId: config?.activeDirectory?.tenantId,
-    };
     providers.config = config;
     let keyEncryptionKeyResolver: IKeyVaultSecretResolver = null;
     try {
-      const keyVaultClient = keyVault(kvConfig);
+      const keyVaultClient = keyVault(providers);
       keyEncryptionKeyResolver = keyVaultResolver(keyVaultClient);
-      app && app.set('keyEncryptionKeyResolver', keyEncryptionKeyResolver);
+      if (app) {
+        app.set('keyEncryptionKeyResolver', keyEncryptionKeyResolver);
+      }
       providers.keyEncryptionKeyResolver = keyEncryptionKeyResolver;
       debug('configuration secrets resolved');
     } catch (noKeyVault) {
-      if (!kvConfig.clientId && !kvConfig.clientSecret) {
-        debug('configuration resolved, no key vault client configured');
-      } else {
-        console.warn(noKeyVault);
-        throw noKeyVault;
-      }
+      throw noKeyVault;
     }
     try {
       await initializeAsync(executionEnvironment, providers, rootdir, config);
@@ -483,19 +494,33 @@ export default async function initialize(
     }
   }
   const hasCustomRoutes = !!applicationProfile.customRoutes;
+  providers.viewServices = viewServices;
   try {
     if (app) {
+      const express = (app as any)?.expressInstance as Express;
       await middlewareIndex(app, express, providers, config, rootdir, hasCustomRoutes, exception);
     }
   } catch (middlewareError) {
     exception = middlewareError;
   }
   // ROUTES:
+  let standardExpressRoutes = null;
+  if (!exception && !hasCustomRoutes && app) {
+    try {
+      const module = await import('../routes/index.js');
+      if (!module.default) {
+        throw new Error('No default export from routes/index.js');
+      }
+      standardExpressRoutes = module.default;
+    } catch (routesError) {
+      exception = new Error(`Standard routes could not be loaded: ${routesError}`, { cause: routesError });
+    }
+  }
   if (!exception) {
     if (hasCustomRoutes) {
-      await applicationProfile.customRoutes();
+      await applicationProfile.customRoutes(providers);
     } else if (app) {
-      app.use('/', expressRoutes);
+      app.use('/', standardExpressRoutes);
     }
   } else {
     console.error(exception);
@@ -517,9 +542,10 @@ export default async function initialize(
         },
       });
       try {
-        insights.flush({ isAppCrashing: true, callback: crash(exception) });
+        insights.flush();
       } catch (sendError) {
-        console.dir(sendError);
+        console.error(`Unable to flush insights: ${sendError}`);
+      } finally {
         crash(exception)();
       }
     } else {
@@ -563,7 +589,7 @@ function createGraphProvider(providers: IProviders, config: SiteConfiguration): 
   });
 }
 
-export function ConnectPostgresPool(postgresConfigSection: any): Promise<PostgresPool> {
+export function connectPostgresPool(postgresConfigSection: ConfigDataPostgres): Promise<pg.Pool> {
   return new Promise((resolve, reject) => {
     try {
       if (postgresConfigSection && postgresConfigSection.user) {
@@ -591,9 +617,12 @@ export function ConnectPostgresPool(postgresConfigSection: any): Promise<Postgre
         // try connecting
         pool.connect((cause, client, release) => {
           if (cause) {
-            const poolError = new Error(`There was a problem connecting to the Postgres server`, {
-              cause,
-            });
+            const poolError = new Error(
+              `There was a problem connecting to the Postgres server ${postgresConfigSection.host}`,
+              {
+                cause,
+              }
+            );
             return reject(poolError);
           }
           client.query('SELECT NOW()', (err, result) => {
@@ -620,31 +649,6 @@ export function ConnectPostgresPool(postgresConfigSection: any): Promise<Postgre
   });
 }
 
-async function connectRedis(
-  config: SiteConfiguration,
-  redisConfig: any,
-  purpose: string
-): Promise<RedisClientType> {
-  const redisOptions = {
-    socket: {
-      host: config.redis.tls || config.redis.host,
-      port: config.redis.port ? Number(config.redis.port) : config.redis.tls ? 6380 : 6379,
-      password: config.redis.key,
-      tls: !!config.redis.tls,
-    },
-    // name
-  };
-  debug(`connecting to ${purpose} Redis ${redisConfig.host || redisConfig.tls}`);
-  const redisClient: RedisClientType = createClient(redisOptions);
-  await redisClient.connect();
-
-  if (config.redis.key) {
-    await redisClient.auth({ password: config.redis.key });
-  }
-
-  return redisClient;
-}
-
 async function createMailAddressProvider(
   config: SiteConfiguration,
   providers: IProviders
@@ -666,7 +670,9 @@ async function dynamicStartup(
   const p = config?.startup?.path;
   if (p) {
     try {
-      const dynamicInclude = require(path.join(rootdir, p));
+      let scriptPath = path.join(rootdir, p, 'index.js');
+      scriptPath = importPathSchemeChangeIfWindows(scriptPath);
+      const dynamicInclude = await import(scriptPath);
       let entrypoint = dynamicInclude && dynamicInclude.default ? dynamicInclude.default : dynamicInclude;
       if (stage && !dynamicInclude[stage]) {
         return;

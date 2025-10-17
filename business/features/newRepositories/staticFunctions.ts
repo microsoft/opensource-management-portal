@@ -3,11 +3,11 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Repository } from '../..';
-import { RepositoryMetadataEntity } from '../../entities/repositoryMetadata/repositoryMetadata';
-import { IndividualContext } from '../../user';
-import { validateUserCanSelfDeleteRepository } from './validateSelfServiceDelete';
-import { validateUserCanConfigureRepository } from './validateSelfServiceSetup';
+import { Repository } from '../../index.js';
+import { RepositoryMetadataEntity } from '../../entities/repositoryMetadata/repositoryMetadata.js';
+import { IndividualContext } from '../../user/index.js';
+import { validateUserCanSelfDeleteRepository } from './validateSelfServiceDelete.js';
+import { validateUserCanConfigureRepository } from './validateSelfServiceSetup.js';
 
 export const repositoryLockdownStatics = {
   ValidateUserCanSelfDeleteRepository: (

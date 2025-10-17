@@ -3,10 +3,10 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Operations, Repository } from '../..';
-import { IRepositoryMetadataProvider } from '../../entities/repositoryMetadata/repositoryMetadataProvider';
-import { ICachedEmployeeInformation, RepositoryLockdownState } from '../../../interfaces';
-import { IMail } from '../../../lib/mailProvider';
+import { Operations, Repository } from '../../index.js';
+import { IRepositoryMetadataProvider } from '../../entities/repositoryMetadata/repositoryMetadataProvider.js';
+import { ICachedEmployeeInformation, RepositoryLockdownState } from '../../../interfaces/index.js';
+import { IMail } from '../../../lib/mailProvider/index.js';
 
 export async function selfServiceDeleteLockedRepository(
   operations: Operations,
@@ -82,22 +82,21 @@ export async function selfServiceDeleteLockedRepository(
       subject: `${targetType} deleted by ${
         deletedByUser ? repositoryMetadata.createdByCorporateUsername : 'operations'
       }: ${repository.organization.name}/${repoName}`,
-      content: await operations.emailRender('lockedrepodeleted', {
-        reason: `The ${targetType.toLowerCase()} was deleted. ${reasonInfo}.`,
-        headline: `${targetType} deleted`,
-        notification: 'information',
-        app: `${companyName} GitHub`,
-        isMailToCreator: true,
-        deletedByUser,
-        isFork: repository.fork,
-        creator: repositoryMetadata.createdByCorporateUsername,
-        repository: repository,
-      }),
     };
     if (managerInfo && managerInfo.managerMail) {
       mailToCreator.cc = managerInfo.managerMail;
     }
-    await operations.sendMail(mailToCreator);
+    await operations.emailRenderSend('lockedrepodeleted', mailToCreator, {
+      reason: `The ${targetType.toLowerCase()} was deleted. ${reasonInfo}.`,
+      headline: `${targetType} deleted`,
+      notification: 'information',
+      app: `${companyName} GitHub`,
+      isMailToCreator: true,
+      deletedByUser,
+      isFork: repository.fork,
+      creator: repositoryMetadata.createdByCorporateUsername,
+      repository: repository,
+    });
   } catch (noLinkOrEmail) {
     console.dir(noLinkOrEmail);
   }
@@ -109,20 +108,19 @@ export async function selfServiceDeleteLockedRepository(
         subject: `${targetType} deleted by ${
           deletedByUser ? repositoryMetadata.createdByCorporateUsername : 'operations'
         }: ${repository.organization.name}/${repoName}`,
-        content: await operations.emailRender('lockedrepodeleted', {
-          reason: `A decision has been made to delete this repo.
-                    This mail was sent to operations at: ${operationsMails.join(', ')}`,
-          headline: `${targetType} deleted`,
-          isFork: repository.fork,
-          notification: 'information',
-          deletedByUser,
-          app: `${operations.config.brand.companyName} GitHub`,
-          isMailToOperations: true,
-          creator: repositoryMetadata.createdByCorporateUsername,
-          repository: repository,
-        }),
       };
-      await operations.sendMail(mailToOperations);
+      await operations.emailRenderSend('lockedrepodeleted', mailToOperations, {
+        reason: `A decision has been made to delete this repo.
+                  This mail was sent to operations at: ${operationsMails.join(', ')}`,
+        headline: `${targetType} deleted`,
+        isFork: repository.fork,
+        notification: 'information',
+        deletedByUser,
+        app: `${operations.config.brand.companyName} GitHub`,
+        isMailToOperations: true,
+        creator: repositoryMetadata.createdByCorporateUsername,
+        repository: repository,
+      });
     } catch (mailIssue) {
       console.dir(mailIssue);
     }

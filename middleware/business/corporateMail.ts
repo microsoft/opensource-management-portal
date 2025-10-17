@@ -3,10 +3,10 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { jsonError } from '..';
-import { IProviders, ReposAppRequest } from '../../interfaces';
-import { ErrorHelper, getProviders } from '../../lib/transitional';
-import { IndividualContext } from '../../business/user';
+import { jsonError } from '../index.js';
+import { IProviders, ReposAppRequest } from '../../interfaces/index.js';
+import { CreateError, ErrorHelper, getProviders } from '../../lib/transitional.js';
+import { IndividualContext } from '../../business/user/index.js';
 
 const cachedCorporateMailRequestKey = '__corporateMail';
 
@@ -26,13 +26,13 @@ export async function getCorporateMailFromActiveContext(
   activeContext: IndividualContext
 ): Promise<string> {
   if (!activeContext.corporateIdentity || !activeContext.corporateIdentity.id) {
-    throw jsonError('No corporate identity', 401);
+    throw CreateError.NotAuthenticated('No corporate identity');
   }
   let corporateMail = activeContext?.link?.corporateMailAddress;
   if (!corporateMail) {
     const mail = await tryGetCorporateMailFromId(providers, activeContext.corporateIdentity.id);
     if (!mail) {
-      throw jsonError('Invalid corporate identity', 401);
+      throw CreateError.InvalidParameters('Invalid corporate identity (no mail assigned)');
     }
     corporateMail = mail;
   }

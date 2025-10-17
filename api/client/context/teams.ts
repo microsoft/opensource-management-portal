@@ -3,13 +3,12 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import asyncHandler from 'express-async-handler';
 import { NextFunction, Response } from 'express';
 
-import { ReposAppRequest, TeamJsonFormat } from '../../../interfaces';
-import { IndividualContext } from '../../../business/user';
+import { ReposAppRequest, TeamJsonFormat } from '../../../interfaces/index.js';
+import { IndividualContext } from '../../../business/user/index.js';
 
-export default asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
+export default async (req: ReposAppRequest, res: Response, next: NextFunction) => {
   const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
   if (!activeContext.link) {
     return res.json({
@@ -24,4 +23,4 @@ export default asyncHandler(async (req: ReposAppRequest, res: Response, next: Ne
     member: permissions.member.map((t) => t.asJson(TeamJsonFormat.Augmented)),
     maintainer: permissions.maintainer.map((t) => t.asJson(TeamJsonFormat.Augmented)),
   }) as unknown as void;
-});
+};

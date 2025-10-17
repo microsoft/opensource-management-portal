@@ -8,7 +8,7 @@
 // environment.
 
 async function initialize(
-  options?: IOrganizationAnnotationProviderCreateOptions
+  options?: IEntityMetadataBaseOptions
 ): Promise<IOrganizationAnnotationMetadataProvider> {
   const provider = new OrganizationAnnotationMetadataProvider(options);
   await provider.initialize();
@@ -22,16 +22,16 @@ import {
   EntityMetadataType,
   IEntityMetadataBaseOptions,
   EntityMetadataBase,
-} from '../../lib/entityMetadataProvider/entityMetadata';
-import { IEntityMetadataFixedQuery, QueryBase } from '../../lib/entityMetadataProvider/query';
+} from '../../lib/entityMetadataProvider/entityMetadata.js';
+import { IEntityMetadataFixedQuery, QueryBase } from '../../lib/entityMetadataProvider/query.js';
 import {
   EntityMetadataMappings,
   MetadataMappingDefinition,
-} from '../../lib/entityMetadataProvider/declarations';
-import { PostgresSettings, PostgresConfiguration } from '../../lib/entityMetadataProvider/postgres';
-import { IDictionary } from '../../interfaces';
-import { CreateError, ErrorHelper } from '../../lib/transitional';
-import { MemoryConfiguration, TableConfiguration } from '../../lib/entityMetadataProvider';
+} from '../../lib/entityMetadataProvider/declarations.js';
+import { PostgresSettings, PostgresConfiguration } from '../../lib/entityMetadataProvider/postgres.js';
+import { IDictionary } from '../../interfaces/index.js';
+import { CreateError, ErrorHelper } from '../../lib/transitional.js';
+import { MemoryConfiguration, TableConfiguration } from '../../lib/entityMetadataProvider/index.js';
 
 const type = new EntityMetadataType('OrganizationAnnotation');
 const thisProviderType = type;
@@ -55,9 +55,11 @@ export interface IOrganizationAnnotationChange {
   text: string;
 }
 
-export function getOrganizationAnnotationRestrictedPropertyNames(isSystemAdministrator?: boolean): string[] {
+export function getOrganizationAnnotationRestrictedPropertyNames(
+  canViewPrivilegedAnnotations?: boolean
+): string[] {
   const restrictedProperties = ['administratorNodes', 'history'];
-  return isSystemAdministrator ? [] : restrictedProperties;
+  return canViewPrivilegedAnnotations ? [] : restrictedProperties;
 }
 
 interface IOrganizationAnnotationMetadataProperties {
@@ -216,8 +218,6 @@ for (let i = 0; i < fieldNames.length; i++) {
   }
 }
 
-export interface IOrganizationAnnotationProviderCreateOptions extends IEntityMetadataBaseOptions {}
-
 export interface IOrganizationAnnotationMetadataProvider {
   initialize(): Promise<void>;
   getOrCreateAnnotations(organizationId: string): Promise<ClassType>;
@@ -232,7 +232,7 @@ export class OrganizationAnnotationMetadataProvider
   extends EntityMetadataBase
   implements IOrganizationAnnotationMetadataProvider
 {
-  constructor(options: IOrganizationAnnotationProviderCreateOptions) {
+  constructor(options: IEntityMetadataBaseOptions) {
     super(thisProviderType, options);
     EntityImplementation.EnsureDefinitions();
   }

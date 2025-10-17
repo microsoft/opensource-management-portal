@@ -3,8 +3,13 @@ dist
 
 # Ignore upstream files
 .github/dotcom-workflows/
+.deploy/geneva/
+
+.config/
 
 # View
 views/email/email.css
 
 .environment/copilot/
+
+frontend/

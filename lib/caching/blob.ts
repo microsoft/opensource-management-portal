@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { DefaultAzureCredential } from '@azure/identity';
+import { TokenCredential } from '@azure/identity';
 import {
   BlobServiceClient,
   BlobItem,
@@ -13,17 +13,18 @@ import {
   BlobClient,
 } from '@azure/storage-blob';
 
-import { ICacheHelper } from '.';
-import { gunzipBuffer, gzipString } from '../utils';
+import { ICacheHelper } from './index.js';
+import { gunzipBuffer, gzipString } from '../utils.js';
 
 import Debug from 'debug';
 const debug = Debug.debug('cache');
 
-export interface IBlobCacheOptions {
+export type BlobCacheOptions = {
   account: string;
-  key: string;
   container: string;
-}
+  key?: string;
+  tokenCredential?: TokenCredential;
+};
 
 interface IExpiredBlobsStats {
   processedBlobs: number;
@@ -43,13 +44,17 @@ const compressedAttributeName = 'compressed';
 const compressedGzip = 'gzip';
 
 export default class BlobCache implements ICacheHelper {
-  private _options: IBlobCacheOptions;
+  private _options: BlobCacheOptions;
   private _client: BlobServiceClient;
   private _container: ContainerClient;
   private _initialized: boolean;
 
-  constructor(options: IBlobCacheOptions) {
+  constructor(options: BlobCacheOptions) {
     this._options = options;
+  }
+
+  getContainerClient() {
+    return this._container;
   }
 
   cloneForNewContainer(containerName: string) {
@@ -72,18 +77,18 @@ export default class BlobCache implements ICacheHelper {
     if (this._initialized) {
       return;
     }
-    const { account, key } = this._options;
+    const { account, key, tokenCredential } = this._options;
     if (!account) {
       throw new Error('options.account required');
     }
     if (!this._options.container) {
       throw new Error('options.container required');
     }
-    const credential = key ? new StorageSharedKeyCredential(account, key) : new DefaultAzureCredential();
-    if (!key) {
-      // TODO: remove temporary message
-      console.log(`using DefaultAzureCredential`);
+    if (!key && !tokenCredential) {
+      throw new Error('options.key or options.tokenCredential required');
     }
+
+    const credential = key ? new StorageSharedKeyCredential(account, key) : tokenCredential;
     this._client = new BlobServiceClient(`https://${account}.blob.core.windows.net`, credential);
     try {
       this._container = this._client.getContainerClient(this._options.container);

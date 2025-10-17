@@ -7,7 +7,7 @@ import {
   GitHubRepositoryPermission,
   IRepositoryMetadata,
   IRepositoryMetadataPermissionPair,
-} from '../interfaces';
+} from '../interfaces/index.js';
 
 const currentRepositoryMetadataSchema = 'rm1.0';
 

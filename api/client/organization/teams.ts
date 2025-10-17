@@ -4,17 +4,16 @@
 //
 
 import { NextFunction, Response, Router } from 'express';
-import asyncHandler from 'express-async-handler';
 
-import { Organization } from '../../../business/organization';
-import { setContextualTeam } from '../../../middleware/github/teamPermissions';
-import { jsonError } from '../../../middleware/jsonError';
-import { ReposAppRequest, TeamJsonFormat } from '../../../interfaces';
-import JsonPager from '../jsonPager';
-import LeakyLocalCache from '../leakyLocalCache';
+import { Organization } from '../../../business/organization.js';
+import { setContextualTeam } from '../../../middleware/github/teamPermissions.js';
+import { jsonError } from '../../../middleware/jsonError.js';
+import { ReposAppRequest, TeamJsonFormat } from '../../../interfaces/index.js';
+import JsonPager from '../jsonPager.js';
+import LeakyLocalCache from '../leakyLocalCache.js';
 
-import RouteTeam from './team';
-import { Team } from '../../../business';
+import RouteTeam from './team.js';
+import { Team } from '../../../business/index.js';
 
 const router: Router = Router();
 
@@ -22,21 +21,18 @@ const router: Router = Router();
 // CONSIDER: use a better approach
 const leakyLocalCache = new LeakyLocalCache<number, Team[]>();
 
-router.use(
-  '/:teamSlug',
-  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
-    const { organization } = req;
-    const { teamSlug } = req.params;
-    let team: Team = null;
-    try {
-      team = await organization.getTeamFromSlug(teamSlug);
-      setContextualTeam(req, team);
-      return next();
-    } catch (teamError) {
-      return next(jsonError(teamError));
-    }
-  })
-);
+router.use('/:teamSlug', async (req: ReposAppRequest, res: Response, next: NextFunction) => {
+  const { organization } = req;
+  const { teamSlug } = req.params;
+  let team: Team = null;
+  try {
+    team = await organization.getTeamFromSlug(teamSlug);
+    setContextualTeam(req, team);
+    return next();
+  } catch (teamError) {
+    return next(jsonError(teamError));
+  }
+});
 
 router.use('/:teamSlug', RouteTeam);
 
@@ -59,12 +55,9 @@ async function getTeamsForOrganization(
   return list;
 }
 
-router.get(
-  '/',
-  asyncHandler(async (req: ReposAppRequest, res: Response, next: NextFunction) => {
-    return await getClientApiOrganizationTeamsResponse(req, res, next);
-  })
-);
+router.get('/', async (req: ReposAppRequest, res: Response, next: NextFunction) => {
+  return await getClientApiOrganizationTeamsResponse(req, res, next);
+});
 
 export async function getClientApiOrganizationTeamsResponse(
   req: ReposAppRequest,
@@ -105,7 +98,7 @@ export async function getClientApiOrganizationTeamsResponse(
   }
 }
 
-router.use('*', (req, res: Response, next: NextFunction) => {
+router.use('/*splat', (req, res: Response, next: NextFunction) => {
   return next(jsonError('no API or function available within this team', 404));
 });
 

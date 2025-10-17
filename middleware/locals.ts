@@ -6,8 +6,8 @@
 import os from 'os';
 import { NextFunction, Response } from 'express';
 
-import { ReposAppRequest } from '../interfaces';
-import { getProviders } from '../lib/transitional';
+import { ReposAppRequest } from '../interfaces/index.js';
+import { getProviders } from '../lib/transitional.js';
 
 export default function (req: ReposAppRequest, res: Response, next: NextFunction) {
   const { config, viewServices } = getProviders(req);

@@ -6,7 +6,7 @@
 import { NextFunction, Response, Router } from 'express';
 const router: Router = Router();
 
-import { ReposAppRequest } from '../interfaces';
+import { ReposAppRequest } from '../interfaces/index.js';
 
 // Enforcing just a single GitHub account per Active Directory user. With
 // mild refactoring, this portal could easily support a session selecting

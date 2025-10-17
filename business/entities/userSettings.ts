@@ -8,13 +8,13 @@ import {
   IEntityMetadataBaseOptions,
   EntityMetadataBase,
   IEntityMetadata,
-} from '../../lib/entityMetadataProvider/entityMetadata';
-import { QueryBase, IEntityMetadataFixedQuery } from '../../lib/entityMetadataProvider/query';
+} from '../../lib/entityMetadataProvider/entityMetadata.js';
+import { QueryBase, IEntityMetadataFixedQuery } from '../../lib/entityMetadataProvider/query.js';
 import {
   EntityMetadataMappings,
   MetadataMappingDefinition,
-} from '../../lib/entityMetadataProvider/declarations';
-import { PostgresConfiguration, PostgresSettings } from '../../lib/entityMetadataProvider/postgres';
+} from '../../lib/entityMetadataProvider/declarations.js';
+import { PostgresConfiguration, PostgresSettings } from '../../lib/entityMetadataProvider/postgres.js';
 
 const type = new EntityMetadataType('UserSettings');
 const thisProviderType = type;
@@ -47,8 +47,6 @@ class UserSettingsQuery<T> extends UserSettingsQueryBase {
 enum Query {
   UsersOptedInToShareData = 'UsersOptedInToShareData',
 }
-
-interface NoParameters {}
 
 const Field: IUserSettingsProperties = {
   // corporateId: 'corporateId',
@@ -118,8 +116,6 @@ for (let i = 0; i < fieldNames.length; i++) {
   }
 }
 
-export interface IUserSettingsProviderCreateOptions extends IEntityMetadataBaseOptions {}
-
 export interface IUserSettingsProvider {
   initialize(): Promise<void>;
   getUserSettings(corporateId: string): Promise<UserSettings>;
@@ -130,7 +126,7 @@ export interface IUserSettingsProvider {
 }
 
 export class UserSettingsProvider extends EntityMetadataBase implements IUserSettingsProvider {
-  constructor(options: IUserSettingsProviderCreateOptions) {
+  constructor(options: IEntityMetadataBaseOptions) {
     super(thisProviderType, options);
   }
 
@@ -155,7 +151,7 @@ export class UserSettingsProvider extends EntityMetadataBase implements IUserSet
   }
 
   async queryContributionOptInUsers(): Promise<UserSettings[]> {
-    const query = new UserSettingsQuery<NoParameters>(Query.UsersOptedInToShareData, {});
+    const query = new UserSettingsQuery<unknown>(Query.UsersOptedInToShareData, {});
     const metadatas = await this._entities.fixedQueryMetadata(thisProviderType, query);
     const results = this.deserializeArray<UserSettings>(thisProviderType, metadatas);
     return results;

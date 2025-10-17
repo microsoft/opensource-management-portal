@@ -5,7 +5,7 @@
 
 import { NextFunction, Response } from 'express';
 
-import { ReposAppRequest } from '../interfaces';
+import { ReposAppRequest } from '../interfaces/index.js';
 
 // Assistant for when using Visual Studio Code to connect to a Codespace
 // locally instead of the web. The default port forwarding experience is
@@ -13,19 +13,16 @@ import { ReposAppRequest } from '../interfaces';
 // allow for IP-based callback URLs, the user must use localhost.
 export function codespacesDevAssistant(req: ReposAppRequest, res: Response, next: NextFunction) {
   if (req.hostname === '127.0.0.1') {
-    console.warn(
-      `${req.method} ${req.url}: WARNING: You're trying to connect to ${req.hostname} from your codespace.`
-    );
+    console.warn(`WARNING: You're trying to connect to the web from your codespace.`);
     if (req.method === 'GET') {
       res.contentType('text/html');
       return res.send(`
         <html>
           <body>
-            <h1>WARNING: You're trying to connect to ${req.hostname} from your codespace.</h1>
-            <p>Use <a href="http://localhost:3000${req.url}">http://localhost:3000${req.url}</a> instead.</p>
+            <p>Use <a href="http://localhost:3000">http://localhost:3000</a> instead: codespaces via 127.0.0.1 are not what you want.</p>
           </body>
         </html>
-      `);
+      `) as unknown as void;
     }
   }
 

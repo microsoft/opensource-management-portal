@@ -4,12 +4,11 @@
 //
 
 import { NextFunction, Response, Router } from 'express';
-import asyncHandler from 'express-async-handler';
 
-import { jsonError } from '../../../middleware/jsonError';
-import { ReposAppRequest } from '../../../interfaces';
-import { Repository } from '../../../business/repository';
-import { findRepoCollaboratorsExcludingOwners } from '../../../routes/org/repos';
+import { jsonError } from '../../../middleware/jsonError.js';
+import { ReposAppRequest } from '../../../interfaces/index.js';
+import { Repository } from '../../../business/repository.js';
+import { findRepoCollaboratorsExcludingOwners } from '../../../routes/org/repos.js';
 
 type RequestWithRepo = ReposAppRequest & {
   repository: Repository;
@@ -17,32 +16,29 @@ type RequestWithRepo = ReposAppRequest & {
 
 const router: Router = Router();
 
-router.get(
-  '/',
-  asyncHandler(async (req: RequestWithRepo, res: Response, next: NextFunction) => {
-    const { repository, organization } = req;
-    try {
-      const teamPermissions = await repository.getTeamPermissions();
-      const owners = await organization.getOwners();
-      const { collaborators, outsideCollaborators, memberCollaborators } =
-        await findRepoCollaboratorsExcludingOwners(repository, owners);
-      for (const teamPermission of teamPermissions) {
-        try {
-          teamPermission.resolveTeamMembers();
-        } catch (ignoredError) {
-          /* ignored */
-        }
+router.get('/', async (req: RequestWithRepo, res: Response, next: NextFunction) => {
+  const { repository, organization } = req;
+  try {
+    const teamPermissions = await repository.getTeamPermissions();
+    const owners = await organization.getOwners();
+    const { collaborators, outsideCollaborators, memberCollaborators } =
+      await findRepoCollaboratorsExcludingOwners(repository, owners);
+    for (const teamPermission of teamPermissions) {
+      try {
+        teamPermission.resolveTeamMembers();
+      } catch (ignoredError) {
+        /* ignored */
       }
-      return res.json({
-        teamPermissions: teamPermissions.map((tp) => tp.asJson()),
-        collaborators: collaborators.map((c) => c.asJson()),
-        outsideCollaborators: outsideCollaborators.map((oc) => oc.asJson()),
-        memberCollaborators: memberCollaborators.map((oc) => oc.asJson()),
-      }) as unknown as void;
-    } catch (error) {
-      return next(jsonError(error));
     }
-  })
-);
+    return res.json({
+      teamPermissions: teamPermissions.map((tp) => tp.asJson()),
+      collaborators: collaborators.map((c) => c.asJson()),
+      outsideCollaborators: outsideCollaborators.map((oc) => oc.asJson()),
+      memberCollaborators: memberCollaborators.map((oc) => oc.asJson()),
+    }) as unknown as void;
+  } catch (error) {
+    return next(jsonError(error));
+  }
+});
 
 export default router;

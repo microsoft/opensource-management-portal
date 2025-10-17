@@ -5,7 +5,7 @@
 
 import { NextFunction, Response } from 'express';
 
-import { ReposAppRequest } from '../../interfaces';
+import { ReposAppRequest } from '../../interfaces/index.js';
 
 const requestCachedKeyName = 'systemWidePermissions';
 

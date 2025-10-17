@@ -3,11 +3,9 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
-
 // Split and set an optional array, or empty array, trimming each. If the
 // input is actually an array, just pass it back.
-module.exports = function (a, split) {
+export default function (a, split) {
   if (!split) {
     split = ',';
   }
@@ -21,4 +19,4 @@ module.exports = function (a, split) {
     }
   }
   return b;
-};
+}

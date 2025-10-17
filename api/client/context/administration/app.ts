@@ -4,70 +4,63 @@
 //
 
 import { NextFunction, Response, Router } from 'express';
-import asyncHandler from 'express-async-handler';
 
-import { ReposAppRequest } from '../../../../interfaces';
-import { CreateError, getProviders } from '../../../../lib/transitional';
+import { ReposAppRequest } from '../../../../interfaces/index.js';
+import { CreateError, getProviders } from '../../../../lib/transitional.js';
 
-import routeIndividualApp from './app';
-import GitHubApplication from '../../../../business/application';
-import { OrganizationSetting } from '../../../../business/entities/organizationSettings/organizationSetting';
-import { sortByCaseInsensitive } from '../../../../lib/utils';
-import routeApplicationInstallation from './appInstallation';
-import { ApiRequestWithGitHubApplication, RequestWithInstallation } from './types';
+import routeIndividualApp from './app.js';
+import GitHubApplication from '../../../../business/application.js';
+import { OrganizationSetting } from '../../../../business/entities/organizationSettings/organizationSetting.js';
+import { sortByCaseInsensitive } from '../../../../lib/utils.js';
+import routeApplicationInstallation from './appInstallation.js';
+import { ApiRequestWithGitHubApplication, RequestWithInstallation } from './types.js';
 
 const router: Router = Router();
 
-router.get(
-  '/',
-  asyncHandler(async function (req: ApiRequestWithGitHubApplication, res: Response, next: NextFunction) {
-    const { gitHubApplication } = req;
-    const installationIdString = req.query.installation_id;
-    const setupAction = req.query.setup_action;
-    // if (installationIdString && setupAction) {
-    //   return res.redirect(
-    //     `./${githubApplication.id}/installations/${installationIdString}?setup_action=${setupAction}`
-    //   );
-    // }
-    // const individualContext = req.individualContext;
-    const allInstalls = await gitHubApplication.getInstallations({ maxAgeSeconds: 5 });
-    const { valid, invalid } = GitHubApplication.filterInstallations(allInstalls);
-    return res.json({
-      state: {
-        installations: {
-          valid,
-          invalid,
-        },
-        app: gitHubApplication.asClientJson(),
+router.get('/', async function (req: ApiRequestWithGitHubApplication, res: Response, next: NextFunction) {
+  const { gitHubApplication } = req;
+  const installationIdString = req.query.installation_id;
+  const setupAction = req.query.setup_action;
+  // if (installationIdString && setupAction) {
+  //   return res.redirect(
+  //     `./${githubApplication.id}/installations/${installationIdString}?setup_action=${setupAction}`
+  //   );
+  // }
+  // const individualContext = req.individualContext;
+  const allInstalls = await gitHubApplication.getInstallations({ maxAgeSeconds: 5 });
+  const { valid, invalid } = GitHubApplication.filterInstallations(allInstalls);
+  return res.json({
+    state: {
+      installations: {
+        valid,
+        invalid,
       },
-    }) as unknown as void;
-  })
-);
+      app: gitHubApplication.asClientJson(),
+    },
+  }) as unknown as void;
+});
 
-router.use(
-  '/installations/:installationId',
-  asyncHandler(async function (req: RequestWithInstallation, res, next) {
-    // const installationIdString = req.query.installation_id;
-    // const setupAction = req.query.setup_action;
-    const { gitHubApplication } = req;
-    const { installationId: installationIdAsString } = req.params;
-    const installationId = Number(installationIdAsString);
-    const installation = await gitHubApplication.getInstallation(installationId);
-    if (!installation) {
-      return next(
-        CreateError.NotFound(
-          `The GitHub app installation ${installationIdAsString} could not be found for app ${gitHubApplication.id}`
-        )
-      );
-    }
-    req.installation = installation;
-    return next();
-  })
-);
+router.use('/installations/:installationId', async function (req: RequestWithInstallation, res, next) {
+  // const installationIdString = req.query.installation_id;
+  // const setupAction = req.query.setup_action;
+  const { gitHubApplication } = req;
+  const { installationId: installationIdAsString } = req.params;
+  const installationId = Number(installationIdAsString);
+  const installation = await gitHubApplication.getInstallation(installationId);
+  if (!installation) {
+    return next(
+      CreateError.NotFound(
+        `The GitHub app installation ${installationIdAsString} could not be found for app ${gitHubApplication.id}`
+      )
+    );
+  }
+  req.installation = installation;
+  return next();
+});
 
 router.use('/installations/:installationId', routeApplicationInstallation);
 
-router.use('*', (req, res: Response, next: NextFunction) => {
+router.use('/*splat', (req, res: Response, next: NextFunction) => {
   return next(CreateError.NotFound('no API or function available: context/administration/apps/...'));
 });
 

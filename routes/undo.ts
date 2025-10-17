@@ -4,17 +4,16 @@
 //
 
 import { NextFunction, Response, Router } from 'express';
-import asyncHandler from 'express-async-handler';
 const router: Router = Router();
 
-import { Operations, Repository } from '../business';
-import { ErrorHelper, getProviders } from '../lib/transitional';
-import { AuditLogRecord } from '../business/entities/auditLogRecord/auditLogRecord';
-import { daysInMilliseconds } from '../lib/utils';
-import { AuditEvents } from '../business/entities/auditLogRecord';
-import { IGitHubIdentity, IndividualContext } from '../business/user';
-import { IMail } from '../lib/mailProvider';
-import { GitHubRepositoryPermission, ReposAppRequest, UserAlertType } from '../interfaces';
+import { Operations, Repository } from '../business/index.js';
+import { ErrorHelper, getProviders } from '../lib/transitional.js';
+import { AuditLogRecord } from '../business/entities/auditLogRecord/auditLogRecord.js';
+import { daysInMilliseconds } from '../lib/utils.js';
+import { AuditEvents } from '../business/entities/auditLogRecord/index.js';
+import { IGitHubIdentity, IndividualContext } from '../business/user/index.js';
+import { IMail } from '../lib/mailProvider/index.js';
+import { GitHubRepositoryPermission, ReposAppRequest, UserAlertType } from '../interfaces/index.js';
 
 const validDaysBeforeNow = 21;
 
@@ -290,123 +289,115 @@ async function undoTeamAdminRepoPermissionAsync(
   };
 }
 
-router.use(
-  asyncHandler(async function (req: IHaveUndoCandidates, res: Response, next: NextFunction) {
-    const { operations } = getProviders(req);
-    if (!operations.allowUndoSystem) {
-      res.status(404);
-      return next(new Error('This feature is unavailable in this application instance'));
-    }
-    const auditLogRecordProvider = operations.providers.auditLogRecordProvider;
-    if (!auditLogRecordProvider) {
-      return next(new Error('Undo capability is not available for this site'));
-    }
-    const ghi = req.individualContext.getGitHubIdentity();
-    if (!ghi || !ghi.username) {
-      return next(new Error('GitHub identity required'));
-    }
-    try {
-      const now = new Date();
-      const before = new Date(now.getTime() - daysInMilliseconds(validDaysBeforeNow));
-      const undoResults = await auditLogRecordProvider.queryAuditLogForThirdPartyIdUndoOperations(
-        ghi.id.toString()
-      );
-      const candidateUndoOperations = filterToRecentEvents(undoResults, now, before);
-      req.undoOperations = finalizeUndoEvents(operations, ghi, candidateUndoOperations);
-    } catch (error) {
-      return next(error);
-    }
-    return next();
-  })
-);
+router.use(async function (req: IHaveUndoCandidates, res: Response, next: NextFunction) {
+  const { operations } = getProviders(req);
+  if (!operations.allowUndoSystem) {
+    res.status(404);
+    return next(new Error('This feature is unavailable in this application instance'));
+  }
+  const auditLogRecordProvider = operations.providers.auditLogRecordProvider;
+  if (!auditLogRecordProvider) {
+    return next(new Error('Undo capability is not available for this site'));
+  }
+  const ghi = req.individualContext.getGitHubIdentity();
+  if (!ghi || !ghi.username) {
+    return next(new Error('GitHub identity required'));
+  }
+  try {
+    const now = new Date();
+    const before = new Date(now.getTime() - daysInMilliseconds(validDaysBeforeNow));
+    const undoResults = await auditLogRecordProvider.queryAuditLogForThirdPartyIdUndoOperations(
+      ghi.id.toString()
+    );
+    const candidateUndoOperations = filterToRecentEvents(undoResults, now, before);
+    req.undoOperations = finalizeUndoEvents(operations, ghi, candidateUndoOperations);
+  } catch (error) {
+    return next(error);
+  }
+  return next();
+});
 
-router.post(
-  '/',
-  asyncHandler(async (req: IHaveUndoCandidates, res: Response, next: NextFunction) => {
-    const { operations } = getProviders(req);
-    const insights = operations.insights;
-    const link = req.individualContext.link;
-    const githubId = req.individualContext.getGitHubIdentity().id;
-    const undoOperations = req.undoOperations;
-    const recordId = req.body.id;
-    if (!recordId) {
+router.post('/', async (req: IHaveUndoCandidates, res: Response, next: NextFunction) => {
+  const { operations } = getProviders(req);
+  const insights = operations.insights;
+  const link = req.individualContext.link;
+  const githubId = req.individualContext.getGitHubIdentity().id;
+  const undoOperations = req.undoOperations;
+  const recordId = req.body.id;
+  if (!recordId) {
+    res.status(400);
+    return next(new Error('Missing event ID'));
+  }
+  const matchingEvents = undoOperations.filter((op) => op.operation?.recordId === recordId);
+  if (!matchingEvents.length) {
+    res.status(400);
+    return next(new Error('Not a valid candidate event'));
+  }
+  const record = matchingEvents[0];
+  const operation = record.operation;
+  let isOK = false;
+  if (operation.userCorporateId) {
+    if (operation.userCorporateId !== link.corporateId) {
       res.status(400);
-      return next(new Error('Missing event ID'));
+      return next(new Error('This event cannot be undone for your account due to its linked corporate ID'));
     }
-    const matchingEvents = undoOperations.filter((op) => op.operation?.recordId === recordId);
-    if (!matchingEvents.length) {
+    isOK = true;
+  } else if (operation.actorId) {
+    if (operation.actorId !== githubId) {
       res.status(400);
-      return next(new Error('Not a valid candidate event'));
+      return next(new Error('This event cannot be undone for your account due to its GitHub account ID'));
     }
-    const record = matchingEvents[0];
-    const operation = record.operation;
-    let isOK = false;
-    if (operation.userCorporateId) {
-      if (operation.userCorporateId !== link.corporateId) {
-        res.status(400);
-        return next(new Error('This event cannot be undone for your account due to its linked corporate ID'));
-      }
-      isOK = true;
-    } else if (operation.actorId) {
-      if (operation.actorId !== githubId) {
-        res.status(400);
-        return next(new Error('This event cannot be undone for your account due to its GitHub account ID'));
-      }
-      isOK = true;
-    }
-    if (!isOK) {
-      res.status(400);
-      return next(new Error('Processing cannot continue'));
-    }
-    if (!record.supported) {
-      return next(
-        new Error(
-          `This action type (${operation.action}) is not currently supported for undo operations. Record ID: ${operation.recordId}`
-        )
-      );
-    }
-    if (!record.undo) {
-      return next(new Error('This operation is not currently supported for undo'));
-    }
-    try {
-      const result = await record.undo();
+    isOK = true;
+  }
+  if (!isOK) {
+    res.status(400);
+    return next(new Error('Processing cannot continue'));
+  }
+  if (!record.supported) {
+    return next(
+      new Error(
+        `This action type (${operation.action}) is not currently supported for undo operations. Record ID: ${operation.recordId}`
+      )
+    );
+  }
+  if (!record.undo) {
+    return next(new Error('This operation is not currently supported for undo'));
+  }
+  try {
+    const result = await record.undo();
+    req.individualContext.webContext.saveUserAlert(
+      result.message || 'OK',
+      'Undo operation completed',
+      UserAlertType.Success
+    );
+    if (result.warnings && result.warnings.length) {
       req.individualContext.webContext.saveUserAlert(
-        result.message || 'OK',
-        'Undo operation completed',
-        UserAlertType.Success
+        result.warnings.join('; '),
+        'Operation warnings',
+        UserAlertType.Warning
       );
-      if (result.warnings && result.warnings.length) {
-        req.individualContext.webContext.saveUserAlert(
-          result.warnings.join('; '),
-          'Operation warnings',
-          UserAlertType.Warning
-        );
-      }
-      insights?.trackMetric({ name: 'UndoOperations', value: 1 });
-      nextTickAsyncSendMail(operations, req.individualContext, record, result);
-      return res.redirect(result.localUrl || '/');
-    } catch (undoError) {
-      insights?.trackException({ exception: undoError });
-      return next(undoError);
     }
-  })
-);
+    insights?.trackMetric({ name: 'UndoOperations', value: 1 });
+    nextTickAsyncSendMail(operations, req.individualContext, record, result);
+    return res.redirect(result.localUrl || '/');
+  } catch (undoError) {
+    insights?.trackException({ exception: undoError });
+    return next(undoError);
+  }
+});
 
-router.get(
-  '/',
-  asyncHandler(async (req: IHaveUndoCandidates, res: Response, next: NextFunction) => {
-    const { operations } = getProviders(req);
-    const insights = operations.insights;
-    insights?.trackMetric({ name: 'UndoPageViews', value: 1 });
-    return req.individualContext.webContext.render({
-      view: 'undo',
-      title: 'Undo',
-      state: {
-        undoOperations: req.undoOperations,
-      },
-    });
-  })
-);
+router.get('/', async (req: IHaveUndoCandidates, res: Response, next: NextFunction) => {
+  const { operations } = getProviders(req);
+  const insights = operations.insights;
+  insights?.trackMetric({ name: 'UndoPageViews', value: 1 });
+  return req.individualContext.webContext.render({
+    view: 'undo',
+    title: 'Undo',
+    state: {
+      undoOperations: req.undoOperations,
+    },
+  });
+});
 
 function nextTickAsyncSendMail(
   operations: Operations,
@@ -455,18 +446,17 @@ async function sendUndoMailNotification(
       const mailToOperations: IMail = {
         to: operationsMails,
         subject: `GitHub undo operation completed for ${ghi.username}`,
-        content: await operations.emailRender('undo', {
-          reason: `A user just used the undo function on the site. As the operations contact for this system, you are receiving this e-mail.
-                    This mail was sent to: ${operationsMails.join(', ')}`,
-          headline: 'Undo operation complete',
-          notification: 'information',
-          app: `${operations.config.brand.companyName} GitHub`,
-          isMailToOperations: true,
-          isMailToUser: false,
-          details,
-        }),
       };
-      await operations.sendMail(mailToOperations);
+      await operations.emailRenderSend('undo', mailToOperations, {
+        reason: `A user just used the undo function on the site. As the operations contact for this system, you are receiving this e-mail.
+                  This mail was sent to: ${operationsMails.join(', ')}`,
+        headline: 'Undo operation complete',
+        notification: 'information',
+        app: `${operations.config.brand.companyName} GitHub`,
+        isMailToOperations: true,
+        isMailToUser: false,
+        details,
+      });
     } catch (mailIssue) {
       console.dir(mailIssue);
     }
@@ -482,19 +472,18 @@ async function sendUndoMailNotification(
       const mailToCreator: IMail = {
         to: mailAddress,
         subject: `GitHub undo operation completed for ${mailAddress}`,
-        content: await operations.emailRender('undo', {
-          reason: `You just used the undo feature on the GitHub management site. This mail confirms the operation.
-                    This mail was sent to: ${mailAddress} and also the GitHub administrators for the system.`,
-          headline: 'Undo',
-          notification: 'information',
-          app: `${companyName} GitHub`,
-          isMailToUser: true,
-          isMailToOperations: false,
-          details,
-          operationsMail: operationsMails.join(','),
-        }),
       };
-      await operations.sendMail(mailToCreator);
+      await operations.emailRenderSend('undo', mailToCreator, {
+        reason: `You just used the undo feature on the GitHub management site. This mail confirms the operation.
+                  This mail was sent to: ${mailAddress} and also the GitHub administrators for the system.`,
+        headline: 'Undo',
+        notification: 'information',
+        app: `${companyName} GitHub`,
+        isMailToUser: true,
+        isMailToOperations: false,
+        details,
+        operationsMail: operationsMails.join(','),
+      });
     }
   } catch (noLinkOrEmail) {
     console.dir(noLinkOrEmail);

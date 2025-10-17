@@ -8,26 +8,33 @@
 // Organization invitations cleanup: remove any invitations that are older than a
 // set period of time from the organization.
 
-import { GitHubOrganizationInvite, IProviders } from '../interfaces';
-import job from '../job';
-import { daysInMilliseconds } from '../lib/utils';
+import { GitHubOrganizationInvite, IProviders } from '../interfaces/index.js';
+import job from '../job.js';
+import { daysInMilliseconds } from '../lib/utils.js';
 
 const defaultMaximumInvitationAgeDays = 4;
+const INSIGHTS_PREFIX = 'JobOrganizationInvitationsCleanup';
 
 job.runBackgroundJob(cleanup, {
   timeoutMinutes: 90,
-  insightsPrefix: 'JobOrganizationInvitationsCleanup',
+  insightsPrefix: INSIGHTS_PREFIX,
 });
 
 async function cleanup(providers: IProviders) {
   const insights = providers.insights;
+  insights?.trackEvent({
+    name: `${INSIGHTS_PREFIX}Start`,
+    properties: {
+      time: new Date(),
+    },
+  });
   let maximumInvitationAgeDays = defaultMaximumInvitationAgeDays;
   const { config, operations } = providers;
   if (config?.github?.jobs?.cleanup?.maximumInvitationAgeDays) {
     maximumInvitationAgeDays = config.github.jobs.cleanup.maximumInvitationAgeDays;
   }
   const maximumAgeDate = new Date(new Date().getTime() - daysInMilliseconds(maximumInvitationAgeDays));
-  const organizations = operations.getOrganizations();
+  const organizations = operations.getOrganizationsIncludingInvisible();
   const removedInvitations = 0;
   for (const organization of organizations) {
     let invitations: GitHubOrganizationInvite[];
@@ -94,4 +101,10 @@ async function cleanup(providers: IProviders) {
   }
   console.log(`Job finishing. Removed ${removedInvitations} expired invitations.`);
   insights?.trackMetric({ name: 'JobOrganizationInvitationsExpired', value: removedInvitations });
+  insights?.trackEvent({
+    name: `${INSIGHTS_PREFIX}End`,
+    properties: {
+      time: new Date(),
+    },
+  });
 }

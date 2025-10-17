@@ -3,6 +3,7 @@
   "dictionaries": ["typescript", "softwareTerms"],
   "ignorePaths": [
     ".environment/**",
+    ".deploy/geneva/**",
     ".config/1espt/**",
     ".config/guardian/**",
     ".npmrc*",
@@ -233,6 +234,7 @@
     "disablewave",
     "distributeonly",
     "distro",
+    "distroless",
     "divisionid",
     "dnfmit",
     "docfx",
@@ -815,6 +817,7 @@
     "signoff",
     "signout",
     "signup",
+    "sitecontainers",
     "smartcard",
     "smashgg",
     "socialimages",

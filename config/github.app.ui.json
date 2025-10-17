@@ -4,6 +4,7 @@
   "appId": "env://GITHUB_APP_UI_APP_ID",
   "appKey": "env://GITHUB_APP_UI_KEY",
   "appKeyFile": "env://GITHUB_APP_UI_KEY_FILE",
+  "appKeyRemoteJwt": "env://GITHUB_APP_UI_REMOTE_JWT",
   "webhookSecret": "",
   "slug": "env://GITHUB_APP_UI_SLUG",
   "description": "Customer-facing User Interface"

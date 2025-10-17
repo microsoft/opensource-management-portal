@@ -4,25 +4,21 @@
 //
 
 import { NextFunction, Response, Router } from 'express';
-import asyncHandler from 'express-async-handler';
 
-import { ReposAppRequest } from '../../../interfaces';
-import { CreateError, getProviders } from '../../../lib/transitional';
-import { getUserSettings } from '../../../middleware/business/userSettings';
+import { ReposAppRequest } from '../../../interfaces/index.js';
+import { CreateError, getProviders } from '../../../lib/transitional.js';
+import { getUserSettings } from '../../../middleware/business/userSettings.js';
 
-import type { ReposAppRequestWithUserSettings } from '../../../interfaces/middleware';
+import type { ReposAppRequestWithUserSettings } from '../../../interfaces/middleware.js';
 
 const router: Router = Router();
 
-router.use(asyncHandler(getUserSettings));
+router.use(getUserSettings);
 
-router.get(
-  '/',
-  asyncHandler(async (req: ReposAppRequestWithUserSettings, res: Response, next: NextFunction) => {
-    const { userSettings } = req;
-    return res.json(userSettings || {}) as unknown as any;
-  })
-);
+router.get('/', async (req: ReposAppRequestWithUserSettings, res: Response, next: NextFunction) => {
+  const { userSettings } = req;
+  return res.json(userSettings || {}) as unknown as any;
+});
 
 async function setPublicDataSharingValue(
   sharingOptOn: boolean,
@@ -38,10 +34,10 @@ async function setPublicDataSharingValue(
 }
 
 // Actions as separate posts to keep the API simple
-router.post('/publicDataSharing/optIn', asyncHandler(setPublicDataSharingValue.bind(null, true)));
-router.post('/publicDataSharing/optOut', asyncHandler(setPublicDataSharingValue.bind(null, false)));
+router.post('/publicDataSharing/optIn', setPublicDataSharingValue.bind(null, true));
+router.post('/publicDataSharing/optOut', setPublicDataSharingValue.bind(null, false));
 
-router.use('*', (req: ReposAppRequest, res: Response, next: NextFunction) => {
+router.use('/*splat', (req: ReposAppRequest, res: Response, next: NextFunction) => {
   return next(CreateError.NotFound('Contextual API route not found: /settings'));
 });
 

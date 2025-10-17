@@ -5,7 +5,7 @@
 
 import { NextFunction, Response } from 'express';
 
-import { IReposError } from '../../../interfaces';
+import { IReposError } from '../../../interfaces/index.js';
 
 export default function middlewareTeamAdminRequired(req, res: Response, next: NextFunction) {
   const teamPermissions = req.teamPermissions;

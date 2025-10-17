@@ -20,7 +20,6 @@ export type ConfigGitHubJobsReports = {
     enabled: boolean;
     azureStorage: {
       account: string;
-      key: string;
       containerName: string;
       blobPrefix: string;
     };

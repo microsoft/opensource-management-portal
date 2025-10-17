@@ -4,17 +4,16 @@
 //
 
 import querystring from 'querystring';
-
 import { NextFunction, Response, Router } from 'express';
-import asyncHandler from 'express-async-handler';
+
 const router: Router = Router();
 
-import { IReposRequestWithOrganization } from '../interfaces';
-import { injectReactClient, TryFallbackToBlob } from '../middleware';
-import { getProviders, hasStaticReactClientApp } from '../lib/transitional';
-import { wrapError } from '../lib/utils';
+import { IReposRequestWithOrganization } from '../interfaces/index.js';
+import { injectReactClient, TryFallbackToBlob } from '../middleware/index.js';
+import { getProviders, hasStaticReactClientApp } from '../lib/transitional.js';
+import { wrapError } from '../lib/utils.js';
 
-import orgRoute from './org/';
+import orgRoute from './org//index.js';
 
 const hasReactApp = hasStaticReactClientApp();
 const reactRoute = hasReactApp ? injectReactClient() : undefined;
@@ -24,7 +23,7 @@ if (hasReactApp) {
   router.use('/orgs/:orgName', forwardToOrganizationRoutes);
 }
 
-router.use('/:orgName', asyncHandler(forwardToOrganizationRoutes));
+router.use('/:orgName', forwardToOrganizationRoutes);
 
 async function forwardToOrganizationRoutes(
   req: IReposRequestWithOrganization,
@@ -34,7 +33,7 @@ async function forwardToOrganizationRoutes(
   // This middleware contains both the original GitHub operations types
   // as well as the newer implementation. In time this will peel apart.
   const orgName = req.params.orgName;
-  const { operations } = getProviders(req);
+  const { insights, operations } = getProviders(req);
   try {
     const organization = operations.getOrganization(orgName);
     req.organization = organization;
@@ -59,6 +58,17 @@ async function forwardToOrganizationRoutes(
     }
     const err = wrapError(null, 'Organization not found', true);
     err.status = 404;
+    insights?.trackException({
+      exception: err,
+      properties: {
+        name: 'route.orgs.not_found',
+        orgName,
+        fullBaseUrl: req.baseUrl,
+        fullUrl: req.url,
+        fullOriginalUrl: req.originalUrl,
+        method: req.method,
+      },
+    });
     return next(err);
   }
 }

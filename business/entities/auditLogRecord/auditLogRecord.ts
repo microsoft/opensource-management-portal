@@ -5,23 +5,23 @@
 
 import { randomUUID } from 'crypto';
 
-import { EntityField } from '../../../lib/entityMetadataProvider/entityMetadataProvider';
-import { IEntityMetadata } from '../../../lib/entityMetadataProvider/entityMetadata';
-import { IEntityMetadataFixedQuery, FixedQueryType } from '../../../lib/entityMetadataProvider/query';
+import { EntityField } from '../../../lib/entityMetadataProvider/entityMetadataProvider.js';
+import { IEntityMetadata } from '../../../lib/entityMetadataProvider/entityMetadata.js';
+import { IEntityMetadataFixedQuery, FixedQueryType } from '../../../lib/entityMetadataProvider/query.js';
 import {
   EntityMetadataMappings,
   MetadataMappingDefinition,
-} from '../../../lib/entityMetadataProvider/declarations';
-import { Type } from './type';
+} from '../../../lib/entityMetadataProvider/declarations.js';
+import { Type } from './type.js';
 import {
   PostgresJsonEntityQuery,
   PostgresSettings,
   PostgresConfiguration,
-} from '../../../lib/entityMetadataProvider/postgres';
-import { IDictionary } from '../../../interfaces';
-import { AuditLogSource } from '.';
-import { stringOrNumberAsString } from '../../../lib/utils';
-import { MemoryConfiguration, MemorySettings } from '../../../lib/entityMetadataProvider/memory';
+} from '../../../lib/entityMetadataProvider/postgres.js';
+import { IDictionary } from '../../../interfaces/index.js';
+import { AuditLogSource } from './index.js';
+import { stringOrNumberAsString } from '../../../lib/utils.js';
+import { MemoryConfiguration, MemorySettings } from '../../../lib/entityMetadataProvider/memory.js';
 
 const type = Type;
 

@@ -7,7 +7,7 @@ import {
   IEntityMetadata,
   EntityMetadataBase,
   IEntityMetadataBaseOptions,
-} from '../../../lib/entityMetadataProvider/entityMetadata';
+} from '../../../lib/entityMetadataProvider/entityMetadata.js';
 import {
   RepositoryCollaboratorCacheEntity,
   EntityImplementation,
@@ -18,11 +18,9 @@ import {
   RepositoryCollaboratorCacheDeleteByOrganizationId,
   RepositoryCollaboratorCacheGetOrganizationIdsQuery,
   RepositoryCollaboratorCacheDeleteByRepositoryId,
-} from './repositoryCollaboratorCache';
+} from './repositoryCollaboratorCache.js';
 
 const thisProviderType = EntityImplementation.Type;
-
-export interface IRepositoryCollaboratorCacheCreateOptions extends IEntityMetadataBaseOptions {}
 
 export interface IRepositoryCollaboratorCacheProvider {
   initialize(): Promise<void>;
@@ -49,7 +47,7 @@ export class RepositoryCollaboratorCacheProvider
   extends EntityMetadataBase
   implements IRepositoryCollaboratorCacheProvider
 {
-  constructor(options: IRepositoryCollaboratorCacheCreateOptions) {
+  constructor(options: IEntityMetadataBaseOptions) {
     super(thisProviderType, options);
     EntityImplementation.EnsureDefinitions();
   }

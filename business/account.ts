@@ -5,31 +5,38 @@
 
 import _ from 'lodash';
 
-import * as common from './common';
+import * as common from './common.js';
+import { throat } from '../vendor/throat/index.js';
 
-import { wrapError } from '../lib/utils';
-import { corporateLinkToJson } from './corporateLink';
-import { Organization } from './organization';
-import { AppPurpose } from '../lib/github/appPurposes';
-import { ILinkProvider } from '../lib/linkProviders';
-import { CacheDefault, Operations, getMaxAgeSeconds } from '.';
+import { wrapError } from '../lib/utils.js';
+import { corporateLinkToJson } from './corporateLink.js';
+import { Organization } from './organization.js';
+import { AppPurpose } from '../lib/github/appPurposes.js';
+import { ILinkProvider } from '../lib/linkProviders/index.js';
+import {
+  CacheDefault,
+  Operations,
+  createPagedCacheOptions,
+  getMaxAgeSeconds,
+  getPageSize,
+  symbolizeApiResponse,
+} from './index.js';
 import {
   AccountJsonFormat,
-  CoreCapability,
   ICacheOptions,
   ICorporateLink,
   GetAuthorizationHeader,
   IGitHubAccountDetails,
-  IOperationsInstance,
-  IOperationsLinks,
-  IOperationsProviders,
   IReposError,
-  operationsWithCapability,
   OrganizationMembershipState,
-  throwIfNotCapable,
-  throwIfNotGitHubCapable,
-} from '../interfaces';
-import { ErrorHelper } from '../lib/transitional';
+  IPagedCacheOptions,
+  NoCacheNoBackground,
+  IOrganizationMembership,
+  OrganizationMembershipRole,
+  GitHubOrganizationEntity,
+  GitHubSimpleAccount,
+} from '../interfaces/index.js';
+import { ErrorHelper } from '../lib/transitional.js';
 
 interface IRemoveOrganizationMembershipsResult {
   error?: IReposError;
@@ -45,8 +52,8 @@ const primaryAccountProperties = [
 const secondaryAccountProperties = [];
 
 export class Account {
-  private _operations: IOperationsInstance;
-  private _getAuthorizationHeader: GetAuthorizationHeader;
+  private _operations: Operations;
+  private _getAuthorizationHeader: GetAuthorizationHeader | string;
 
   private _link: ICorporateLink;
   private _id: number;
@@ -57,6 +64,7 @@ export class Account {
   private _updated_at?: any;
 
   private _originalEntity?: IGitHubAccountDetails;
+  private _deleted: boolean = false;
 
   public asJson(format: AccountJsonFormat = AccountJsonFormat.GitHub) {
     const basic = {
@@ -101,6 +109,10 @@ export class Account {
     }
   }
 
+  public get deleted(): boolean {
+    return this._deleted;
+  }
+
   public get id(): number {
     return this._id;
   }
@@ -137,7 +149,7 @@ export class Account {
     return this._originalEntity ? this._originalEntity.name : undefined;
   }
 
-  constructor(entity, operations: IOperationsInstance, getAuthorizationHeader: GetAuthorizationHeader) {
+  constructor(entity, operations: Operations, authorization: GetAuthorizationHeader | string) {
     common.assignKnownFieldsPrefixed(
       this,
       entity,
@@ -147,10 +159,20 @@ export class Account {
     );
     this._originalEntity = entity;
     this._operations = operations;
-    this._getAuthorizationHeader = getAuthorizationHeader;
+    this._getAuthorizationHeader = authorization;
   }
 
-  overrideAuthorization(getAuthorizationHeader: GetAuthorizationHeader) {
+  static async getAuthenticatedAccount(
+    operations: Operations,
+    authorization: GetAuthorizationHeader | string
+  ) {
+    const { github } = operations;
+    const response = (await github.post(authorization, 'users.getAuthenticated', {})) as GitHubSimpleAccount;
+    const account = new Account(response, operations, authorization);
+    return account;
+  }
+
+  overrideAuthorization(getAuthorizationHeader: GetAuthorizationHeader | string) {
     this._getAuthorizationHeader = getAuthorizationHeader;
   }
 
@@ -190,17 +212,11 @@ export class Account {
   }
 
   corporateProfileUrl() {
-    const operations = operationsWithCapability<IOperationsProviders>(
-      this._operations,
-      CoreCapability.Providers
-    );
-    if (operations) {
-      const config = operations.providers.config;
-      const alias = this.corporateAlias();
-      const corporateSettings = config.corporate;
-      if (alias && corporateSettings && corporateSettings.profile && corporateSettings.profile.prefix) {
-        return corporateSettings.profile.prefix + alias;
-      }
+    const config = this._operations.providers.config;
+    const alias = this.corporateAlias();
+    const corporateSettings = config.corporate;
+    if (alias && corporateSettings && corporateSettings.profile && corporateSettings.profile.prefix) {
+      return corporateSettings.profile.prefix + alias;
     }
   }
 
@@ -224,9 +240,8 @@ export class Account {
   }
 
   async tryGetLink() {
-    const operations = throwIfNotCapable<IOperationsLinks>(this._operations, CoreCapability.Links);
     try {
-      this._link = await operations.tryGetLink(this._id.toString());
+      this._link = await this._operations.tryGetLink(this._id.toString());
     } catch (getLinkError) {
       // We do not assume that the link exists...
       console.dir(getLinkError);
@@ -235,7 +250,6 @@ export class Account {
 
   async getRecentEventsFirstPage(options?: ICacheOptions): Promise<any[]> {
     options = options || {};
-    const operations = throwIfNotGitHubCapable(this._operations);
     const login = this.login;
     if (!login) {
       throw new Error('Must provide a GitHub login to retrieve account events.');
@@ -244,18 +258,20 @@ export class Account {
       username: login,
     };
     const cacheOptions: ICacheOptions = {
-      maxAgeSeconds: getMaxAgeSeconds(operations, CacheDefault.accountDetailStaleSeconds, options, 60),
+      maxAgeSeconds: getMaxAgeSeconds(this._operations, CacheDefault.accountDetailStaleSeconds, options, 60),
     };
     if (options.backgroundRefresh !== undefined) {
       cacheOptions.backgroundRefresh = options.backgroundRefresh;
     }
+    const { github } = this._operations;
+    const { rest } = github.octokit;
     try {
-      const entity = await operations.github.call(
+      const requirements = github.createRequirementsForFunction(
         this.authorize(AppPurpose.Data),
-        'activity.listEventsForAuthenticatedUser',
-        parameters,
-        cacheOptions
+        rest.activity.listEventsForAuthenticatedUser,
+        'activity.listEventsForAuthenticatedUser'
       );
+      const entity = await github.callWithRequirements(requirements, parameters, cacheOptions);
       return entity;
     } catch (error) {
       console.dir(error);
@@ -263,9 +279,88 @@ export class Account {
     }
   }
 
+  async getAuthenticatedUserOrganizations(options?: IPagedCacheOptions): Promise<GitHubOrganizationEntity[]> {
+    options = options || {};
+    const { github } = this._operations;
+    const parameters = {
+      per_page: getPageSize(this._operations),
+    };
+    const cacheOptions = createPagedCacheOptions(this._operations, options);
+    try {
+      const entities = await github.collections.collectAllPages<any, GitHubOrganizationEntity>(
+        this.authorize(AppPurpose.Data),
+        'orgCustomProps',
+        'orgs.listForAuthenticatedUser',
+        parameters,
+        cacheOptions
+      );
+      return symbolizeApiResponse(entities);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async getAuthenticatedUserOwnershipStatus(options?: IPagedCacheOptions) {
+    const { github } = this._operations;
+    const orgs = await this.getAuthenticatedUserOrganizations(options);
+    const state = new Map<GitHubOrganizationEntity, IOrganizationMembership>();
+    const { rest } = github.octokit;
+    for (const org of orgs) {
+      try {
+        const data = (await github.callWithRequirements(
+          github.createRequirementsForFunction(
+            this.authorize(AppPurpose.Data),
+            rest.orgs.getMembershipForAuthenticatedUser,
+            'orgs.getMembershipForAuthenticatedUser'
+          ),
+          {
+            org: org.login,
+          },
+          options || NoCacheNoBackground
+        )) as IOrganizationMembership;
+        if (data) {
+          state.set(org, data);
+        }
+      } catch (error) {
+        if (ErrorHelper.IsNotAuthorized(error) && error?.message?.includes('lifetime is greater')) {
+          let message = `${org.login} enforces a shorter classic PAT lifetime than we are using`;
+          const GREATER_THAN = 'lifetime is greater than ';
+          const indexIsGreaterThan = error?.message?.indexOf(GREATER_THAN);
+          let lifetime = 'unknown';
+          if (indexIsGreaterThan >= 0) {
+            const remainder = error?.message?.substring(indexIsGreaterThan + GREATER_THAN.length);
+            const following = remainder.indexOf('.');
+            if (following >= 0) {
+              lifetime = remainder.substring(0, following);
+            }
+          }
+          message += ` (lifetime must at or under: ${lifetime})`;
+          console.warn(message);
+        } else if (ErrorHelper.IsNotAuthorized(error) && error?.message?.includes('SAML enforcement')) {
+          console.warn(`SAML error for ${org.login} (PAT not SSO-authorized)`);
+        } else {
+          console.dir(error);
+        }
+      }
+    }
+    const owned = orgs.filter((org) => state.get(org)?.role === OrganizationMembershipRole.Admin);
+    const memberOf = orgs.filter(
+      (org) =>
+        state.get(org)?.role === OrganizationMembershipRole.Member ||
+        state.get(org)?.role === OrganizationMembershipRole.Admin
+    );
+    const otherTypes = orgs.filter(
+      (org) =>
+        state.get(org)?.role !== OrganizationMembershipRole.Member &&
+        state.get(org)?.role !== OrganizationMembershipRole.Admin
+    );
+    const memberOnly = orgs.filter((org) => state.get(org)?.role === OrganizationMembershipRole.Member);
+    const pending = orgs.filter((org) => state.get(org)?.state === OrganizationMembershipState.Pending);
+    return { owned, memberOf, otherTypes, memberOnly, pending };
+  }
+
   async getEvents(options?: ICacheOptions): Promise<any[]> {
     options = options || {};
-    const operations = throwIfNotGitHubCapable(this._operations);
     const login = this.login;
     if (!login) {
       throw new Error('Must provide a GitHub login to retrieve account events.');
@@ -274,19 +369,31 @@ export class Account {
       username: login,
     };
     const cacheOptions: ICacheOptions = {
-      maxAgeSeconds: getMaxAgeSeconds(operations, CacheDefault.accountDetailStaleSeconds, options),
+      maxAgeSeconds: getMaxAgeSeconds(
+        this._operations as Operations,
+        CacheDefault.accountDetailStaleSeconds,
+        options
+      ),
     };
     if (options.backgroundRefresh !== undefined) {
       cacheOptions.backgroundRefresh = options.backgroundRefresh;
     }
+    const github = this._operations.github;
+    const { rest } = github.octokit;
+    const requirements = github.createRequirementsForFunction(
+      this.authorize(AppPurpose.Data),
+      rest.activity.listEventsForAuthenticatedUser,
+      'activity.listEventsForAuthenticatedUser'
+    );
     try {
-      const events = await operations.github.collections.getUserActivity(
-        this.authorize(AppPurpose.Data),
+      const events = await github.collections.collectAllPagesWithRequirements<any, any>(
+        'userActivity',
+        requirements,
         parameters,
         cacheOptions
       );
       let cached = true;
-      if (events && events.cost && events.cost.github.usedApiTokens > 0) {
+      if (events && (events as any).cost && (events as any).cost.github.usedApiTokens > 0) {
         cached = false;
       }
       const arr = [...events];
@@ -302,23 +409,22 @@ export class Account {
     }
   }
 
-  async getDetailsAndDirectLink(): Promise<Account> {
-    if (
-      !throwIfNotCapable<IOperationsProviders>(this._operations, CoreCapability.Providers).providers
-        .linkProvider
-    ) {
-      throw new Error('getDetailsAndDirectLink: this method can only be called when a linkProvider is used');
-    }
-    const operations = throwIfNotCapable<IOperationsLinks>(this._operations, CoreCapability.Links);
+  async getDetailsAndDirectLink(throwIfDeletedAccount = false): Promise<Account> {
     try {
       await this.getDetails();
     } catch (getDetailsError) {
-      // If a GitHub account is deleted, this would fail
-      // TODO: should this throw then?
-      console.dir(getDetailsError);
+      if (ErrorHelper.IsNotFound(getDetailsError)) {
+        this._deleted = true;
+        if (throwIfDeletedAccount) {
+          throw getDetailsError;
+        }
+        console.warn(`The GitHub account login=${this.login} has been deleted, renamed, or does not exist`);
+      } else {
+        throw getDetailsError;
+      }
     }
     try {
-      const link = await operations.getLinkByThirdPartyId(this._id.toString());
+      const link = await this._operations.getLinkByThirdPartyId(this._id.toString());
       if (link) {
         this._link = link;
       }
@@ -343,7 +449,6 @@ export class Account {
 
   async getDetails(options?: ICacheOptions): Promise<IGitHubAccountDetails> {
     options = options || {};
-    const operations = throwIfNotGitHubCapable(this._operations);
     const id = this._id;
     if (!id) {
       throw new Error('Must provide a GitHub user ID to retrieve account information.');
@@ -352,17 +457,15 @@ export class Account {
       id,
     };
     const cacheOptions: ICacheOptions = {
-      maxAgeSeconds: getMaxAgeSeconds(operations, CacheDefault.accountDetailStaleSeconds, options, 60),
+      maxAgeSeconds: getMaxAgeSeconds(this._operations, CacheDefault.accountDetailStaleSeconds, options, 60),
     };
     if (options.backgroundRefresh !== undefined) {
       cacheOptions.backgroundRefresh = options.backgroundRefresh;
     }
+    const { github } = this._operations;
     try {
-      const ops = operations as Operations;
-      const entity = (await operations.github.request(
-        ops.getPublicAuthorizationToken(),
-        // this.authorize(AppPurpose.Data),
-        'GET /user/:id',
+      const entity = (await github.requestWithRequirements(
+        github.createRequirementsForRequest(this._operations.getPublicAuthorizationToken(), 'GET /user/:id'),
         parameters,
         cacheOptions
       )) as IGitHubAccountDetails;
@@ -386,18 +489,16 @@ export class Account {
   }
 
   async removeLink(): Promise<any> {
-    const operations = throwIfNotCapable<IOperationsProviders>(this._operations, CoreCapability.Providers);
-    const opsLinks = throwIfNotCapable<IOperationsLinks>(this._operations, CoreCapability.Links);
-    const linkProvider = operations.providers.linkProvider as ILinkProvider;
+    const linkProvider = this._operations.providers.linkProvider as ILinkProvider;
     if (!linkProvider) {
       throw new Error('No link provider');
     }
     const id = this._id;
     try {
-      await this.getDetailsAndDirectLink();
+      await this.getDetailsAndDirectLink(/* do not throw if deleted account */ false);
     } catch (getDetailsError) {
       // We ignore any error to make sure link removal always works
-      const insights = operations.providers.insights;
+      const insights = this._operations.providers.insights;
       if (getDetailsError) {
         insights?.trackException({
           exception: getDetailsError,
@@ -438,7 +539,7 @@ export class Account {
       finalError = linkDeleteError;
     }
     if (!finalError) {
-      opsLinks.fireUnlinkEvent(eventData);
+      this._operations.fireUnlinkEvent(eventData);
       history.push(`The link for ID ${id} has been removed from the link service`);
     }
     return history;
@@ -447,14 +548,13 @@ export class Account {
   // TODO: implement getOrganizationMemberships, with caching; reuse below code
 
   async getOperationalOrganizationMemberships(): Promise<Organization[]> {
-    const operations = throwIfNotGitHubCapable(this._operations);
     await this.getDetails();
     const username = this._login; // we want to make sure that we have an ID and username
     if (!username) {
       throw new Error(`No GitHub username available for user ID ${this._id}`);
     }
     const currentOrganizationMemberships: Organization[] = [];
-    const checkOrganization = async (organization) => {
+    const checkOrganization = async (organization: Organization) => {
       try {
         const result = await organization.getOperationalMembership(username);
         if (
@@ -472,14 +572,19 @@ export class Account {
         );
       }
     };
-    const opsAs = operations as any;
+    const opsAs = this._operations as any;
     if (!opsAs.organizations) {
       throw new Error('Operations does not expose an organizations Map getter');
     }
     const allOrganizations = Array.from(opsAs.organizations.values() as Organization[]);
     const staticOrganizations = allOrganizations.filter((org) => org.hasDynamicSettings === false);
     const dynamicOrganizations = allOrganizations.filter((org) => org.hasDynamicSettings);
-    await Promise.all(dynamicOrganizations.map(checkOrganization));
+    const throttle = throat(5);
+    await Promise.all(
+      dynamicOrganizations.map((org) => {
+        return throttle(() => checkOrganization(org));
+      })
+    );
     for (const organization of staticOrganizations) {
       await checkOrganization(organization);
     }
@@ -493,9 +598,7 @@ export class Account {
     // but not all grants; probably should use options eventually vs bool param.
     const history = [];
     const error: IReposError = null;
-    const operations = throwIfNotGitHubCapable(this._operations);
-    const opsWithProvs = operationsWithCapability<IOperationsProviders>(operations, CoreCapability.Providers);
-    const { queryCache } = opsWithProvs?.providers || {};
+    const { queryCache } = this._operations.providers;
     if (!queryCache || !queryCache.supportsRepositoryCollaborators) {
       history.push('The account may still have Collaborator permissions to repositories');
       return { history };
@@ -513,12 +616,11 @@ export class Account {
       try {
         await repository.getDetails();
         if (repository.archived) {
-          history.push(`FYI: cannot alter prior grant to archived repository ${repository.full_name}`);
-        } else {
-          ++i;
-          await repository.removeCollaborator(this.login);
-          history.push(`Removed ${this.login} as a Collaborator from the repository ${repository.full_name}`);
+          history.push(`FYI: removing grant from archived repository ${repository.full_name}`);
         }
+        ++i;
+        await repository.removeCollaborator(this.login);
+        history.push(`Removed ${this.login} as a Collaborator from the repository ${repository.full_name}`);
       } catch (removeCollaboratorError) {
         if (ErrorHelper.IsNotFound(removeCollaboratorError)) {
           // The repo doesn't exist any longer, this is OK.
@@ -574,6 +676,9 @@ export class Account {
   }
 
   private authorize(purpose: AppPurpose): GetAuthorizationHeader | string {
+    if (typeof this._getAuthorizationHeader === 'string') {
+      return this._getAuthorizationHeader;
+    }
     const getAuthorizationHeader = this._getAuthorizationHeader.bind(this, purpose) as GetAuthorizationHeader;
     return getAuthorizationHeader;
   }

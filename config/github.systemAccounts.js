@@ -3,11 +3,9 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-'use strict';
+import arrayFromString from './utils/arrayFromString.js';
 
-const arrayFromString = require('./utils/arrayFromString');
-
-module.exports = (graphApi) => {
+export default (graphApi) => {
   const environmentProvider = graphApi.environment;
   const systemAccounts = arrayFromString(environmentProvider.get('GITHUB_SYSTEM_ACCOUNT_USERNAMES'));
   return {

@@ -3,17 +3,16 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import asyncHandler from 'express-async-handler';
 import memoryCache from 'memory-cache';
 import { NextFunction, Response } from 'express';
 
-import type { IReposAppRequestWithOrganizationManagementType } from '../business/organization';
-import { CreateError, getProviders } from '../../lib/transitional';
+import type { IReposAppRequestWithOrganizationManagementType } from '../business/organization.js';
+import { CreateError, getProviders } from '../../lib/transitional.js';
 import {
   getOrganizationDetailsSanitized,
   type GitHubOrganizationResponseSanitized,
-} from '../../business/organization';
-import type { IProviders } from '../../interfaces';
+} from '../../business/organization.js';
+import type { IProviders } from '../../interfaces/index.js';
 
 export async function setOrganizationProfileForRequest(req: IReposAppRequestWithOrganizationManagementType) {
   const providers = getProviders(req);
@@ -54,4 +53,4 @@ async function ensureOrganizationProfile(
   return next();
 }
 
-export const ensureOrganizationProfileMiddleware = asyncHandler(ensureOrganizationProfile);
+export const ensureOrganizationProfileMiddleware = ensureOrganizationProfile;

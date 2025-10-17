@@ -3,15 +3,15 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { EntityField } from '../../../lib/entityMetadataProvider/entityMetadataProvider';
-import { IEntityMetadata } from '../../../lib/entityMetadataProvider/entityMetadata';
-import { IEntityMetadataFixedQuery, FixedQueryType } from '../../../lib/entityMetadataProvider/query';
+import { EntityField } from '../../../lib/entityMetadataProvider/entityMetadataProvider.js';
+import { IEntityMetadata } from '../../../lib/entityMetadataProvider/entityMetadata.js';
+import { IEntityMetadataFixedQuery, FixedQueryType } from '../../../lib/entityMetadataProvider/query.js';
 import {
   EntityMetadataMappings,
   MetadataMappingDefinition,
-} from '../../../lib/entityMetadataProvider/declarations';
-import { Type } from './type';
-import { PostgresGetAllEntities } from '../../../lib/entityMetadataProvider/postgres';
+} from '../../../lib/entityMetadataProvider/declarations.js';
+import { Type } from './type.js';
+import { PostgresGetAllEntities } from '../../../lib/entityMetadataProvider/postgres.js';
 import {
   MemoryConfiguration,
   MemorySettings,
@@ -19,15 +19,15 @@ import {
   PostgresConfiguration,
   TableConfiguration,
   TableSettings,
-} from '../../../lib/entityMetadataProvider';
-import { ConfigGitHubOrganization } from '../../../config/github.organizations.types';
+} from '../../../lib/entityMetadataProvider/index.js';
+import { ConfigGitHubOrganization } from '../../../config/github.organizations.types.js';
 import { odata, TableEntityQueryOptions } from '@azure/data-tables';
 
-export interface IBasicGitHubAppInstallation {
+export type BasicGitHubAppInstallation = {
   appId: number;
   installationId: number;
   appPurposeId?: string;
-}
+};
 
 export enum SystemTeam {
   Everyone = 'everyone', // teamAllMembers
@@ -42,14 +42,15 @@ export enum SystemTeam {
 export enum OrganizationFeature {
   Invisible = 'invisible',
   LockedMembership = 'locked',
-  Hidden = 'hidden',
   Ignore = 'ignore',
   CreateNativeRepositories = 'createReposDirect',
+  OverrideNativeFlagAllowCreateRepositoriesByApi = 'allowCreateNativeReposByApi',
   LockTransfers = 'lock-transfers',
   LockNewForks = 'lock-new-forks',
   DeleteNewForks = 'delete-new-forks',
   ApplicationHostOrganizationOnly = 'appOnly',
   PreventLargeTeamPermissionGrants = 'preventLargeTeamPermissions',
+  Hidden = 'hidden', // only used for EMU side-by-side org
 }
 
 export enum OrganizationProperty {
@@ -130,7 +131,7 @@ export class OrganizationSetting implements IOrganizationSettingProperties {
   portalDescription: string;
   operationsNotes: string;
 
-  installations: IBasicGitHubAppInstallation[];
+  installations: BasicGitHubAppInstallation[];
   features: string[];
   properties: Record<string | OrganizationProperty, string>;
 
@@ -201,28 +202,28 @@ export class OrganizationSetting implements IOrganizationSettingProperties {
     delete clone.startupDiscover;
 
     if (clone.preventLargeTeamPermissions === true) {
-      settings.features.push('preventLargeTeamPermissions');
+      settings.features.push(OrganizationFeature.PreventLargeTeamPermissionGrants);
     }
     delete clone.preventLargeTeamPermissions;
 
     if (clone.hidden === true) {
-      settings.features.push('hidden');
+      settings.features.push(OrganizationFeature.Hidden);
     }
     delete clone.hidden;
 
     if (clone.locked === true) {
-      settings.features.push('locked');
+      settings.features.push(OrganizationFeature.LockedMembership);
     }
     delete clone.locked;
 
     if (clone.ignore === true) {
-      settings.features.push('ignore');
+      settings.features.push(OrganizationFeature.Ignore);
       // should make sure you cannot enable/active:true on an ignored org
     }
     delete clone.ignore;
 
     if (clone.createReposDirect === true) {
-      settings.features.push('createReposDirect');
+      settings.features.push(OrganizationFeature.CreateNativeRepositories);
     }
     delete clone.createReposDirect;
 

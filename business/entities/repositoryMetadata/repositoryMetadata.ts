@@ -3,28 +3,30 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { EntityField } from '../../../lib/entityMetadataProvider/entityMetadataProvider';
-import type { IEntityMetadata } from '../../../lib/entityMetadataProvider/entityMetadata';
-import { type IEntityMetadataFixedQuery, FixedQueryType } from '../../../lib/entityMetadataProvider/query';
+import { odata, TableEntityQueryOptions } from '@azure/data-tables';
+
+import { EntityField } from '../../../lib/entityMetadataProvider/entityMetadataProvider.js';
+import { type IEntityMetadataFixedQuery, FixedQueryType } from '../../../lib/entityMetadataProvider/query.js';
 import {
   EntityMetadataMappings,
   MetadataMappingDefinition,
-} from '../../../lib/entityMetadataProvider/declarations';
-import { Type } from './type';
+} from '../../../lib/entityMetadataProvider/declarations.js';
+import { Type } from './type.js';
 import {
   PostgresGetAllEntities,
   PostgresGetByID,
   PostgresSettings,
   PostgresConfiguration,
-} from '../../../lib/entityMetadataProvider/postgres';
-import { TableSettings } from '../../../lib/entityMetadataProvider/table';
-import { MemoryConfiguration, MemorySettings } from '../../../lib/entityMetadataProvider/memory';
-import { odata, TableEntityQueryOptions } from '@azure/data-tables';
+} from '../../../lib/entityMetadataProvider/postgres.js';
+import { TableSettings } from '../../../lib/entityMetadataProvider/table.js';
+import { MemoryConfiguration, MemorySettings } from '../../../lib/entityMetadataProvider/memory.js';
 import {
   GitHubRepositoryVisibility,
   IInitialTeamPermission,
   RepositoryLockdownState,
-} from '../../../interfaces/github/repos';
+} from '../../../interfaces/github/repos.js';
+
+import type { IEntityMetadata } from '../../../lib/entityMetadataProvider/entityMetadata.js';
 
 const type = Type;
 
@@ -64,6 +66,9 @@ interface IRepositoryMetadataProperties {
   releaseReviewJustification: any;
   releaseReviewType: any;
   releaseReviewUrl: any;
+
+  note: any;
+  metadataSource: any;
 }
 
 const azureTableRowKey = 'azureTableRowKey';
@@ -97,6 +102,8 @@ const Field: IRepositoryMetadataProperties = {
   releaseReviewUrl: 'releaseReviewUrl',
   lockdownState: 'lockdownState',
   transferSource: 'transferSource',
+  note: 'note',
+  metadataSource: 'metadataSource',
 };
 
 const fieldNames = Object.getOwnPropertyNames(Field);
@@ -130,6 +137,9 @@ export class RepositoryMetadataEntity implements IRepositoryMetadataProperties {
   releaseReviewJustification: string;
   releaseReviewType: string;
   releaseReviewUrl: string;
+
+  note: string;
+  metadataSource: string;
 
   lockdownState: RepositoryLockdownState;
 
@@ -248,6 +258,8 @@ EntityMetadataMappings.Register(
     [Field.releaseReviewJustification, 'justification'],
     [Field.releaseReviewType, 'approvalType'],
     [Field.releaseReviewUrl, 'approvalUrl'],
+    [Field.note, 'note'],
+    [Field.metadataSource, 'metadataSource'],
     [Field.lockdownState, Field.lockdownState.toLowerCase()],
     [Field.transferSource, Field.transferSource.toLowerCase()],
   ])

@@ -6,8 +6,9 @@ table(style='width:100%;border:0', cellspacing=0, cellpadding=0)
   tbody
     tr
       td(width=orgIdSize, height=orgIdSize)
-        img(src=logo, width=orgIdSize, height=orgIdSize, alt=config.brand.companyName)
+        if logo && config && config.brand && config.brand.companyName
+          img(src=logo, width=orgIdSize, height=orgIdSize, alt=config.brand.companyName)
       td(valign='bottom', nowrap='nowrap')
         h2(style='vertical-align:bottom')
           | &nbsp;
-          = app || config.brand.companyName
+          = app || (config && config.brand && config.brand.companyName ? config.brand.companyName : 'Company')

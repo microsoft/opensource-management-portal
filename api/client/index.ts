@@ -4,54 +4,59 @@
 //
 
 import { NextFunction, Response, Router } from 'express';
-import asyncHandler from 'express-async-handler';
 
 import {
   apiContextMiddleware,
-  AddLinkToRequest,
+  tryAddLinkToRequest,
   requireAccessTokenClient,
   setIdentity,
   jsonError,
   requireAuthenticatedUserOrSignIn,
-} from '../../middleware';
-import { getProviders } from '../../lib/transitional';
+} from '../../middleware/index.js';
+import { CreateError, getProviders } from '../../lib/transitional.js';
 
-import getCompanySpecificDeployment from '../../middleware/companySpecificDeployment';
+import getCompanySpecificDeployment from '../../middleware/companySpecificDeployment.js';
 
-import type { ReposAppRequest } from '../../interfaces';
-import type { IndividualContext } from '../../business/user';
+import type { ReposAppRequest } from '../../interfaces/index.js';
+import type { IndividualContext } from '../../business/user/index.js';
 
-import routeClientNewRepo from './newRepo';
-import routeContext from './context';
-import routeOrganizations from './organizations';
-import routeLinking from './linking';
-import routeSession from './session';
-import routeBanner from './banner';
-import routeNews from './news';
-import routeCrossOrganizationPeople from './people';
-import routeCrossOrganizationRepos from './repos';
-import routeCrossOrganizationTeams from './teams';
-import routeUsers from './users';
+import routeClientNewRepo from './newRepo.js';
+import routeContext from './context/index.js';
+import routeOrganizations from './organizations.js';
+import routeLinking from './linking.js';
+import routeSession from './session.js';
+import routeBanner from './banner.js';
+import routeNews from './news.js';
+import routeCrossOrganizationPeople from './people.js';
+import routeCrossOrganizationRepos from './repos.js';
+import routeCrossOrganizationTeams from './teams.js';
+import routeUsers from './users.js';
+import { type SiteStaticFeatures, getSiteStaticFeatures } from '../../lib/features.js';
 
 const router: Router = Router();
 
+let staticSiteFeatures: SiteStaticFeatures = null;
+
 router.use((req: ReposAppRequest, res: Response, next: NextFunction) => {
+  const { query } = req;
   const { config } = getProviders(req);
   if (config?.features?.allowApiClient) {
+    // prettier-ignore
     if (req.isAuthenticated()) {
-      return next();
-    } else if (req.query.authenticate === 'session') {
+      // prettier-ignore
+      return next(); // CodeQL [SM01513] this is not a security decision but rather a redirect to authentication when requested
+    } else if (query?.authenticate === 'session') { // CodeQL [SM01513] this is not a security decision but rather to redirect and require web authenticated sessions when this value is requested
       return requireAuthenticatedUserOrSignIn(req, res, next);
     }
-    return next(jsonError('Session is not authenticated', 401));
+    return next(CreateError.NotAuthenticated('Session is not authenticated'));
   }
-  return next(jsonError('Client API features unavailable', 403));
+  return next(CreateError.NotAuthorized('Client API features unavailable'));
 });
 
-router.use(asyncHandler(requireAccessTokenClient));
+router.use(requireAccessTokenClient);
 router.use(apiContextMiddleware);
 router.use(setIdentity);
-router.use(asyncHandler(AddLinkToRequest));
+router.use(tryAddLinkToRequest);
 
 router.use('/newRepo', routeClientNewRepo);
 
@@ -68,11 +73,18 @@ router.use('/users', routeUsers);
 router.use('/news', routeNews);
 
 const dynamicStartupInstance = getCompanySpecificDeployment();
-dynamicStartupInstance?.routes?.api?.index && dynamicStartupInstance?.routes?.api?.index(router);
+if (dynamicStartupInstance?.routes?.api?.index) {
+  dynamicStartupInstance?.routes?.api?.index(router);
+}
 
 router.get('/', (req: ReposAppRequest, res) => {
-  const { config } = getProviders(req);
+  const providers = getProviders(req);
+  const { config } = providers;
   const runtimeConfiguration = req.app.runtimeConfiguration;
+
+  if (staticSiteFeatures === null) {
+    staticSiteFeatures = getSiteStaticFeatures(providers);
+  }
 
   const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
   const isGitHubAuthenticated = !!activeContext.getSessionBasedGitHubIdentity()?.id;
@@ -108,6 +120,7 @@ router.get('/', (req: ReposAppRequest, res) => {
       environment: config?.environment?.name,
       appName: config?.web?.app,
     },
+    staticSiteFeatures,
     session: {
       corporateIdentity: activeContext.corporateIdentity,
       githubIdentity: activeContext.getGitHubIdentity(),
@@ -125,7 +138,7 @@ router.get('/', (req: ReposAppRequest, res) => {
   };
 
   res.contentType('application/json');
-  return res.send(JSON.stringify(data, null, 2));
+  return res.send(JSON.stringify(data, null, 2)) as unknown as void;
 });
 
 router.use((req, res: Response, next: NextFunction) => {

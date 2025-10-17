@@ -11,24 +11,21 @@ Most features can be opted in to by setting the environment
 variable value to `1`.
 
 - allowUnauthorizedNewRepositoryLockdownSystem
-
   - Variable: `FEATURE_FLAG_ALLOW_UNAUTHORIZED_NEW_REPOSITORY_LOCKDOWN_SYSTEM`
   - Purpose: Allows the "unauthorized new repository lockdown system" to be _available_ as an organization feature flag. It does not turn this system on by default in any case.
   - Requirements: the event firehose must be used (there is no equivalent job, to make sure to not accidentally destroy permissions across existing repos)
 
 - allowUnauthorizedForkLockdownSystem
-
   - Variable: `FEATURE_FLAG_ALLOW_UNAUTHORIZED_FORK_LOCKDOWN_SYSTEM`
   - Purpose: Locks repositories that are forks until they are approved by an administrator
   - Requirements: depends on the new repo lockdown system already being enabled and in use
 
 - allowApiClient
-
   - Variable: `FEATURE_FLAG_ALLOW_API_CLIENT`
   - Purpose: Allows session-based client APIs, used for powering a modern front-end app connected to the site
+  - Default (2024): _true/on_ with the OSS of the React frontend
 
 - exposeWebhookIngestionEndpoint
-
   - Variable: `EXPOSE_WEBHOOK_INGESTION_ENDPOINT`
   - Value: set to `1` to enable the `/api/webhook`/ endpoint that ingests GitHub webhook event bodies.
   - Default: `0`

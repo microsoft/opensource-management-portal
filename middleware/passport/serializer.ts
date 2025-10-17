@@ -3,8 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import EncryptionSerializer from './encryptionSerializer';
-import PlainSerializer from './plainSerializer';
+import EncryptionSerializer from './encryptionSerializer.js';
+import PlainSerializer from './plainSerializer.js';
 
 export abstract class LegacySerializer {
   abstract serialize(config: any, user: any, done): void;

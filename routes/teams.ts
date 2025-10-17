@@ -6,10 +6,10 @@
 import { NextFunction, Response, Router } from 'express';
 const router: Router = Router();
 
-import lowercaser from '../middleware/lowercaser';
-import { ReposAppRequest } from '../interfaces';
+import lowercaser from '../middleware/lowercaser.js';
+import { ReposAppRequest } from '../interfaces/index.js';
 
-import RouteTeamsPager from './teamsPager';
+import RouteTeamsPager from './teamsPager.js';
 
 router.use(function (req: ReposAppRequest, res: Response, next: NextFunction) {
   req.individualContext.webContext.pushBreadcrumb('Teams');

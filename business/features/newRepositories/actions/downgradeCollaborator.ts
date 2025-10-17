@@ -3,8 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Repository } from '../../..';
-import { GitHubRepositoryPermission } from '../../../../interfaces';
+import { Repository } from '../../../index.js';
+import { GitHubRepositoryPermission } from '../../../../interfaces/index.js';
 
 export async function tryDowngradeCollaborator(
   repository: Repository,

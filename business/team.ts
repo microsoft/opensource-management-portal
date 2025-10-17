@@ -4,26 +4,27 @@
 //
 
 import util from 'util';
-import _ from 'lodash';
 
-import * as common from './common';
+import * as common from './common.js';
 
-import { wrapError } from '../lib/utils';
-import { TeamMember } from './teamMember';
-import { TeamRepositoryPermission } from './teamRepositoryPermission';
-import { IApprovalProvider } from './entities/teamJoinApproval/approvalProvider';
-import { TeamJoinApprovalEntity } from './entities/teamJoinApproval/teamJoinApproval';
-import { AppPurpose } from '../lib/github/appPurposes';
-import { CacheDefault, getMaxAgeSeconds, getPageSize, Organization } from '.';
+import { wrapError } from '../lib/utils.js';
+import { TeamMember } from './teamMember.js';
+import { TeamRepositoryPermission } from './teamRepositoryPermission.js';
+import type { IApprovalProvider } from './entities/teamJoinApproval/approvalProvider.js';
+import { TeamJoinApprovalEntity } from './entities/teamJoinApproval/teamJoinApproval.js';
+import { AppPurpose } from '../lib/github/appPurposes.js';
 import {
-  IOperationsInstance,
+  CacheDefault,
+  Collaborator,
+  getMaxAgeSeconds,
+  getPageSize,
+  Operations,
+  Organization,
+} from './index.js';
+import {
   PurposefulGetAuthorizationHeader,
   TeamJsonFormat,
-  throwIfNotCapable,
-  IOperationsUrls,
-  CoreCapability,
   ICacheOptions,
-  throwIfNotGitHubCapable,
   IPagedCacheOptions,
   GetAuthorizationHeader,
   IUpdateTeamMembershipOptions,
@@ -35,10 +36,11 @@ import {
   ICacheOptionsPageLimiter,
   IGetTeamRepositoriesOptions,
   GitHubRepositoryType,
-  IOperationsProviders,
   GitHubTeamDetails,
-} from '../interfaces';
-import { validateGitHubLogin, ErrorHelper } from '../lib/transitional';
+  IGetMembersOptionsExtended,
+  NoCacheNoBackground,
+} from '../interfaces/index.js';
+import { validateGitHubLogin, ErrorHelper } from '../lib/transitional.js';
 
 const teamPrimaryProperties = [
   'id',
@@ -82,7 +84,7 @@ export class Team {
   public static PrimaryProperties = teamPrimaryProperties;
 
   private _organization: Organization;
-  private _operations: IOperationsInstance;
+  private _operations: Operations;
   private _getAuthorizationHeader: PurposefulGetAuthorizationHeader;
 
   private _id: number;
@@ -141,7 +143,7 @@ export class Team {
     organization: Organization,
     entity,
     getAuthorizationHeader: PurposefulGetAuthorizationHeader,
-    operations: IOperationsInstance
+    operations: Operations
   ) {
     if (!entity || !entity.id) {
       throw new Error(
@@ -195,7 +197,7 @@ export class Team {
   }
 
   get baseUrl() {
-    const operations = throwIfNotCapable<IOperationsUrls>(this._operations, CoreCapability.Urls);
+    const operations = this._operations;
     if (this._organization && (this._slug || this._name)) {
       return this._organization.baseUrl + 'teams/' + (this._slug || this._name) + '/';
     }
@@ -234,9 +236,14 @@ export class Team {
 
   async getDetails(options?: ICacheOptions): Promise<GitHubTeamDetails> {
     options = options || {};
-    const operations = throwIfNotGitHubCapable(this._operations);
+    const operations = this._operations;
     const cacheOptions = {
-      maxAgeSeconds: getMaxAgeSeconds(operations, CacheDefault.orgTeamDetailsStaleSeconds, options, 60),
+      maxAgeSeconds: getMaxAgeSeconds(
+        operations as Operations,
+        CacheDefault.orgTeamDetailsStaleSeconds,
+        options,
+        60
+      ),
       backgroundRefresh: false,
     };
     if (options.backgroundRefresh !== undefined) {
@@ -255,10 +262,16 @@ export class Team {
       org_id: this.organization.id,
       team_id: id,
     };
+    const { github } = operations;
     try {
-      const entity = await operations.github.request(
-        this.authorize(AppPurpose.Data),
-        'GET /organizations/:org_id/team/:team_id',
+      const entity = await github.requestWithRequirements(
+        github.createRequirementsForRequest(
+          this.authorize(AppPurpose.Data),
+          'GET /organizations/:org_id/team/:team_id',
+          {
+            usePermissionsFromAlternateUrl: '/orgs/{org}/teams/{team_slug}',
+          }
+        ),
         parameters,
         cacheOptions
       );
@@ -286,7 +299,7 @@ export class Team {
 
   async getChildTeams(options?: IPagedCacheOptions): Promise<Team[]> {
     options = options || {};
-    const operations = throwIfNotGitHubCapable(this._operations);
+    const operations = this._operations;
     const github = operations.github;
     if (!this.slug) {
       await this.getDetails();
@@ -297,21 +310,29 @@ export class Team {
       team_slug: this.slug,
     };
     const caching: IPagedCacheOptions = {
-      maxAgeSeconds: getMaxAgeSeconds(operations, CacheDefault.orgTeamsStaleSeconds, options),
+      maxAgeSeconds: getMaxAgeSeconds(operations as Operations, CacheDefault.orgTeamsStaleSeconds, options),
       backgroundRefresh: true,
       pageRequestDelay: options.pageRequestDelay || null,
     };
     caching.backgroundRefresh = options.backgroundRefresh;
-    const getAuthorizationHeader = this._getAuthorizationHeader.bind(
-      this,
-      AppPurpose.Data
-    ) as GetAuthorizationHeader;
-    const teamEntities = await github.collections.getTeamChildTeams(
-      getAuthorizationHeader,
-      parameters,
-      caching
+    const { rest } = github.octokit;
+    const requirements = github.createRequirementsForFunction(
+      this.authorize(AppPurpose.Data),
+      rest.teams.listChildInOrg,
+      'teams.listChildInOrg'
     );
-    const teams = common.createInstances<Team>(this, this.organization.teamFromEntity, teamEntities);
+    const teamEntities = await github.collections.collectAllPagesWithRequirements<any, any>(
+      'teamChildTeams',
+      requirements,
+      parameters,
+      caching,
+      teamDetailsToCopy
+    );
+    const teams = common.createInstances<Team>(
+      this.organization,
+      this.organization.teamFromEntity,
+      teamEntities
+    );
     return teams;
   }
 
@@ -341,7 +362,7 @@ export class Team {
   }
 
   delete(): Promise<void> {
-    const operations = throwIfNotGitHubCapable(this._operations);
+    const operations = this._operations;
     const github = operations.github;
     const parameters = {
       org_id: this.organization.id,
@@ -356,7 +377,7 @@ export class Team {
   }
 
   edit(patch: unknown): Promise<void> {
-    const operations = throwIfNotGitHubCapable(this._operations);
+    const operations = this._operations;
     const github = operations.github;
     const parameters = {
       org_id: this.organization.id,
@@ -372,7 +393,7 @@ export class Team {
   }
 
   removeMembership(username: string): Promise<void> {
-    const operations = throwIfNotGitHubCapable(this._operations);
+    const operations = this._operations;
     const github = operations.github;
     const parameters = {
       org_id: this.organization.id,
@@ -390,7 +411,7 @@ export class Team {
     username: string,
     options?: IUpdateTeamMembershipOptions
   ): Promise<ITeamMembershipRoleState> {
-    const operations = throwIfNotGitHubCapable(this._operations);
+    const operations = this._operations;
     const github = operations.github;
     options = options || {};
     const role = options.role || GitHubTeamRole.Member;
@@ -415,11 +436,26 @@ export class Team {
     return this.addMembership(username, { role: GitHubTeamRole.Maintainer });
   }
 
+  async getOperationalMembership(username: string): Promise<false | GitHubTeamRole> {
+    const membership = await this.getMembership(username, NoCacheNoBackground);
+    if (membership === false) {
+      return false;
+    }
+    const asState = membership as ITeamMembershipRoleState;
+    if (asState?.role && asState?.state) {
+      return asState.role;
+    }
+    return false;
+  }
+
   async getMembership(username: string, options: ICacheOptions): Promise<ITeamMembershipRoleState | boolean> {
-    const operations = throwIfNotGitHubCapable(this._operations);
+    const operations = this._operations;
     options = options || {};
     if (!options.maxAgeSeconds) {
-      options.maxAgeSeconds = getMaxAgeSeconds(operations, CacheDefault.orgMembershipDirectStaleSeconds);
+      options.maxAgeSeconds = getMaxAgeSeconds(
+        operations as Operations,
+        CacheDefault.orgMembershipDirectStaleSeconds
+      );
     }
     // If a background refresh setting is not present, perform a live
     // lookup with this call. This is the opposite of most of the library's
@@ -432,10 +468,16 @@ export class Team {
       team_id: this._id,
       username: validateGitHubLogin(username),
     };
+    const { github } = operations;
     try {
-      const result = await operations.github.request(
-        this.authorize(AppPurpose.CustomerFacing),
-        'GET /organizations/:org_id/team/:team_id/memberships/:username',
+      const result = await github.requestWithRequirements(
+        github.createRequirementsForRequest(
+          this.authorize(AppPurpose.CustomerFacing),
+          'GET /organizations/:org_id/team/:team_id/memberships/:username',
+          {
+            usePermissionsFromAlternateUrl: '/orgs/{org}/teams/{team_slug}', // /memberships/{username}
+          }
+        ),
         parameters,
         options
       );
@@ -467,13 +509,18 @@ export class Team {
     // often a relatively fresh cache available of all of the members
     // of a team, that data source is used first to avoid a unique
     // GitHub API call.
-    const operations = throwIfNotGitHubCapable(this._operations);
+    const operations = this._operations;
     // A background cache is used that is slightly more aggressive
     // than the standard org members list to at least frontload a
     // refresh of the data.
     options = options || {};
     if (!options.maxAgeSeconds) {
-      options.maxAgeSeconds = getMaxAgeSeconds(operations, CacheDefault.orgMembershipStaleSeconds, null, 60);
+      options.maxAgeSeconds = getMaxAgeSeconds(
+        operations as Operations,
+        CacheDefault.orgMembershipStaleSeconds,
+        null,
+        60
+      );
     }
     const isMaintainer = await this.isMaintainer(username, options);
     if (isMaintainer) {
@@ -491,10 +538,10 @@ export class Team {
     }
     // Fallback to the standard membership lookup
     const membershipOptions = {
-      maxAgeSeconds: getMaxAgeSeconds(operations, CacheDefault.orgMembershipDirectStaleSeconds),
+      maxAgeSeconds: getMaxAgeSeconds(operations as Operations, CacheDefault.orgMembershipDirectStaleSeconds),
     };
     const result = await this.getMembership(username, membershipOptions);
-    if (result === false || (result as ITeamMembershipRoleState).role) {
+    if (result === false || !(result as ITeamMembershipRoleState)?.role) {
       return false;
     }
     return result;
@@ -504,14 +551,17 @@ export class Team {
     const isOptions: IIsMemberOptions = Object.assign({}, options);
     isOptions.role = GitHubTeamRole.Maintainer;
     const maintainer = (await this.isMember(username, isOptions)) as GitHubTeamRole;
-    return maintainer === GitHubTeamRole.Maintainer ? true : false;
+    return maintainer === GitHubTeamRole.Maintainer;
   }
 
   async isMember(username: string, options?: IIsMemberOptions): Promise<GitHubTeamRole | boolean> {
-    const operations = throwIfNotGitHubCapable(this._operations);
+    const operations = this._operations;
     options = options || {};
     if (!options.maxAgeSeconds) {
-      options.maxAgeSeconds = getMaxAgeSeconds(operations, CacheDefault.orgMembershipStaleSeconds);
+      options.maxAgeSeconds = getMaxAgeSeconds(
+        operations as Operations,
+        CacheDefault.orgMembershipStaleSeconds
+      );
     }
     const getMembersOptions: IGetMembersOptions = Object.assign({}, options);
     if (!options.role) {
@@ -530,19 +580,24 @@ export class Team {
 
   getMaintainers(options?: ICacheOptionsPageLimiter): Promise<TeamMember[]> {
     options = options || {};
-    const operations = throwIfNotGitHubCapable(this._operations);
+    const operations = this._operations;
     if (!options.maxAgeSeconds) {
-      options.maxAgeSeconds = getMaxAgeSeconds(operations, CacheDefault.teamMaintainersStaleSeconds);
+      options.maxAgeSeconds = getMaxAgeSeconds(
+        operations as Operations,
+        CacheDefault.teamMaintainersStaleSeconds
+      );
     }
     const getMemberOptions: IGetMembersOptions = Object.assign({}, options || {});
     getMemberOptions.role = GitHubTeamRole.Maintainer;
     return this.getMembers(getMemberOptions);
   }
 
-  async getMembers(options?: IGetMembersOptions): Promise<TeamMember[]> {
+  async getMembers(options?: IGetMembersOptions | IGetMembersOptionsExtended): Promise<TeamMember[]> {
     options = options || {};
-    const operations = throwIfNotGitHubCapable(this._operations);
+    const operations = this._operations;
     const github = operations.github;
+    const doNotProjectEntities = (options as IGetMembersOptionsExtended).doNotProjectEntities || false;
+    delete (options as any).doNotProjectEntities;
     if (!this.slug) {
       const cachedSlug = memoryIdToSlugStore.get(Number(this.id));
       if (cachedSlug) {
@@ -561,7 +616,7 @@ export class Team {
       per_page: getPageSize(operations),
     };
     const caching: IPagedCacheOptions = {
-      maxAgeSeconds: getMaxAgeSeconds(operations, CacheDefault.orgMembersStaleSeconds, options),
+      maxAgeSeconds: getMaxAgeSeconds(operations as Operations, CacheDefault.orgMembersStaleSeconds, options),
       backgroundRefresh: true,
     };
     if (options && options.backgroundRefresh === false) {
@@ -573,13 +628,23 @@ export class Team {
     if (options.pageLimit) {
       parameters.pageLimit = options.pageLimit;
     }
+    const { rest } = github.octokit;
     // CONSIDER: Check the error object, if present, for error.status == /* loose */ 404 to alert/store telemetry on deleted teams
     try {
-      const teamMembersEntities = await github.collections.getTeamMembers(
-        this.authorize(AppPurpose.Data),
+      const teamMembersEntities = await github.collections.collectAllPagesWithRequirements<any, any>(
+        'teamMembers',
+        github.createRequirementsForFunction(
+          this.authorize(AppPurpose.Data),
+          rest.teams.listMembersInOrg,
+          'teams.listMembersInOrg'
+        ),
         parameters,
-        caching
+        caching,
+        memberDetailsToCopy
       );
+      if (doNotProjectEntities) {
+        return teamMembersEntities;
+      }
       const teamMembers = common.createInstances<TeamMember>(
         this,
         this.memberFromEntity,
@@ -597,7 +662,7 @@ export class Team {
 
   async getRepositories(options?: IGetTeamRepositoriesOptions): Promise<TeamRepositoryPermission[]> {
     options = options || {};
-    const operations = throwIfNotGitHubCapable(this._operations);
+    const operations = this._operations;
     const github = operations.github;
     // GitHub does not have a concept of filtering this out so we add it
     const customTypeFilteringParameter = options.type;
@@ -616,7 +681,7 @@ export class Team {
       per_page: getPageSize(operations),
     };
     const caching: IPagedCacheOptions = {
-      maxAgeSeconds: getMaxAgeSeconds(operations, CacheDefault.orgMembersStaleSeconds, options),
+      maxAgeSeconds: getMaxAgeSeconds(operations as Operations, CacheDefault.orgMembersStaleSeconds, options),
       backgroundRefresh: true,
     };
     if (options && options.backgroundRefresh === false) {
@@ -625,16 +690,21 @@ export class Team {
     if (options.pageLimit) {
       parameters.pageLimit = options.pageLimit;
     }
-    const entities = await github.collections.getTeamRepos(
-      this.authorize(AppPurpose.Data),
+    const { rest } = github.octokit;
+    let entities = await github.collections.collectAllPagesWithRequirements<any, any>(
+      'teamRepos',
+      github.createRequirementsForFunction(
+        this.authorize(AppPurpose.Data),
+        rest.teams.listReposInOrg,
+        'teams.listReposInOrg'
+      ),
       parameters,
-      caching
+      caching,
+      teamRepoPermissionsToCopy
     );
     if (customTypeFilteringParameter === 'sources') {
       // Remove forks (non-sources)
-      _.remove(entities, (repo: any) => {
-        return repo.fork;
-      });
+      entities = entities.filter((repo: any) => !repo.fork);
     }
     return common.createInstances<TeamRepositoryPermission>(
       this,
@@ -668,8 +738,7 @@ export class Team {
   }
 
   async getApprovals(): Promise<TeamJoinApprovalEntity[]> {
-    const operations = throwIfNotCapable<IOperationsProviders>(this._operations, CoreCapability.Providers);
-    const approvalProvider = operations.providers.approvalProvider as IApprovalProvider;
+    const approvalProvider = (this._operations as Operations).providers.approvalProvider as IApprovalProvider;
     if (!approvalProvider) {
       throw new Error('No approval provider instance available');
     }
@@ -717,3 +786,17 @@ function teamRepositoryPermissionsFromEntity(entity) {
   const instance = new TeamRepositoryPermission(this, entity, this._operations);
   return instance;
 }
+
+const teamRepoPermissionsToCopy = [
+  'id',
+  'name',
+  'full_name',
+  'description',
+  'private',
+  'fork',
+  'permissions',
+  'role_name',
+];
+
+const memberDetailsToCopy = Collaborator.PrimaryProperties;
+const teamDetailsToCopy = Team.PrimaryProperties;

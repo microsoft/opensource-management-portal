@@ -5,13 +5,18 @@
 
 import querystring from 'querystring';
 
-import { Repository } from './repository';
-import { IPersonalizedUserAggregateRepositoryPermission } from './graphManager';
-import { RepositoryMetadataEntity } from './entities/repositoryMetadata/repositoryMetadata';
-import { IRepositoryMetadataProvider } from './entities/repositoryMetadata/repositoryMetadataProvider';
-import { TeamRepositoryPermission } from './teamRepositoryPermission';
-import { sortRepositoriesByNameCaseInsensitive } from '../lib/utils';
-import { GitHubRepositoryPermission, IRepositorySearchOptions, RepositoryLockdownState } from '../interfaces';
+import { Repository } from './repository.js';
+import { IPersonalizedUserAggregateRepositoryPermission } from './graphManager.js';
+import { RepositoryMetadataEntity } from './entities/repositoryMetadata/repositoryMetadata.js';
+import { IRepositoryMetadataProvider } from './entities/repositoryMetadata/repositoryMetadataProvider.js';
+import { TeamRepositoryPermission } from './teamRepositoryPermission.js';
+import { sortRepositoriesByNameCaseInsensitive } from '../lib/utils.js';
+import {
+  GitHubRepositoryPermission,
+  IRepositorySearchOptions,
+  RepositoryLockdownState,
+} from '../interfaces/index.js';
+import { CreateError } from '../lib/transitional.js';
 
 const defaultPageSize = 20; // GitHub.com seems to use a value around 33
 
@@ -84,6 +89,11 @@ export class RepositorySearch {
     if (this.metadataType && this.repositoryMetadataProvider) {
       metadataCollection = await this.repositoryMetadataProvider.queryAllRepositoryMetadatas();
     }
+    const sortMethodName = 'sortBy' + this.sort;
+    const sortMethod = this[sortMethodName];
+    if (!sortMethod) {
+      throw CreateError.InvalidParameters(`Invalid sort method: ${sortMethodName}`);
+    }
     // prettier-ignore
     this.filterByMetadata(metadataCollection)
       .filterByCreatedSince()
@@ -92,7 +102,7 @@ export class RepositorySearch {
       .filterByType(this.type)
       .filterByPhrase(this.phrase)
       .filterByTeams(this.teamsType)
-      .determinePages()['sortBy' + this.sort]() // prettier will mangle this
+      .determinePages()[sortMethodName]() // prettier will mangle this; CodeQL: given the explicit check and sortBy prefix on `this`, we are OK with this dynamic call by name.
       .getPage(this.page);
     await this.expandEntitiesForkForks();
     return this;

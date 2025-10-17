@@ -21,7 +21,7 @@ A GitHub organization(s) configuration file in JSON format is required as of ver
 - [Azure Key Vault](https://azure.microsoft.com/en-us/services/key-vault/) secrets
 
 With the current configuration story, a `CONFIGURATION_ENVIRONMENT` variable is optional, as well
-as a secret for AAD to get KeyVault bootstrapped. The environment will default to your NODE_ENV
+as a secret for AAD to get Key Vault bootstrapped. The environment will default to your NODE_ENV
 if not set (i.e. `development`).
 
 The reason for `PREFER_DOTENV` is that in some cases, environments such as
@@ -142,11 +142,11 @@ After Redis setup is complete, set your Redis configs in the `config/redis.json`
 
 Other providers available include Azure Blob (slower but cheap), Cosmos DB, and a hybrid Cosmos+Blob.
 
-## KeyVault Secret Support
+## Key Vault Secret Support
 
-Any configuration string property can be resolved to a KeyVault secret.
+Any configuration string property can be resolved to a Key Vault secret.
 
-To use a stored KeyVault secret, configuration to allow this application's service
+To use a stored Key Vault secret, configuration to allow this application's service
 principal to `get` the secret value, use a custom `keyvault://` URI format.
 
 For example, given a key vault named `samplevault`, setting a configuration

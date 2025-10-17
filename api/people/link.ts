@@ -5,10 +5,9 @@
 
 import { NextFunction, Response } from 'express';
 
-import { getProviders } from '../../lib/transitional';
-import { jsonError } from '../../middleware';
-import { IApiRequest } from '../../middleware/apiReposAuth';
-import { ICorporateLink, LinkOperationSource } from '../../interfaces';
+import { CreateError, getProviders } from '../../lib/transitional.js';
+import { jsonError } from '../../middleware/index.js';
+import { ICorporateLink, LinkOperationSource, ReposApiRequest } from '../../interfaces/index.js';
 
 const linkScope = 'link';
 
@@ -17,19 +16,19 @@ const supportedApiVersions = new Set([
   '2019-10-01',
 ]);
 
-export default async function postLinkApi(req: IApiRequest, res: Response, next: NextFunction) {
+export default async function postLinkApi(req: ReposApiRequest, res: Response, next: NextFunction) {
   const providers = getProviders(req);
   const { operations } = providers;
   const token = req.apiKeyToken;
   const apiVersion = (req.query['api-version'] || req.headers['api-version']) as string;
   if (!apiVersion || !supportedApiVersions.has(apiVersion)) {
-    return next(jsonError('Unsupported API version', 400));
+    return next(CreateError.InvalidParameters('Unsupported API version'));
   }
   if (providers.config.api.flags.createLinks !== true) {
-    return next(jsonError('This application is not configured to allow this API', 403));
+    return next(CreateError.InvalidParameters('This application is not configured to allow this API'));
   }
   if (!token.hasScope(linkScope)) {
-    return next(jsonError('The key is not authorized to use the link API', 401));
+    return next(CreateError.NotAuthorized('The key is not authorized to use the link API'));
   }
   // CONSIDER: Azure REST API would accept a request header client-request-id and also if True for return-client-request-id, send it back in the response
   const correlationId = req.correlationId;

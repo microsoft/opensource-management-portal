@@ -3,12 +3,20 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { RepositoryMetadataEntity } from '../../entities/repositoryMetadata/repositoryMetadata';
-import { GitHubRepositoryVisibility, ICorporateLink } from '../../../interfaces';
-import { ErrorHelper } from '../../../lib/transitional';
-import { RepositoryLockdownCreateOptions } from './interfaces';
+import { RepositoryMetadataEntity } from '../../entities/repositoryMetadata/repositoryMetadata.js';
+import { GitHubRepositoryVisibility, type ICorporateLink } from '../../../interfaces/index.js';
+import { ErrorHelper } from '../../../lib/transitional.js';
 
-export async function initializeRepositoryMetadata(parameters: RepositoryLockdownCreateOptions) {
+import type { RepositoryLockdownCreateOptions } from './interfaces.js';
+import type { GitHubWebhookRepositoryEventBody } from './types.js';
+
+// this function is only used by the newRepositoryLockdown.ts file
+
+export async function initializeRepositoryMetadata(
+  parameters: RepositoryLockdownCreateOptions,
+  webhookEvent: GitHubWebhookRepositoryEventBody,
+  doNotLockdown: boolean
+) {
   const {
     username,
     thirdPartyId,
@@ -53,6 +61,19 @@ export async function initializeRepositoryMetadata(parameters: RepositoryLockdow
         link,
         transferSourceRepositoryLogin
       );
+      const whr = webhookEvent.repository;
+      if (!repositoryMetadata.created && whr.created_at) {
+        updateMetadata.created = new Date(whr.created_at);
+      }
+      if (!repositoryMetadata.initialRepositoryDescription && whr.description) {
+        updateMetadata.initialRepositoryDescription = whr.description;
+      }
+      if (!repositoryMetadata.initialRepositoryHomepage && whr.homepage) {
+        updateMetadata.initialRepositoryHomepage = whr.homepage;
+      }
+      if (!repositoryMetadata.initialRepositoryVisibility && whr.visibility) {
+        updateMetadata.initialRepositoryVisibility = whr.visibility;
+      }
       await repositoryMetadataProvider.updateRepositoryMetadata(updateMetadata);
       lockdownLog.push(`Updated the repository metadata with username and link information`);
     } else {
@@ -63,17 +84,39 @@ export async function initializeRepositoryMetadata(parameters: RepositoryLockdow
         link,
         transferSourceRepositoryLogin
       );
-      repositoryMetadata.created = new Date();
-      repositoryMetadata.lockdownState = lockdownState;
+      if (doNotLockdown === true) {
+        lockdownLog.push(`The repository is not being locked down but would have been: ${lockdownState}`);
+      } else {
+        repositoryMetadata.lockdownState = lockdownState;
+      }
       repositoryMetadata.repositoryId = repository.id.toString();
       repositoryMetadata.repositoryName = repository.name;
       repositoryMetadata.organizationName = organization.name;
       repositoryMetadata.organizationId = organization.id.toString();
-      repositoryMetadata.initialRepositoryDescription = repository.description;
-      repositoryMetadata.initialRepositoryHomepage = repository.homepage;
-      repositoryMetadata.initialRepositoryVisibility = repository.private
-        ? GitHubRepositoryVisibility.Private
-        : GitHubRepositoryVisibility.Public;
+      const whr = webhookEvent.repository;
+      if (!repositoryMetadata.created && whr.created_at) {
+        repositoryMetadata.created = new Date(whr.created_at);
+      } else {
+        repositoryMetadata.created = new Date();
+      }
+      if (!repositoryMetadata.initialRepositoryDescription && whr.description) {
+        repositoryMetadata.initialRepositoryDescription = whr.description;
+      } else {
+        repositoryMetadata.initialRepositoryDescription = repository.description;
+      }
+      if (!repositoryMetadata.initialRepositoryHomepage && whr.homepage) {
+        repositoryMetadata.initialRepositoryHomepage = whr.homepage;
+      } else {
+        repositoryMetadata.initialRepositoryHomepage = repository.homepage;
+      }
+      if (!repositoryMetadata.initialRepositoryVisibility && whr.visibility) {
+        repositoryMetadata.initialRepositoryVisibility = whr.visibility;
+      } else {
+        repositoryMetadata.initialRepositoryVisibility =
+          repository.visibility ||
+          (repository.private ? GitHubRepositoryVisibility.Private : GitHubRepositoryVisibility.Public);
+      }
+      repositoryMetadata.metadataSource = 'lockdown:initialize';
       await repositoryMetadataProvider.createRepositoryMetadata(repositoryMetadata);
       lockdownLog.push(
         `Created the initial repository metadata indicating the repo was created by ${username}`

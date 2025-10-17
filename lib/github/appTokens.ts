@@ -3,25 +3,34 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+import { createHash, createPublicKey } from 'crypto';
 import { request } from '@octokit/request';
-import { createAppAuth, InstallationAccessTokenAuthentication } from '@octokit/auth-app';
-import { AppAuthentication, AuthInterface } from '@octokit/auth-app/dist-types/types';
+import { base64url } from 'jose';
+import { AppAuthentication, createAppAuth } from '@octokit/auth-app';
 
-import { AppPurposeTypes, ICustomAppPurpose } from './appPurposes';
-import { AuthorizationHeaderValue } from '../../interfaces';
-
+import { AppPurposeTypes, ICustomAppPurpose } from './appPurposes.js';
 import Debug from 'debug';
-import { CreateError } from '../transitional';
+import { CreateError } from '../transitional.js';
+import { getKeyVaultKeyCryptographyClient } from '../signing.js';
+
+import type { AuthorizationHeaderValue, IProviders } from '../../interfaces/index.js';
+
 const debug = Debug('github:tokens');
 
-interface IInstallationToken {
+type AuthInterface = ReturnType<typeof createAppAuth>;
+
+type InstallationToken = {
   installationId: number;
   organizationName: string;
   requested: Date;
 
+  created: Date;
   expires: Date;
   headerValue: string;
-}
+
+  permissions?: GitHubTokenPermissions;
+  impliedTargetType?: 'organization' | 'enterprise';
+};
 
 //type OctokitAuthFunction = AuthInterface<[AuthOptions], Authentication>;
 
@@ -46,6 +55,8 @@ export const GitHubTokenTypes = [
   GitHubTokenType.FineGrainedPersonalAccessToken,
 ];
 
+export type GitHubTokenPermissions = Record<string, string>;
+
 export function getGitHubTokenTypeFromValue(value: string | AuthorizationHeaderValue): GitHubTokenType {
   if (!value) {
     throw CreateError.ParameterRequired('value');
@@ -69,15 +80,18 @@ export function getGitHubTokenTypeFromValue(value: string | AuthorizationHeaderV
 
 export class GitHubAppTokens {
   #privateKey: string;
+  private _remoteJwtUrl: string;
   private _appId: number;
   public purpose: AppPurposeTypes;
   private _purposeId: string;
   private _appAuth: AuthInterface;
   private _installationAuth = new Map<number, AuthInterface>();
-  private _tokensByInstallation = new Map<number, IInstallationToken[]>();
+  private _tokensByInstallation = new Map<number, InstallationToken[]>();
+  private _knownInstallationIdTypes = new Map<number, 'organization' | 'enterprise'>();
   private _baseUrl: string;
 
   static CreateFromBase64EncodedFileString(
+    providers: IProviders,
     purpose: AppPurposeTypes,
     slug: string,
     friendlyName: string,
@@ -86,10 +100,20 @@ export class GitHubAppTokens {
     baseUrl?: string
   ): GitHubAppTokens {
     const keyContents = Buffer.from(fileContents, 'base64').toString('utf8').replace(/\r\n/g, '\n');
-    return new GitHubAppTokens(purpose, slug, friendlyName, applicationId, keyContents, baseUrl);
+    return new GitHubAppTokens(
+      providers,
+      purpose,
+      slug,
+      friendlyName,
+      applicationId,
+      'privateKey',
+      keyContents,
+      baseUrl
+    );
   }
 
   static CreateFromString(
+    providers: IProviders,
     purpose: AppPurposeTypes,
     slug: string,
     friendlyName: string,
@@ -97,31 +121,93 @@ export class GitHubAppTokens {
     value: string,
     baseUrl?: string
   ): GitHubAppTokens {
-    return new GitHubAppTokens(purpose, slug, friendlyName, applicationId, value, baseUrl);
+    return new GitHubAppTokens(
+      providers,
+      purpose,
+      slug,
+      friendlyName,
+      applicationId,
+      'privateKey',
+      value,
+      baseUrl
+    );
+  }
+
+  static CreateWithExternalJwtSigning(
+    providers: IProviders,
+    purpose: AppPurposeTypes,
+    slug: string,
+    friendlyName: string,
+    applicationId: number,
+    remoteJwtKeyUrl: string,
+    baseUrl?: string
+  ): GitHubAppTokens {
+    return new GitHubAppTokens(
+      providers,
+      purpose,
+      slug,
+      friendlyName,
+      applicationId,
+      'remoteJwt',
+      remoteJwtKeyUrl,
+      baseUrl
+    );
   }
 
   get appId() {
     return this._appId;
   }
 
-  getPrivateCertificate() {
-    return this.#privateKey;
+  private getPrivateCertificate() {
+    if (this.mode === 'privateKey') {
+      return this.#privateKey;
+    }
+    throw CreateError.InvalidParameters('Private key is not available for app ' + this.slug);
+  }
+
+  getCertificateSha256() {
+    if (this.mode === 'remoteJwt') {
+      return `SHA256:unknown(remote)`;
+    }
+
+    // This is how GitHub Apps are reported in the user interface for App Managers to view.
+    const pem = this.getPrivateCertificate();
+    const publicKey = createPublicKey(pem);
+    const publicKeyDer = publicKey.export({
+      type: 'spki',
+      format: 'der',
+    });
+    const sha256 = createHash('sha256').update(publicKeyDer).digest('base64');
+    return `SHA256:${sha256}`;
   }
 
   constructor(
+    private providers: IProviders,
     purpose: AppPurposeTypes,
     public slug: string,
     public friendlyName: string,
     appId: number,
+    private mode: 'privateKey' | 'remoteJwt',
     privateKey: string,
     baseUrl?: string
   ) {
-    this.#privateKey = privateKey;
+    let key: string;
+    let createJwt:
+      | undefined
+      | ((clientIdOrAppId: string | number) => Promise<{ jwt: string; expiresAt: Date }>);
+    if (mode === 'privateKey') {
+      this.#privateKey = privateKey;
+      key = privateKey;
+    } else if (mode === 'remoteJwt') {
+      this._remoteJwtUrl = privateKey;
+      createJwt = this.remotelySignJwt.bind(this);
+    }
     this._appId = appId;
     this._baseUrl = baseUrl;
     this._appAuth = createAppAuth({
       appId,
-      privateKey,
+      privateKey: key,
+      createJwt,
       request: request.defaults({
         baseUrl,
       }),
@@ -130,6 +216,69 @@ export class GitHubAppTokens {
     const asCustomPurpose = purpose as ICustomAppPurpose;
     this._purposeId =
       asCustomPurpose?.isCustomAppPurpose === true ? asCustomPurpose?.id : (purpose as string);
+  }
+
+  private async remotelySignJwt(clientIdOrAppId: string | number): Promise<{ jwt: string; expiresAt: Date }> {
+    const signUrl = this._remoteJwtUrl;
+    const { insights } = this.providers;
+    if (!signUrl) {
+      throw CreateError.InvalidParameters('Missing remote JWT signing URL from configuration');
+    }
+    try {
+      insights?.trackEvent({
+        name: 'github_app.remote_jwt_sign.start',
+        properties: {
+          signUrl,
+          clientIdOrAppId,
+        },
+      });
+      const cryptoClient = await getKeyVaultKeyCryptographyClient(this.providers, signUrl);
+      const header = { alg: 'RS256', typ: 'JWT' };
+      const now = Math.floor(Date.now() / 1000);
+      const payload = {
+        iat: now - 60,
+        exp: now + 10 * 60,
+        iss: clientIdOrAppId,
+      };
+      const expiresAt = new Date(payload.exp * 1000);
+      const encodedHeader = base64url.encode(JSON.stringify(header));
+      const encodedPayload = base64url.encode(JSON.stringify(payload));
+      const signingInput = `${encodedHeader}.${encodedPayload}`;
+      const encoder = new TextEncoder();
+      const signingInputBytes = encoder.encode(signingInput);
+      const hash = createHash('sha256').update(signingInputBytes).digest();
+      const signResult = await cryptoClient.sign('RS256', hash);
+      const signature = base64url.encode(signResult.result);
+      insights?.trackEvent({
+        name: 'github_app.remote_jwt_sign.signed',
+        properties: {
+          signUrl,
+          clientIdOrAppId,
+          iat: payload.iat,
+          exp: payload.exp,
+        },
+      });
+      insights?.trackMetric({
+        name: 'github_app.remote_jwt_sign.successes',
+        value: 1,
+      });
+      const jwt = `${signingInput}.${signature}`;
+      return { jwt, expiresAt };
+    } catch (error) {
+      insights?.trackException({
+        exception: error,
+        properties: {
+          name: 'github_app.remote_jwt_sign.failed',
+          signUrl,
+          clientIdOrAppId,
+        },
+      });
+      insights?.trackMetric({
+        name: 'github_app.remote_jwt_sign.failures',
+        value: 1,
+      });
+      throw error;
+    }
   }
 
   async getAppAuthenticationToken() {
@@ -141,9 +290,17 @@ export class GitHubAppTokens {
   private getOrCreateInstallationAuthFunction(installationId: number) {
     let auth = this._installationAuth.get(installationId);
     if (!auth) {
+      let privateKey: string;
+      let createJwt: (clientIdOrAppId: string | number) => Promise<{ jwt: string; expiresAt: Date }>;
+      if (this.mode === 'privateKey') {
+        privateKey = this.#privateKey;
+      } else if (this.mode === 'remoteJwt') {
+        createJwt = this.remotelySignJwt.bind(this);
+      }
       auth = createAppAuth({
         appId: this._appId,
-        privateKey: this.#privateKey,
+        privateKey,
+        createJwt,
         installationId,
         request: request.defaults({
           baseUrl: this._baseUrl,
@@ -162,7 +319,10 @@ export class GitHubAppTokens {
     const requiredValidityPeriod = new Date(now.getTime() + ValidityOffsetAfterNowMilliseconds);
     const latestToken = this.getLatestValidToken(installationId, requiredValidityPeriod);
     if (latestToken) {
-      const source = `Existing installation ID ${installationId} token for ${organizationName} app ID ${this._appId} purpose ${this._purposeId}`;
+      const impliedTargetString = latestToken?.impliedTargetType
+        ? `for ${latestToken.impliedTargetType}`
+        : 'for';
+      const source = `Cached installation ID ${installationId} token ${impliedTargetString} ${organizationName} app ID ${this._appId} purpose ${this._purposeId}`;
       debug(source);
       return {
         value: latestToken.headerValue,
@@ -170,12 +330,19 @@ export class GitHubAppTokens {
         installationId,
         organizationName,
         source,
+        permissions: latestToken.permissions,
+        impliedTargetType: latestToken.impliedTargetType,
+        created: latestToken.created,
+        expires: latestToken.expires,
       };
     }
     try {
       const requestedToken = await this.requestInstallationToken(installationId, organizationName);
       this.getInstallationTokens(installationId).push(requestedToken);
-      const source = `New token for ${organizationName} organization via installation ID ${installationId} app ID ${this._appId} purpose ${this._purposeId}`;
+      const impliedTargetString = requestedToken?.impliedTargetType
+        ? `for ${requestedToken.impliedTargetType}`
+        : 'for';
+      const source = `New token ${impliedTargetString} ${organizationName} via installation ID ${installationId} app ID ${this._appId} purpose ${this._purposeId}`;
       debug(source);
       return {
         value: requestedToken.headerValue,
@@ -183,6 +350,10 @@ export class GitHubAppTokens {
         installationId,
         organizationName,
         source,
+        permissions: requestedToken.permissions,
+        impliedTargetType: requestedToken.impliedTargetType,
+        created: requestedToken.created,
+        expires: requestedToken.expires,
       };
     } catch (error) {
       console.warn(
@@ -195,32 +366,69 @@ export class GitHubAppTokens {
   private async requestInstallationToken(
     installationId: number,
     organizationName: string
-  ): Promise<IInstallationToken> {
+  ): Promise<InstallationToken> {
+    let impliedType: 'organization' | 'enterprise' = 'organization';
     try {
       const requested = new Date();
       const installationAppAuth = this.getOrCreateInstallationAuthFunction(installationId);
       const installationTokenDetails = await installationAppAuth({ type: 'installation' });
-      const installationToken = (installationTokenDetails as InstallationAccessTokenAuthentication).token;
+      const installationToken = installationTokenDetails.token;
       const headerValue = `token ${installationToken}`;
-      const expiresFromDetails = (installationTokenDetails as any).expiresAt;
-      const expires = expiresFromDetails
-        ? new Date(expiresFromDetails)
+      const expires = installationTokenDetails?.expiresAt
+        ? new Date(installationTokenDetails.expiresAt)
         : new Date(requested.getTime() + InstallationTokenLifetimeMilliseconds);
-      const wrapped: IInstallationToken = {
+      const permissions = installationTokenDetails.permissions;
+      let knownInstallationType = this._knownInstallationIdTypes.get(installationId);
+      if (knownInstallationType === undefined) {
+        if (permissions) {
+          const permissionKeys = Object.keys(permissions);
+          for (const permissionKey of permissionKeys) {
+            if (permissionKey.startsWith('enterprise_')) {
+              impliedType = 'enterprise';
+              break;
+            }
+          }
+          knownInstallationType = impliedType;
+          this._knownInstallationIdTypes.set(installationId, knownInstallationType);
+        }
+      }
+      const created = installationTokenDetails.createdAt
+        ? new Date(installationTokenDetails.createdAt)
+        : requested;
+      const wrapped: InstallationToken = {
         installationId,
         organizationName,
         requested,
         headerValue,
+        created,
         expires,
+        permissions,
+        impliedTargetType: knownInstallationType,
       };
       return wrapped;
     } catch (getTokenError) {
-      console.dir(getTokenError);
+      if (
+        getTokenError?.status === 401 &&
+        getTokenError.message?.includes('A JSON web token could not be decoded')
+      ) {
+        let publicSha256 = '[error w/public cert]';
+        try {
+          publicSha256 = 'public=' + this.getCertificateSha256();
+        } catch (error) {
+          console.warn(`Error retrieving public SHA256: ${error.message}`);
+        }
+        const additionalMessage = 'This could be a mismatched app ID and certificate'; // See also: https://github.com/octokit/octokit.net/issues/2833
+        console.warn(
+          `App id=${this._appId}, slug=${this.slug}, install=${installationId}, ${impliedType || 'organization'}=${organizationName}, ${publicSha256}; ${additionalMessage}: token error: ${getTokenError.message}`
+        );
+      } else {
+        console.dir(getTokenError);
+      }
       throw getTokenError;
     }
   }
 
-  private getLatestValidToken(installationId: number, timeTokenMustBeValid: Date): IInstallationToken {
+  private getLatestValidToken(installationId: number, timeTokenMustBeValid: Date): InstallationToken {
     let tokens = this.getInstallationTokens(installationId);
     const count = tokens.length;
     tokens = tokens.filter(tokenValidFilter.bind(null, timeTokenMustBeValid)).sort(sortByLatestToken);
@@ -230,7 +438,7 @@ export class GitHubAppTokens {
     return tokens.length > 0 ? tokens[0] : null;
   }
 
-  private getInstallationTokens(installationId: number): IInstallationToken[] {
+  private getInstallationTokens(installationId: number): InstallationToken[] {
     let bin = this._tokensByInstallation.get(installationId);
     if (!bin) {
       bin = [];
@@ -239,12 +447,12 @@ export class GitHubAppTokens {
     return bin;
   }
 
-  private replaceInstallationTokens(installationId: number, arr: IInstallationToken[]) {
+  private replaceInstallationTokens(installationId: number, arr: InstallationToken[]) {
     this._tokensByInstallation.set(installationId, arr);
   }
 }
 
-function sortByLatestToken(a: IInstallationToken, b: IInstallationToken) {
+function sortByLatestToken(a: InstallationToken, b: InstallationToken) {
   if (a > b) {
     return -1;
   } else if (a < b) {
@@ -253,12 +461,12 @@ function sortByLatestToken(a: IInstallationToken, b: IInstallationToken) {
   return 0;
 }
 
-function tokenValidFilter(timeTokenMustBeValid: Date, token: IInstallationToken) {
+function tokenValidFilter(timeTokenMustBeValid: Date, token: InstallationToken) {
   const isValid = token.expires > timeTokenMustBeValid;
   if (!isValid) {
     const header = token.headerValue.substr(6);
     const subset = (header.length > 12 ? header.substr(0, 8) : '') + '*'.repeat(4);
-    console.log(
+    debug(
       `token expired: redacted=${subset}, expires=${token.expires.toISOString()}, install_id=${
         token.installationId
       }, org=${token.organizationName}`

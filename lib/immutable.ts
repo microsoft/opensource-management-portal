@@ -5,9 +5,12 @@
 
 import { randomUUID } from 'crypto';
 
-import type { ConfigImmutableAzureBlobStorage } from '../config/immutable.types';
-import type { SiteConfiguration } from '../interfaces';
-import BlobCache from './caching/blob';
+import type { IProviders, SiteConfiguration } from '../interfaces/index.js';
+
+import BlobCache from './caching/blob.js';
+import { getEntraApplicationUserAssignedIdentityCredential } from './applicationIdentity.js';
+import { CreateError } from './transitional.js';
+import getCompanySpecificDeployment from '../middleware/companySpecificDeployment.js';
 
 export interface IImmutableStorageProvider {
   initialize(): Promise<void>;
@@ -19,34 +22,50 @@ export interface IImmutableStorageProvider {
   saveObjectInBackground(prefix: string, postfix: string, value: unknown): void;
 }
 
-export function tryGetImmutableStorageProvider(config: SiteConfiguration): IImmutableStorageProvider {
+export interface IImmutableStorageProviderRetrieval extends IImmutableStorageProvider {
+  getPrefixContents(prefix: string): Promise<string[]>;
+  getObject(blobName: string): Promise<unknown>;
+}
+
+export function tryGetImmutableStorageProvider(
+  providers: IProviders,
+  config: SiteConfiguration
+): IImmutableStorageProvider {
+  const companySpecific = getCompanySpecificDeployment();
+  if (companySpecific?.features?.immutableProvider?.tryCreateInstance) {
+    const provider = companySpecific.features.immutableProvider.tryCreateInstance(providers, config);
+    if (provider) {
+      return provider;
+    }
+  }
   const { immutable } = config;
   if (immutable.enabled) {
     const azure = immutable.azure;
     if (azure?.blob?.enabled) {
-      return new AzureImmutableStorageProvider(azure.blob);
+      return new AzureImmutableStorageProvider(config);
     }
   }
 }
 
-class AzureImmutableStorageProvider implements IImmutableStorageProvider {
-  constructor(config: ConfigImmutableAzureBlobStorage) {
-    if (!config.account || !config.key || !config.container) {
-      throw new Error(
+class AzureImmutableStorageProvider implements IImmutableStorageProvider, IImmutableStorageProviderRetrieval {
+  constructor(private config: SiteConfiguration) {
+    const immutableSegment = config.immutable.azure.blob;
+    if (!immutableSegment.account || !immutableSegment.container) {
+      throw CreateError.InvalidParameters(
         'Azure Blob Storage configuration is missing required values for the immutable storage provider'
       );
     }
-    this.config = config;
   }
 
-  private config: ConfigImmutableAzureBlobStorage;
   private _blob: BlobCache;
 
   async initialize(): Promise<void> {
+    const credential = getEntraApplicationUserAssignedIdentityCredential(this.config);
+    const immutableSegment = this.config.immutable.azure.blob;
     const blobCache = new BlobCache({
-      account: this.config.account,
-      key: this.config.key,
-      container: this.config.container,
+      account: immutableSegment.account,
+      container: immutableSegment.container,
+      tokenCredential: credential,
     });
     await blobCache.initialize();
     this._blob = blobCache;
@@ -68,6 +87,24 @@ class AzureImmutableStorageProvider implements IImmutableStorageProvider {
 
   async saveObject(prefix: string, postfix: string, value: unknown): Promise<void> {
     return this._blob.setObject(this.timeKey(prefix, postfix), value);
+  }
+
+  async getPrefixContents(prefix: string): Promise<string[]> {
+    const cacheAsSpecificType = this._blob as BlobCache;
+    const containerClient = cacheAsSpecificType.getContainerClient();
+    const blobs: string[] = [];
+    for await (const blob of containerClient.listBlobsFlat({ prefix })) {
+      blobs.push(blob.name);
+    }
+    return blobs;
+  }
+
+  async getObject(blobName: string): Promise<unknown> {
+    const cacheAsSpecificType = this._blob as BlobCache;
+    const blobServiceClient = cacheAsSpecificType.getContainerClient();
+    const buffer = await blobServiceClient.getBlobClient(blobName).downloadToBuffer();
+    const asString = buffer.toString('utf8');
+    return JSON.parse(asString);
   }
 
   saveInBackground(prefix: string, postfix: string, value: string): void {

@@ -3,7 +3,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { GitHubRepositoryVisibility } from '../../interfaces';
+import { GitHubRepositoryVisibility } from '../../interfaces/index.js';
 import {
   EntityMetadataBase,
   EntityMetadataMappings,
@@ -14,9 +14,9 @@ import {
   keyValueMetadataField,
   MetadataMappingDefinition,
   QueryBase,
-} from '../../lib/entityMetadataProvider';
-import { PostgresConfiguration, PostgresSettings } from '../../lib/entityMetadataProvider/postgres';
-import { ErrorHelper } from '../../lib/transitional';
+} from '../../lib/entityMetadataProvider/index.js';
+import { PostgresConfiguration, PostgresSettings } from '../../lib/entityMetadataProvider/postgres.js';
+import { ErrorHelper } from '../../lib/transitional.js';
 
 const type = new EntityMetadataType('RepositoryDetails');
 const typeColumnValue = 'repositorydetails';

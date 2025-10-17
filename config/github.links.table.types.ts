@@ -13,4 +13,5 @@ export type ConfigGitHubLinksTable = {
   prefix: string;
   encryption: boolean;
   encryptionKeyId: string;
+  useEntraAuthentication: boolean;
 };

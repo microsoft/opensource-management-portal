@@ -4,17 +4,16 @@
 //
 
 import { NextFunction, Response, Router } from 'express';
-import asyncHandler from 'express-async-handler';
 
-import { ReposAppRequest, UserAlertType } from '../../interfaces';
-import { wrapError } from '../../lib/utils';
-import RequireActiveGitHubSession from '../../middleware/github/requireActiveSession';
+import { ReposAppRequest, UserAlertType } from '../../interfaces/index.js';
+import { wrapError } from '../../lib/utils.js';
+import RequireActiveGitHubSession from '../../middleware/github/requireActiveSession.js';
 const router: Router = Router();
 
 router.get(
   '/',
   RequireActiveGitHubSession,
-  asyncHandler(async function (req: ReposAppRequest, res: Response, next: NextFunction) {
+  async function (req: ReposAppRequest, res: Response, next: NextFunction) {
     const organization = req.organization;
     if (!organization) {
       // TODO: Was this ever a possible situation? What's going on here? Probably was v1 (single-org)
@@ -50,13 +49,13 @@ router.get(
         showBreadcrumbs: onboarding === undefined,
       },
     });
-  })
+  }
 );
 
 router.post(
   '/',
   RequireActiveGitHubSession,
-  asyncHandler(async function (req: ReposAppRequest, res: Response, next: NextFunction) {
+  async function (req: ReposAppRequest, res: Response, next: NextFunction) {
     const username = req.individualContext.getGitHubIdentity().username;
     const organization = req.organization;
     if (!organization) {
@@ -101,7 +100,7 @@ router.post(
         ? '?' + (onboarding ? 'onboarding' : 'joining') + '=' + (onboarding || joining)
         : '';
     return res.redirect(url + extraUrl);
-  })
+  }
 );
 
 export default router;

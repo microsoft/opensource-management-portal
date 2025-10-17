@@ -3,23 +3,18 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { AppPurpose, AppPurposeTypes } from '../lib/github/appPurposes';
-import { Organization, Repository } from '.';
-import {
-  IOperationsInstance,
-  PurposefulGetAuthorizationHeader,
-  throwIfNotGitHubCapable,
-  GetAuthorizationHeader,
-} from '../interfaces';
+import { AppPurpose, AppPurposeTypes } from '../lib/github/appPurposes.js';
+import { Operations, Organization, Repository } from './index.js';
+import { PurposefulGetAuthorizationHeader, GetAuthorizationHeader } from '../interfaces/index.js';
 import {
   decorateIterable,
   IteratorPickerResponse,
   IteratorResponse,
   PaginationPageSizeOptions,
-} from './iterable';
-import { CreateError, DefaultGraphqlPageSize } from '../lib/transitional';
-import { OrganizationProjects } from './projects';
-import { OrganizationProjectView } from './projectView';
+} from './iterable.js';
+import { CreateError, DefaultGraphqlPageSize } from '../lib/transitional.js';
+import { OrganizationProjects } from './projects.js';
+import { OrganizationProjectView } from './projectView.js';
 
 const enableCloneProjectApi = 'memex_copy_project';
 
@@ -115,7 +110,7 @@ type ProjectDetails = {
 
 export class OrganizationProject {
   private _projects: OrganizationProjects;
-  private _operations: IOperationsInstance;
+  private _operations: Operations;
 
   private _getAuthorizationHeader: PurposefulGetAuthorizationHeader;
   private _getSpecificAuthorizationHeader: PurposefulGetAuthorizationHeader;
@@ -125,7 +120,7 @@ export class OrganizationProject {
 
   constructor(
     organizationProjects: OrganizationProjects,
-    operations: IOperationsInstance,
+    operations: Operations,
     getAuthorizationHeader: PurposefulGetAuthorizationHeader,
     getSpecificAuthorizationHeader: PurposefulGetAuthorizationHeader,
     projectId: string
@@ -151,7 +146,7 @@ export class OrganizationProject {
   }
 
   async getDetails(): Promise<ProjectDetails> {
-    const operations = throwIfNotGitHubCapable(this._operations);
+    const operations = this._operations as Operations;
     try {
       const result = await operations.github.graphql(this.authorize(), query.getProject, {
         id: this._id,
@@ -165,7 +160,7 @@ export class OrganizationProject {
   async getFields(
     options: PaginationPageSizeOptions = { pageSize: DefaultGraphqlPageSize }
   ): Promise<ProjectFieldEssentials[]> {
-    const operations = throwIfNotGitHubCapable(this._operations);
+    const operations = this._operations as Operations;
     const pageSize = options?.pageSize || DefaultGraphqlPageSize;
     try {
       const result = await operations.github.graphql(
@@ -187,7 +182,7 @@ export class OrganizationProject {
   async getFieldsIterator(
     options: PaginationPageSizeOptions = { pageSize: DefaultGraphqlPageSize }
   ): Promise<AsyncIterable<ProjectFieldsIteratorResponse> & IteratorPickerResponse<ProjectFieldEssentials>> {
-    const operations = throwIfNotGitHubCapable(this._operations);
+    const operations = this._operations as Operations;
     const pageSize = options?.pageSize || DefaultGraphqlPageSize;
     try {
       const result = (await operations.github.graphqlIteration(
@@ -204,7 +199,7 @@ export class OrganizationProject {
   }
 
   async getViews(): Promise<ProjectViewEssentials[]> {
-    const operations = throwIfNotGitHubCapable(this._operations);
+    const operations = this._operations as Operations;
     try {
       const response = await operations.github.graphql(
         this.authorize(),
@@ -225,7 +220,7 @@ export class OrganizationProject {
   async getViewsIterator(): Promise<
     AsyncIterable<ProjectViewsIteratorResponse> & IteratorPickerResponse<ProjectViewEssentials>
   > {
-    const operations = throwIfNotGitHubCapable(this._operations);
+    const operations = this._operations as Operations;
     try {
       const result = (await operations.github.graphqlIteration(
         this.authorize(this._purpose),
@@ -248,7 +243,7 @@ export class OrganizationProject {
       throw CreateError.InvalidParameters('options.title is required when cloning a project');
     }
     const destinationOrganizationId = await destinationOrganization.getGraphQlNodeId();
-    const operations = throwIfNotGitHubCapable(this._operations);
+    const operations = this._operations as Operations;
     const projectId = this._id;
     const mutation = query.cloneProject;
     try {
@@ -274,7 +269,7 @@ export class OrganizationProject {
   async getItems(options?: ProjectGetItemsOptions): Promise<ProjectItemEssentials[]> {
     options = options || {};
     const fixedFirstFieldsCount = 8;
-    const operations = throwIfNotGitHubCapable(this._operations);
+    const operations = this._operations as Operations;
     try {
       const response = await operations.github.graphql(
         this.authorize(),
@@ -295,7 +290,7 @@ export class OrganizationProject {
   async getItemsIterator(): Promise<
     AsyncIterable<ProjectItemsIteratorResponse> & IteratorPickerResponse<ProjectItemEssentials>
   > {
-    const operations = throwIfNotGitHubCapable(this._operations);
+    const operations = this._operations as Operations;
     try {
       const result = (await operations.github.graphqlIteration(
         this.authorize(this._purpose),
@@ -323,7 +318,7 @@ export class OrganizationProject {
   }
 
   async addItem(options: ProjectItemOptions): Promise<ProjectItemEssentials> {
-    const operations = throwIfNotGitHubCapable(this._operations);
+    const operations = this._operations as Operations;
     const projectId = this._id;
     const mutation = query.addItem;
     try {
@@ -341,7 +336,7 @@ export class OrganizationProject {
   }
 
   async addDraftItem(options: ProjectDraftItemOptions): Promise<ProjectItemEssentials> {
-    const operations = throwIfNotGitHubCapable(this._operations);
+    const operations = this._operations as Operations;
     const projectId = this._id;
     const mutation = query.addDraftItem;
     try {
@@ -364,7 +359,7 @@ export class OrganizationProject {
   }
 
   async attachToRepository(repository: Repository): Promise<void> {
-    const operations = throwIfNotGitHubCapable(this._operations);
+    const operations = this._operations as Operations;
     const repositoryNodeId = await repository.getGraphQlNodeId();
     const projectId = this._id;
     const mutation = query.attachToRepository;
@@ -380,7 +375,7 @@ export class OrganizationProject {
 
   async removeItem(itemNodeId: string): Promise<void> {
     // deleteProjectV2Item
-    const operations = throwIfNotGitHubCapable(this._operations);
+    const operations = this._operations as Operations;
     const projectId = this._id;
     const mutation = query.removeItem;
     try {
@@ -394,7 +389,7 @@ export class OrganizationProject {
   }
 
   async updateItemFieldOption(itemId: string, fieldId: string, singleSelectOptionId: string): Promise<void> {
-    const operations = throwIfNotGitHubCapable(this._operations);
+    const operations = this._operations as Operations;
     const projectId = this._id;
     const value = {
       singleSelectOptionId,

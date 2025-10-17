@@ -8,11 +8,14 @@ import escape from 'pg-escape';
 import { Client } from 'pg';
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
 initialize();
 
 async function setup() {
-  const sql = fs.readFileSync(path.join(__dirname, '../../data/pg.sql'), 'utf8');
+  const filename = fileURLToPath(import.meta.url);
+  const dirname = path.dirname(filename);
+  const sql = fs.readFileSync(path.join(dirname, '../../data/pg.sql'), 'utf8');
 
   const server = await prompt('postgres server: ');
   const adminUsername = await prompt('admin user: ');

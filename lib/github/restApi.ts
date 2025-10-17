@@ -9,6 +9,7 @@ import semver from 'semver';
 import Debug from 'debug';
 const debug = Debug.debug('restapi');
 const debugCacheOptimization = Debug.debug('oss-cache-optimization');
+const debugCall = Debug.debug('call');
 
 const debugShowStandardBehavior = false;
 const debugOutputUnregisteredEntityApis = true;
@@ -22,18 +23,18 @@ import {
   ApiContextType,
   RestResponse,
   RestMetadata,
-} from './core';
-import { getEntityDefinitions, GitHubResponseType, ResponseBodyType } from './endpointEntities';
+} from './core.js';
+import { getEntityDefinitions, GitHubResponseType, ResponseBodyType } from './endpointEntities.js';
 
-import appPackage from '../../package.json';
-import { ErrorHelper } from '../transitional';
+import appPackage from '../../package.json' with { type: 'json' };
+import { CreateError, ErrorHelper } from '../transitional.js';
 
-import type { GetAuthorizationHeader, AuthorizationHeaderValue } from '../../interfaces';
+import type { GetAuthorizationHeader, AuthorizationHeaderValue } from '../../interfaces/index.js';
 import {
-  type IGitHubAppConfiguration,
+  type GitHubAppConfiguration,
   getAppPurposeId,
   tryGetAppPurposeAppConfiguration,
-} from './appPurposes';
+} from './appPurposes.js';
 
 const appVersion = appPackage.version;
 
@@ -43,6 +44,8 @@ const acceleratedExpirationMinutes = 10; // quick cleanup
 
 const entityData = getEntityDefinitions();
 const emptySet = new Set<string>();
+
+let lastRateLimitMetric: Date = null;
 
 interface IReducedGitHubMetadata {
   etag: string;
@@ -78,6 +81,7 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
   }
 
   async callApi(apiContext: GitHubApiContext, optionalMessage?: string): Promise<RestResponse> {
+    debugCall(' ');
     const token = apiContext.token;
     // CONSIDER: rename apiContext.token *to* something like apiContext.authorization
     if (
@@ -109,6 +113,7 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
       }
     }
     const purpose = apiContext?.tokenSource?.purpose ? getAppPurposeId(apiContext.tokenSource.purpose) : null;
+    debugCall('Purpose: ' + purpose);
     if (optionalMessage) {
       let apiTypeSuffix =
         apiContext.tokenSource && apiContext.tokenSource.purpose
@@ -127,11 +132,15 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
       Object.assign(headers, apiContext.headers);
     }
     if (apiContext.etag) {
+      debugCall(`If-None-Match: ${apiContext.etag}`);
       headers['If-None-Match'] = apiContext.etag;
     }
     ++apiContext.cost.github.restApiCalls;
     const args = [];
     const apiMethod = apiContext.apiMethod;
+    if (apiContext.api && typeof apiContext.api === 'string') {
+      debugCall(`API: ${apiContext.api}`);
+    }
     if (apiContext.fakeLink) {
       args.push(apiContext.fakeLink, headers);
     } else {
@@ -139,25 +148,97 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
       if (argOptions.octokitRequest) {
         args.push(argOptions.octokitRequest);
         delete argOptions.octokitRequest;
+        debugCall(`Octokit request: ${argOptions.octokitRequest}`);
       }
       if (argOptions.additionalDifferentiationParameters) {
         delete argOptions.additionalDifferentiationParameters;
       }
+      debugCall(`Parameters: ${JSON.stringify(argOptions)}`);
       argOptions.headers = headers;
       args.push(argOptions);
     }
     const thisArgument = apiMethod.thisInstance || null;
+    const insights = apiContext.libraryContext.insights;
     try {
       const response = await apiMethod.apply(thisArgument, args);
+      if (response?.status) {
+        debugCall(`HTTP code: ${response.status}`);
+      }
+      if (response?.url) {
+        debugCall(`URL: ${response.url}`);
+      }
+      if (response?.headers && response.headers['x-github-request-id']) {
+        debugCall(`GitHub request ID: ${response.headers['x-github-request-id']}`);
+      }
       return response;
     } catch (error) {
       const asAny = error as any;
-      if (
+      if (ErrorHelper.GetStatus(error) === 304) {
+        // debugCall('304 response');
+        throw error;
+      } else if (ErrorHelper.IsServerError(error)) {
+        console.warn(
+          `Server error: purpose=${purpose} ${apiContext.api} ${apiContext?.options?.octokitRequest || ''}`
+        );
+      } else if (
+        ErrorHelper.IsNotAuthorized(error) &&
+        asAny?.message.includes('You have exceeded a secondary rate limit.')
+      ) {
+        console.log(
+          `Secondary rate limit issue: purpose=${purpose} ${apiContext.api} ${apiContext?.options?.octokitRequest || ''} ${asAny.message}`
+        );
+        // TODO: burn the specific installation for a bit.
+        try {
+          const now = new Date();
+          if (
+            lastRateLimitMetric === null ||
+            now.getTime() - lastRateLimitMetric.getTime() > 60000 /* 60s */
+          ) {
+            insights?.trackMetric({ name: 'GitHubApiRateLimitExceededSecondary', value: 1 });
+            insights?.trackEvent({
+              name: 'GitHubApiRateLimitExceededSecondary',
+              properties: {
+                purpose,
+                api: apiContext.api,
+                message: asAny.message,
+              },
+            });
+            lastRateLimitMetric = now;
+          }
+        } catch (error) {
+          console.warn(error);
+        }
+      } else if (ErrorHelper.IsNotAuthorized(error) && asAny?.message.includes('API rate limit exceeded')) {
+        console.log(
+          `Rate limit issue: purpose=${purpose} ${apiContext.api} ${apiContext?.options?.octokitRequest || ''} ${asAny.message}`
+        );
+        // Metrics should never error out here
+        try {
+          const now = new Date();
+          if (
+            lastRateLimitMetric === null ||
+            now.getTime() - lastRateLimitMetric.getTime() > 60000 /* 60s */
+          ) {
+            insights?.trackMetric({ name: 'GitHubApiRateLimitExceeded', value: 1 });
+            insights?.trackEvent({
+              name: 'GitHubApiRateLimitExceeded',
+              properties: {
+                purpose,
+                api: apiContext.api,
+                message: asAny.message,
+              },
+            });
+            lastRateLimitMetric = now;
+          }
+        } catch (error) {
+          console.warn(error);
+        }
+      } else if (
         ErrorHelper.IsNotAuthorized(error) &&
         asAny?.message === 'Resource not accessible by integration' &&
         apiContext.tokenSource
       ) {
-        let appConfig: IGitHubAppConfiguration = null;
+        let appConfig: GitHubAppConfiguration = null;
         if (apiContext?.tokenSource?.purpose && apiContext?.tokenSource?.organizationName) {
           appConfig = tryGetAppPurposeAppConfiguration(
             apiContext.tokenSource.purpose,
@@ -166,13 +247,21 @@ export class IntelligentGitHubEngine extends IntelligentEngine {
         }
         asAny.source = apiContext.tokenSource.source;
         const additional: string[] = [];
-        purpose && additional.push(`purpose=${purpose}`);
-        appConfig?.appId && additional.push(`appId=${appConfig.appId}`);
-        appConfig?.slug && additional.push(`slug=${appConfig.slug}`);
-        apiContext?.tokenSource?.installationId &&
+        if (purpose) {
+          additional.push(`purpose=${purpose}`);
+        }
+        if (appConfig?.appId) {
+          additional.push(`appId=${appConfig.appId}`);
+        }
+        if (appConfig?.slug) {
+          additional.push(`slug=${appConfig.slug}`);
+        }
+        if (apiContext?.tokenSource?.installationId) {
           additional.push(`installationId=${apiContext.tokenSource.installationId}`);
-        apiContext?.tokenSource?.organizationName &&
+        }
+        if (apiContext?.tokenSource?.organizationName) {
           additional.push(`organization=${apiContext.tokenSource.organizationName}`);
+        }
         const extra = ' ' + additional.join(', ');
         debug(`Additional installation context added to message for 403: ${extra}`);
         asAny.message += extra;

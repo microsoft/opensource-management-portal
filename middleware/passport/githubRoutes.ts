@@ -7,17 +7,17 @@ import { NextFunction, Response } from 'express';
 import querystring from 'querystring';
 import { PassportStatic } from 'passport';
 
-import { IReposApplication, ReposAppRequest, SiteConfiguration } from '../../interfaces';
-import { getProviders } from '../../lib/transitional';
-import { isCodespacesAuthenticating } from '../../lib/utils';
-import { IAuthenticationHelperMethods } from '../passport-routes';
+import { IReposApplication, ReposAppRequest, SiteConfiguration } from '../../interfaces/index.js';
+import { getProviders } from '../../lib/transitional.js';
+import { isCodespacesAuthenticating } from '../../lib/utils.js';
+import { IAuthenticationHelperMethods } from '../passport-routes.js';
 import {
   getGithubAppConfigurationOptions,
   githubStrategyName,
   githubIncreasedScopeStrategyName,
   githubStrategyUserPropertyName,
   githubIncreasedScopeStrategyUserPropertyName,
-} from '../passport/githubStrategy';
+} from '../passport/githubStrategy.js';
 
 export function attachGitHubPassportRoutes(
   app: IReposApplication,

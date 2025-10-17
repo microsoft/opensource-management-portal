@@ -7,9 +7,9 @@ import appRoot from 'app-root-path';
 import deepmerge from 'deepmerge';
 import fs from 'fs';
 import path from 'path';
-import { ILibraryOptions, InnerError, IProviderOptions } from '.';
+import { ILibraryOptions, InnerError, IProviderOptions } from './index.js';
 
-import graphBuilder from './graphBuilder';
+import graphBuilder from './graphBuilder.js';
 
 async function composeGraphs(api: ILibraryOptions) {
   api = api || {};
@@ -57,9 +57,20 @@ async function composeGraphs(api: ILibraryOptions) {
   // ---------------
   let graph = {};
   for (const p of paths.reverse()) {
-    const result = await graphBuilder(api, p);
-    const overwriteMerge = (destinationArray: any, sourceArray: any /* , options*/) => sourceArray;
-    graph = deepmerge(graph, result, { arrayMerge: overwriteMerge });
+    try {
+      const result = await graphBuilder(api, p);
+      const overwriteMerge = (destinationArray: any, sourceArray: any /* , options*/) => sourceArray;
+      graph = deepmerge(graph, result, { arrayMerge: overwriteMerge });
+    } catch (error) {
+      const specificPath = error?.path || p;
+      const err = new Error(`While processing configuration graph package or directory ${specificPath}`, {
+        cause: error,
+      } as InnerError);
+      if (error?.path) {
+        (err as any).path = error.path;
+      }
+      throw err;
+    }
   }
   if (!graph || Object.getOwnPropertyNames(graph).length === 0) {
     throw new Error(
@@ -78,19 +89,20 @@ function addConfigPackages(paths: string[], applicationRoot: string, painlessCon
 function getPackage(applicationRoot: string) {
   try {
     const pkgPath = path.join(applicationRoot, 'package.json');
-    return require(pkgPath);
+    const raw = fs.readFileSync(pkgPath, 'utf8');
+    return JSON.parse(raw);
   } catch (noPackageJson) {
     // It's OK if the app doesn't have a package.json
   }
 }
 
-function addConfigPackage(paths: string[], applicationRoot: string, npmName: string) {
+async function addConfigPackage(paths: string[], applicationRoot: string, npmName: string) {
   let root = null;
   let packageInstance = null;
   npmName = npmName.trim();
   if (!npmName.startsWith('.')) {
     try {
-      packageInstance = require(npmName);
+      packageInstance = await import(npmName);
     } catch (cannotRequire) {
       throw new Error(`While trying to identify configuration graphs, ${npmName} could not be required`, {
         cause: cannotRequire,

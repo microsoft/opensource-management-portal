@@ -3,18 +3,21 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Operations } from '.';
-import { Account } from '../account';
-import { UnlinkPurpose, IUnlinkMailStatus, ICachedEmployeeInformation } from '../../interfaces';
-import getCompanySpecificDeployment from '../../middleware/companySpecificDeployment';
-import { assertUnreachable } from '../../lib/transitional';
+import { Operations } from './index.js';
+import { Account } from '../account.js';
+import { UnlinkPurpose, IUnlinkMailStatus, ICachedEmployeeInformation } from '../../interfaces/index.js';
+import getCompanySpecificDeployment from '../../middleware/companySpecificDeployment.js';
+import { assertUnreachable } from '../../lib/transitional.js';
 
 export async function sendTerminatedAccountMail(
   operations: Operations,
   account: Account,
   purpose: UnlinkPurpose,
   details: string[],
-  errorsCount: number
+  errorsCount: number,
+  neverSendToAccountHolder: boolean,
+  customUnlinkReason: string,
+  additionalMails: string[]
 ): Promise<IUnlinkMailStatus> {
   const { config, mailProvider, insights } = operations.providers;
   if (!mailProvider || !account.link || !account.link.corporateId) {
@@ -22,7 +25,6 @@ export async function sendTerminatedAccountMail(
   }
   const link = account.link;
   const companySpecific = getCompanySpecificDeployment();
-
   purpose = purpose || UnlinkPurpose.Unknown;
   let sendNoticeToLinkHolder = false;
   switch (purpose) {
@@ -41,29 +43,36 @@ export async function sendTerminatedAccountMail(
       assertUnreachable(purpose);
     }
   }
-
+  if (neverSendToAccountHolder) {
+    sendNoticeToLinkHolder = false;
+  }
   const operationsMail = operations.getLinksNotificationMailAddress();
   let displayName = link.corporateDisplayName || link.corporateUsername || link.corporateId;
-  let subjectPrefix = '';
+  const siteBaseUrlClear = config?.webServer?.baseUrl?.replace('https://', '');
+  const environmentSubjectPrefix =
+    config?.environment?.configuration === 'production'
+      ? ''
+      : `[${siteBaseUrlClear || config?.environment?.configuration || 'unknown'}] `;
+  let subjectPrefix = environmentSubjectPrefix;
   let subjectSuffix = '';
   let headline = `${displayName} has been unlinked from GitHub`;
   switch (purpose) {
     case UnlinkPurpose.Self:
       headline = `${displayName} unlinked themselves from GitHub`;
-      subjectPrefix = 'FYI: ';
+      subjectPrefix += 'FYI: ';
       subjectSuffix = ' [self-service remove]';
       break;
     case UnlinkPurpose.Deleted:
-      subjectPrefix = 'FYI: ';
+      subjectPrefix += 'FYI: ';
       subjectSuffix = '[account deleted]';
       headline = `${displayName} deleted their GitHub account`;
       break;
     case UnlinkPurpose.Operations:
-      subjectPrefix = 'FYI: ';
+      subjectPrefix += 'FYI: ';
       subjectSuffix = ' [corporate GitHub operations]';
       break;
     case UnlinkPurpose.Termination:
-      subjectPrefix = '[UNLINKED] ';
+      subjectPrefix += '[UNLINKED] ';
       headline = `${displayName} has had their GitHub access offboarded`;
       break;
     case UnlinkPurpose.Unknown:
@@ -71,7 +80,6 @@ export async function sendTerminatedAccountMail(
       subjectSuffix = ' [unknown]';
       break;
   }
-
   if (sendNoticeToLinkHolder) {
     try {
       const mail = {
@@ -80,10 +88,9 @@ export async function sendTerminatedAccountMail(
         subject: `${subjectPrefix}${
           link.corporateUsername || displayName
         } unlinked from GitHub ${subjectSuffix}`.trim(),
-        content: undefined,
       };
       const viewName = companySpecific?.views?.email?.linking?.unlink || 'unlink';
-      mail.content = await operations.emailRender(viewName, {
+      const selfReceipt = await operations.emailRenderSend(viewName, mail, {
         reason: `This is a mandatory notice: your GitHub account and corporate identity have been unlinked. This mail was sent to: ${
           link.corporateMailAddress || link.corporateUsername
         }`,
@@ -92,10 +99,10 @@ export async function sendTerminatedAccountMail(
         app: `${config.brand.companyName} GitHub`,
         link: account.link,
         companyName: config.brand.companyName,
+        customUnlinkReason,
         purpose,
         details,
       });
-      const selfReceipt = await operations.sendMail(Object.assign(mail));
       insights?.trackEvent({
         name: 'UnlinkMailSentToAccount',
         properties: {
@@ -155,6 +162,7 @@ export async function sendTerminatedAccountMail(
     to.push(cachedEmployeeManagementInfo.managerMail);
   }
   to = to.filter((val) => val);
+  const cc = additionalMails || [];
   const bcc = [];
   if (!errorMode) {
     bcc.push(...operationsArray);
@@ -162,13 +170,13 @@ export async function sendTerminatedAccountMail(
   const toAsString = to.join(', ');
   const mail = {
     to,
+    cc,
     bcc,
     subject: `${subjectPrefix}${upn || displayName} unlinked from GitHub ${subjectSuffix}`.trim(),
     category: ['link'],
-    content: undefined,
   };
   const managerViewName = companySpecific?.views?.email?.linking?.unlinkManager || 'managerunlink';
-  mail.content = await operations.emailRender(managerViewName, {
+  const receipt = await operations.emailRenderSend(managerViewName, mail, {
     reason: `As a manager you receive one-time security-related messages regarding your direct reports who have linked their GitHub account to the company.
               This mail was sent to: ${toAsString}`,
     headline,
@@ -176,6 +184,7 @@ export async function sendTerminatedAccountMail(
     app: `${config.brand.companyName} GitHub`,
     link: account.link,
     companyName: config.brand.companyName,
+    customUnlinkReason,
     managementInformation: cachedEmployeeManagementInfo,
     purpose,
     details,
@@ -183,6 +192,6 @@ export async function sendTerminatedAccountMail(
   return {
     to,
     bcc,
-    receipt: await operations.sendMail(Object.assign(mail)),
+    receipt,
   };
 }

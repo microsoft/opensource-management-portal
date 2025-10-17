@@ -22,6 +22,4 @@ export type ConfigEntityProviders = {
   teamcache: string;
   teammembercache: string;
   usersettings: string;
-  tokens: string;
-  localextensionkey: string;
 };

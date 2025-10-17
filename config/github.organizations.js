@@ -3,11 +3,11 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-const typescriptConfig = require('./typescript');
-const arrayFromString = require('./utils/arrayFromString');
+import typescriptConfig from './typescript.js';
+import arrayFromString from './utils/arrayFromString.js';
 
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
 
 // Resolves the organization configuration data; GITHUB_ORGANIZATIONS_FILE or GITHUB_ORGANIZATIONS_ENVIRONMENT_NAME
 
@@ -18,7 +18,7 @@ const painlessConfigEnvironmentVariableName = 'CONFIGURATION_ENVIRONMENT';
 
 const defaultEnvironmentTypeName = 'github.organizations';
 
-function getModuleConfiguration(environmentInstances, environmentType, environmentName) {
+async function getModuleConfiguration(environmentInstances, environmentType, environmentName) {
   if (!environmentInstances) {
     throw new Error(
       `${organizationsEnvironmentVariableName} configured but no environment instances were loaded by the config system`
@@ -33,17 +33,18 @@ function getModuleConfiguration(environmentInstances, environmentType, environme
   for (let i = 0; i < environmentInstances.length; i++) {
     let instance = environmentInstances[i];
     try {
-      let organizations = instance(environmentName, environmentType);
+      let organizations = await instance(environmentName, environmentType);
       if (organizations) {
         return organizations;
       }
+      // eslint-disable-next-line no-unused-vars
     } catch (noProvider) {
-      /* The environment does not have the type */
+      // The environment does not have the type
     }
   }
 }
 
-module.exports = (graphApi) => {
+export default async (graphApi) => {
   const environmentProvider = graphApi.environment;
   const environmentInstances = environmentProvider ? environmentProvider.environmentInstances : null;
   const orgs = [];
@@ -81,7 +82,7 @@ module.exports = (graphApi) => {
       `${organizationsEnvironmentVariableName} configured but no environment instances were loaded by the config system`
     );
   } else if (organizationsEnvironmentName) {
-    contents = getModuleConfiguration(
+    contents = await getModuleConfiguration(
       environmentInstances,
       organizationsEnvironmentType,
       organizationsEnvironmentName

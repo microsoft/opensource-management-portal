@@ -3,14 +3,11 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import {
-  IAuditLogRecordProvider,
-  IAuditLogRecordProviderCreateOptions,
-  AuditLogRecordProvider,
-} from './auditLogRecordProvider';
+import type { IEntityMetadataBaseOptions } from '../../../lib/entityMetadataProvider/entityMetadata.js';
+import { IAuditLogRecordProvider, AuditLogRecordProvider } from './auditLogRecordProvider.js';
 
 export async function createAndInitializeAuditLogRecordProviderInstance(
-  options?: IAuditLogRecordProviderCreateOptions
+  options?: IEntityMetadataBaseOptions
 ): Promise<IAuditLogRecordProvider> {
   const provider = new AuditLogRecordProvider(options);
   await provider.initialize();
