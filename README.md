@@ -29,20 +29,11 @@ Core capabilities and features of this application:
 - **People inventory 👨‍🦳🧑‍🚀🧒🏽** to help people connect GitHub public logins with corporate identities
 - **Intercepting forks and new repositories 🔐** to inject compliance and approval processes
 - **Disable and enable 🔑** experiences for GitHub repositories
-- **Just-in-time (JIT) access 🚪** for open source repositories, teams, and organizations, aligning with the principle of least privilege access
 - **Sudo ⚡️** capabilities for repos, teams, organizations to remove persistent broad ownership and admin permissions
 - **Hosting APIs 🍽️** to create repos, large-scale orgs to access link data, and reports
 - **Background jobs 👷‍♂️** to maintain eventual consistency, run tasks, gather metrics, and prepare OKRs
 - **Team join requests/approvals with context 🚪** building beyond the GitHub experience
 - **Automated offboarding 🛶** when people take on new opportunities
-
-At Microsoft, additional capabilities include:
-
-- **Pre-release business and legal approvals to release projects 🧑‍⚖️**
-- **Requesting contribution reviews ✍🏾** within policy
-- **Service Tree and Direct Owners inventory 🌳** for showing accountable ownership information for repos when available
-- **Hosting internal docs 📚** at aka.ms/opensource
-- **Hosting a subset of opensource.microsoft.com's APIs 🌍** to bring to life the Microsoft open source presence
 
 The management portal is designed to be fast, efficient, and get out of the way of engineers
 to get their important work done, with an emphasis on _relentless automation_ and _delegation_.
