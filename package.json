@@ -175,7 +175,7 @@
     "@types/memory-cache": "0.2.6",
     "@types/morgan": "1.9.10",
     "@types/multer": "2.0.0",
-    "@types/node": "24.7.2",
+    "@types/node": "24.9.1",
     "@types/node-jose": "1.1.13",
     "@types/object-path": "0.11.4",
     "@types/passport": "1.0.17",
