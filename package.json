@@ -158,7 +158,7 @@
     "unified": "11.0.5",
     "universal-github-app-jwt": "2.2.2",
     "universal-user-agent": "7.0.3",
-    "validator": "13.15.15",
+    "validator": "13.15.20",
     "walk-back": "5.1.1"
   },
   "devDependencies": {
