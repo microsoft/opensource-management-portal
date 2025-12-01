@@ -124,13 +124,17 @@ async function initializeAsync(
   providers.graphProvider = await createGraphProvider(providers, config);
   providers.mailAddressProvider = await createMailAddressProvider(config, providers);
 
-  const mailProvider = createMailProviderInstance(providers, config);
-  if (mailProvider) {
-    const mailInitializedMessage = await mailProvider.initialize();
-    debug(`mail provider type=${config.mail.provider} ${mailInitializedMessage}`);
-    providers.mailProvider = mailProvider;
-  } else {
-    debug(`mail provider *NOT* initialized, type=${config.mail.provider}`);
+  try {
+    const mailProvider = createMailProviderInstance(providers, config);
+    if (mailProvider) {
+      const mailInitializedMessage = await mailProvider.initialize();
+      debug(`mail provider type=${config.mail.provider} ${mailInitializedMessage}`);
+      providers.mailProvider = mailProvider;
+    } else {
+      debug(`mail provider *NOT* initialized, type=${config.mail.provider}`);
+    }
+  } catch (mailInitError) {
+    debug(`mail provider initialization failure: ${mailInitError}`);
   }
 
   providers.github = configureGitHubLibrary(providers.cacheProvider, config);

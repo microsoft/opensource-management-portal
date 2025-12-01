@@ -7,7 +7,7 @@ import Debug from 'debug';
 import { Octokit } from '@octokit/rest';
 import { paginateGraphQL } from '@octokit/plugin-paginate-graphql';
 import { retry } from '@octokit/plugin-retry';
-
+import { RequestError } from '@octokit/request-error';
 import type { TelemetryClient } from 'applicationinsights';
 
 import * as restApi from './restApi.js';
@@ -16,23 +16,23 @@ import { CompositeIntelligentEngine } from './composite.js';
 import { RestCollections } from './collections.js';
 import { CrossOrganizationCollator } from './crossOrganization.js';
 import { LinkMethods } from './links.js';
-import {
+import { AppPurposeTypes, GitHubAppPurposes, ICustomAppPurpose } from './appPurposes.js';
+import { CreateError } from '../transitional.js';
+import { Operations } from '../../business/index.js';
+import { requestLog } from './octokitRequestLog.js';
+import type {
   GetAuthorizationHeader,
   AuthorizationHeaderValue,
   ICacheOptions,
   SiteConfiguration,
 } from '../../interfaces/index.js';
 import type { ICacheHelper } from '../caching/index.js';
-import { AppPurposeTypes, GitHubAppPurposes, ICustomAppPurpose } from './appPurposes.js';
-import { CreateError } from '../transitional.js';
-import {
-  type GitHubAuthenticationRequirement,
-  type GitHubAuthenticationWithRequirements,
-  type GitHubPermissionDefinition,
+import type {
+  AdditionalRequirementsOptions,
+  GitHubAuthenticationRequirement,
+  GitHubAuthenticationWithRequirements,
   OctokitMethod,
 } from './types.js';
-import { Operations } from '../../business/index.js';
-import { requestLog } from './octokitRequestLog.js';
 
 export enum CacheMode {
   ValidateCache = 'ValidateCache',
@@ -57,12 +57,6 @@ export type OctokitGraphqlOptions = {
 };
 
 type OctokitParameters = Record<string, string | number | boolean> | ICacheOptions;
-
-export type AdditionalRequirementsOptions = {
-  permissions?: GitHubPermissionDefinition;
-  usePermissionsFromAlternateUrl?: string;
-  permissionsMatchRequired?: boolean;
-};
 
 const debug = Debug.debug('restapi');
 
@@ -410,6 +404,10 @@ export class RestLibrary {
     if (options?.permissionsMatchRequired !== undefined) {
       requirements.permissionsMatchRequired = options.permissionsMatchRequired;
     }
+    if (options?.allowBestFaithInstallationForAnyHttpMethod !== undefined) {
+      requirements.allowBestFaithInstallationForAnyHttpMethod =
+        options.allowBestFaithInstallationForAnyHttpMethod;
+    }
     if (typeof authorization !== 'string') {
       authorization = authorization.bind(authorization, requirements);
     }
@@ -500,11 +498,29 @@ export class RestLibrary {
       const finalized = massageData(value);
       return finalized;
     } catch (error) {
-      console.log(`API ${api} POST error: ${error.message}`);
+      const asRequestError = error as RequestError;
+      console.log(`\nDetailed GitHub API ${asRequestError?.request?.method || 'POST'} failure:`);
+      const message = error?.message || error?.toString() || 'Unknown error message';
+      const isUnicorn = message.includes('Unicorn!') && message.includes('<!DOCTYPE html>');
+      console.log(isUnicorn ? '\tError: UNICORN' : `\tError: ${error.message}`);
       const isGraphqlError = error?.name === 'GraphqlResponseError';
       if (error?.message?.includes('Unexpected end of JSON input')) {
         console.log('Usually a unicorn and bad GitHub 500');
         console.dir(error);
+      }
+      if (asRequestError?.request?.body) {
+        console.log();
+        console.error('\tRequest body:');
+        if (
+          typeof asRequestError.request.body === 'string' ||
+          typeof asRequestError.request.body === 'number'
+        ) {
+          console.log(`\t\t${asRequestError?.request?.body || 'unknown body'}`);
+        } else if (typeof asRequestError.request.body === 'object') {
+          console.log(`\t\t${JSON.stringify(asRequestError?.request?.body) || 'unknown body'}`);
+        } else {
+          console.log(`\t\tunknown body type: ${typeof asRequestError.request.body}`);
+        }
       }
       if (error?.headers) {
         const headerKeys = Object.getOwnPropertyNames(error.headers);
@@ -562,6 +578,8 @@ export class RestLibrary {
                       : headers[headerKey];
                   console.log(`\t\t${headerKey}: ${headerValue}`);
                 }
+              } else if (Array.isArray(value)) {
+                console.log(`\t\t${key}: [ ` + (value as unknown[]).join(', ') + ' ]');
               } else {
                 console.log(`\t\t${key}: ${value}`);
               }
@@ -658,6 +676,9 @@ export class RestLibrary {
         console.dir(error.request);
       }
       console.log();
+      if (isUnicorn) {
+        throw CreateError.Wrap(`Received a GitHub unicorn HTTP ${error.status} response`, error);
+      }
       throw error;
     }
   }

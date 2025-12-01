@@ -60,15 +60,17 @@ export type GitHubAppPermissionRequirement = {
   accessName: string; // read, write,
 };
 
-export type GitHubAuthenticationRequirement<T> = {
+export type AdditionalRequirementsOptions = {
+  permissions?: GitHubPermissionDefinition;
+  usePermissionsFromAlternateUrl?: string;
+  permissionsMatchRequired?: boolean;
+  allowBestFaithInstallationForAnyHttpMethod?: boolean;
+};
+
+export type GitHubAuthenticationRequirement<T> = AdditionalRequirementsOptions & {
   octokitFunction?: OctokitMethod<T>;
   octokitFunctionName?: string;
-
   octokitRequest?: string;
-
-  permissions?: GitHubPermissionDefinition;
-  permissionsMatchRequired?: boolean;
-  usePermissionsFromAlternateUrl?: string;
 };
 
 export type GitHubAuthenticationWithRequirements = {

@@ -505,7 +505,6 @@
         "DEBUG": "redis,restapi,startup,appinsights"
       }
     },
-
     {
       "type": "node",
       "request": "launch",

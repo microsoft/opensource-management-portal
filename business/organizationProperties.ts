@@ -127,8 +127,8 @@ export class OrganizationProperties {
       const entity = (await github.callWithRequirements(
         github.createRequirementsForFunction(
           this.authorize(purpose),
-          rest.orgs.getCustomProperty,
-          'orgs.getCustomProperty'
+          rest.orgs.customPropertiesForReposGetOrganizationDefinition,
+          'orgs.customPropertiesForReposGetOrganizationDefinition'
         ),
         parameters,
         cacheOptions

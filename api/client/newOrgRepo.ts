@@ -10,7 +10,6 @@ const router: Router = Router();
 
 import { getProviders } from '../../lib/transitional.js';
 import { jsonError } from '../../middleware/jsonError.js';
-import { IndividualContext } from '../../business/user/index.js';
 import { Organization } from '../../business/organization.js';
 import {
   createRepositoryCore,
@@ -24,6 +23,7 @@ import {
   ReposAppRequest,
   VoidedExpressRoute,
 } from '../../interfaces/index.js';
+import type { IndividualContext } from '../../business/user/index.js';
 
 // This file supports the client apps for creating repos.
 
@@ -451,13 +451,12 @@ export async function createRepositoryFromClient(
     title: existingRepoId ? 'Repository unlocked' : 'Repository created',
     message,
     url: null,
-    messages: null,
+    messages: success.tasks,
   };
+  delete output.tasks;
   if (success.github) {
     output.url = success.github.html_url;
   }
-  output.messages = output['tasks'];
-  delete output['tasks'];
   insights.trackEvent({
     name: 'ApiClientNewOrgRepoSuccessful',
     properties: {

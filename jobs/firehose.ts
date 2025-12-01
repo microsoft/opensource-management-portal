@@ -24,21 +24,26 @@ import type {
   IReposJobResult,
 } from '../interfaces/index.js';
 
-const runningAsOngoingDeployment = true;
-
-const hardAbortMs = 1000 * 60 * 5; // 5 minutes
-
+const RUNNING_AS_ONGOING_DEPLOYMENT = true;
+const HARD_ABORT_MS = 1000 * 60 * 5; // 5 minutes
 const EVENTS_TO_COMPLETELY_IGNORE = ['installation', 'ping', 'star', 'watch'];
 const USER_ACTIONS_TO_HANDLE = ['transferred', 'created'];
 const EVENTS_TO_ALWAYS_HANDLE = ['repository_advisory'];
+const RECENT_EVENT_METRIC_INTERVAL_MS = 1000 * 60 * 5; // 5 minutes
+const INSIGHTS_PREFIX = 'events';
+
+let recentlyProcessedEvents: number;
 
 job.run(firehose, {
-  insightsPrefix: 'JobFirehose',
+  insightsPrefix: INSIGHTS_PREFIX,
 });
 
 async function firehose(providers: IProviders, { started }: IReposJob): Promise<IReposJobResult> {
+  const { insights } = providers;
   const processedEventTypes = {};
   const interestingEvents = 0;
+  recentlyProcessedEvents = 0;
+  let recentBatchStarted = new Date();
   let processedEvents = 0;
   const config = providers.config;
   const jobMinutesFrequency = config.github.webhooks.runtimeMinutes
@@ -49,10 +54,35 @@ async function firehose(providers: IProviders, { started }: IReposJob): Promise<
   if (config.github?.webhooks?.serviceBus?.queue) {
     console.log(`bus: ${config.github.webhooks.serviceBus.queue}`);
   }
-  if (runningAsOngoingDeployment) {
+  const reportRecentMetrics = function () {
+    const now = new Date();
+    const elapsedMs = now.getTime() - recentBatchStarted.getTime();
+    const elapsedMinutes = elapsedMs / (1000 * 60);
+    const events = recentlyProcessedEvents;
+    const eventsPerMinute = events / elapsedMinutes;
+    insights?.trackMetric({ name: INSIGHTS_PREFIX + '.recent.count', value: eventsPerMinute });
+    insights?.trackEvent({
+      name: INSIGHTS_PREFIX + '.recent.counted',
+      properties: {
+        eventsProcessed: events,
+        from: recentBatchStarted.toISOString(),
+        to: now.toISOString(),
+        elapsedMinutes: elapsedMinutes.toFixed(2),
+        eventsPerMinute: eventsPerMinute.toFixed(2),
+      },
+    });
+    recentlyProcessedEvents = 0;
+    recentBatchStarted = now;
+  };
+  const recentInterval = setInterval(() => {
+    reportRecentMetrics();
+  }, RECENT_EVENT_METRIC_INTERVAL_MS);
+  if (RUNNING_AS_ONGOING_DEPLOYMENT) {
     console.log('webhook processor is configured to keep running, it will not exit');
   } else {
     setTimeout(() => {
+      clearInterval(recentInterval);
+      reportRecentMetrics();
       const finishing = DateTime.utc().toISO();
       console.log(
         `Ending run after ${runtimeSeconds}s at ${finishing} after finding ${interestingEvents} events of interest and processing ${processedEvents}`
@@ -74,7 +104,7 @@ async function firehose(providers: IProviders, { started }: IReposJob): Promise<
     ? parseInt(config.github.webhooks.emptyQueueDelaySeconds)
     : 10;
 
-  if (runningAsOngoingDeployment) {
+  if (RUNNING_AS_ONGOING_DEPLOYMENT) {
     console.log(
       `Webhooks processor started ${started} and will run with empty delays of ${emptyQueueDelaySeconds}s`
     );
@@ -83,7 +113,6 @@ async function firehose(providers: IProviders, { started }: IReposJob): Promise<
       `Job started ${started} and will run for ${runtimeSeconds}s with empty delays of ${emptyQueueDelaySeconds}s`
     );
   }
-  const insights = providers.insights;
   const webhooksConfig = config.github.webhooks;
   if (!webhooksConfig) {
     throw new Error('No webhoooks queue configuration');
@@ -103,17 +132,11 @@ async function firehose(providers: IProviders, { started }: IReposJob): Promise<
     `Parallelism for this run will be ${parallelism} logical threads, offset by ${sliceDelayPerThread}s`
   );
   insights?.trackEvent({
-    name: 'JobFirehoseStarted',
+    name: INSIGHTS_PREFIX + '.started',
     properties: {
       hostname: os.hostname(),
-      // queue: serviceBusConfig.queue,
-      // subscription: serviceBusConfig.subscriptionName,
-      // messagesInQueue: messagesInQueue.toString(),
-      // deadLetters: deadLetters.toString(),
     },
   });
-  // insights.trackMetric({ name: 'FirehoseMessagesInQueue', value: messagesInQueue });
-  // insights.trackMetric({ name: 'FirehoseDeadLetters', value: deadLetters });
   const threads: Promise<void>[] = [];
   let delay = 0;
   for (let i = 0; i < parallelism; i++) {
@@ -143,10 +166,9 @@ async function firehose(providers: IProviders, { started }: IReposJob): Promise<
         await iterate(providers, threadNumber);
       }
     } catch (error) {
-      const insights = providers.insights;
-      insights.trackException({ exception: error });
-      insights.trackEvent({
-        name: 'JobFirehoseFatalError',
+      insights?.trackException({ exception: error });
+      insights?.trackEvent({
+        name: INSIGHTS_PREFIX + '.fatal_error',
         properties: {
           message: error.message,
         },
@@ -157,7 +179,7 @@ async function firehose(providers: IProviders, { started }: IReposJob): Promise<
   async function iterate(providers: IProviders, threadNumber: number): Promise<void> {
     const { webhookQueueProcessor } = providers;
     let messages: IQueueMessage[] = null;
-    let intervalHandle = setTimeout(hardAbort, hardAbortMs);
+    let intervalHandle = setTimeout(hardAbort, HARD_ABORT_MS);
     try {
       messages = await webhookQueueProcessor.receiveMessages();
     } catch (getError) {
@@ -174,7 +196,8 @@ async function firehose(providers: IProviders, { started }: IReposJob): Promise<
       await sleep(emptyQueueDelaySeconds * 1000);
       return;
     }
-    intervalHandle = setTimeout(hardAbort, hardAbortMs);
+    recentlyProcessedEvents += messages.length;
+    intervalHandle = setTimeout(hardAbort, HARD_ABORT_MS);
     try {
       for (const message of messages) {
         try {
@@ -199,7 +222,7 @@ async function firehose(providers: IProviders, { started }: IReposJob): Promise<
       : null;
     if (logicAppStarted) {
       totalSeconds = DateTime.utc().diff(logicAppStarted, 'seconds').seconds;
-      insights.trackMetric({ name: 'JobFirehoseQueueDelay', value: totalSeconds });
+      insights?.trackMetric({ name: INSIGHTS_PREFIX + '.queue_delay', value: totalSeconds });
     }
     let deletedAlready = false;
 
@@ -240,7 +263,7 @@ async function firehose(providers: IProviders, { started }: IReposJob): Promise<
     } else if (webhook?.sender?.type === 'User' && !USER_ACTIONS_TO_HANDLE.includes(action)) {
       acknowledgeEvent();
       insights?.trackEvent({
-        name: 'job.webhook.event.user_type.ignored',
+        name: 'user_type.ignored',
         properties: {
           eventType,
           action,
@@ -300,16 +323,16 @@ async function firehose(providers: IProviders, { started }: IReposJob): Promise<
       if (isKnownOrganization) {
         // While we receive events for organizations being onboarded or known but ignored,
         // these are not exceptional events, just events to skip.
-        insights.trackEvent({
-          name: 'JobFirehoseKnownOrganizationIgnored',
+        insights?.trackEvent({
+          name: INSIGHTS_PREFIX + '.known_organization_ignored',
           properties: {
             orgName,
           },
         });
       } else {
-        insights.trackException({ exception: noOrganizationError });
-        insights.trackEvent({
-          name: 'JobFirehoseMissingOrganizationConfiguration',
+        insights?.trackException({ exception: noOrganizationError });
+        insights?.trackEvent({
+          name: INSIGHTS_PREFIX + '.missing_organization_configuration',
           properties: {
             orgName,
           },

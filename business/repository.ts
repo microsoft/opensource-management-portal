@@ -50,11 +50,12 @@ import { IListPullsParameters, GitHubPullRequestState } from '../lib/github/coll
 import { wrapError } from '../lib/utils.js';
 import { RepositoryActions } from './repositoryActions.js';
 import { RepositoryPullRequest } from './repositoryPullRequest.js';
-import { CreateError, ErrorHelper } from '../lib/transitional.js';
+import { ErrorHelper } from '../lib/transitional.js';
 import { RepositoryInvitation } from './repositoryInvitation.js';
 import { RepositoryProperties } from './repositoryProperties.js';
 import { WithGitHubRestHeaders } from '../lib/github/core.js';
 import { RepositoryAdvisories } from './repositoryAdvisories.js';
+import { RepositoryOidc } from './repositoryOidc.js';
 
 type RepositoryMoments = {
   created?: moment.Moment;
@@ -483,6 +484,10 @@ export class Repository {
       this._getSpecificAuthorizationHeader,
       this._operations
     );
+  }
+
+  get openIdConnect() {
+    return new RepositoryOidc(this, this._getAuthorizationHeader, this._operations);
   }
 
   get securityAdvisories() {

@@ -11,6 +11,8 @@ export interface IAttachCompanySpecificRoutesApi {
   context?: IAttachCompanySpecificRoutesApiContextual;
   organization?: IAttachCompanySpecificRoutesApiOrganization;
   people?: ConnectRouter;
+
+  skipApiVersionChecksForPrefixes?: string[];
 }
 
 export interface IAttachCompanySpecificRoutesApiContextual {

@@ -29,23 +29,39 @@ import type { CreateRepositoryRequest } from './client/newOrgRepo.js';
 
 const hardcodedApiVersions = ['2019-10-01', '2019-02-01', '2017-09-01', '2017-03-08', '2016-12-01'];
 
+const MOST_RECENT_VERSION = hardcodedApiVersions[0];
+const CLIENT_ROUTE_PREFIX = '/client';
+
+function skipApiVersionCheck(req: ReposAppRequest, prefixes: string[]) {
+  for (const prefix of prefixes) {
+    if (req.path.startsWith(prefix)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function isClientRoute(req: ReposAppRequest) {
-  const path = req.path.toLowerCase();
-  return path.startsWith('/client');
+  return req.path.startsWith(CLIENT_ROUTE_PREFIX);
 }
 
 export default function routeApi(config: SiteConfiguration) {
   if (!config) {
     throw CreateError.InvalidParameters('No configuration provided to the API routes');
   }
+  const companySpecificDeployment = getCompanySpecificDeployment();
+  const skipApiVersionChecksForPrefixes =
+    companySpecificDeployment?.routes?.api?.skipApiVersionChecksForPrefixes || [];
+  const combinedSkipVersionPrefixes = [CLIENT_ROUTE_PREFIX, ...skipApiVersionChecksForPrefixes];
 
   router.use('/webhook', apiWebhook);
 
   router.use((req: ReposApiRequest, res: Response, next: NextFunction) => {
-    if (isClientRoute(req)) {
+    if (skipApiVersionCheck(req, combinedSkipVersionPrefixes)) {
       // The frontend client routes are hooked into Express after
       // the session middleware. The client route does not require
-      // an API version.
+      // an API version. Also, some APIs do not require a version.
+      req.apiVersion = MOST_RECENT_VERSION;
       return next();
     }
     const apiVersion = (req.query['api-version'] || req.headers['api-version']) as string;

@@ -9,6 +9,7 @@
     "MD033": false
   },
   "ignores": [
+    ".github/prompts/**",
     "**/node_modules/**",
     "frontend/**",
     "microsoft/assets/**",
