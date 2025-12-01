@@ -8,7 +8,7 @@
 
 // From: https://github.com/octokit/plugin-request-log.js/blob/main/src/index.ts (2024-10-30, ab4932c)
 
-// import type { Octokit } from '@octokit/core';
+import { RequestError } from '@octokit/request-error';
 import type { Octokit } from '@octokit/rest';
 
 // This file is patched so that 304's do not output to the default console as errors.
@@ -34,7 +34,17 @@ export function requestLog(octokit: Octokit) {
       })
 
       .catch((error) => {
-        const requestId = error.response?.headers['x-github-request-id'] || 'UNKNOWN';
+        let requestId = error.response?.headers['x-github-request-id'] || 'UNKNOWN';
+        const asOctokitError = error as RequestError;
+        if (
+          requestId === 'UNKNOWN' &&
+          asOctokitError?.response?.data &&
+          typeof asOctokitError.response.data === 'string' &&
+          asOctokitError.response.data.includes('<!DOCTYPE html>') &&
+          asOctokitError.response.data.includes('Unicorn!')
+        ) {
+          requestId += ' + HTML UNICORN';
+        }
         let logAsInfo = false;
         if (error?.status === 304) {
           logAsInfo = true;
@@ -43,6 +53,9 @@ export function requestLog(octokit: Octokit) {
           error.status === 404
         ) {
           // Ignore 404's for memberships
+          logAsInfo = true;
+        } else if (path?.includes('/cost-centers/') && error.status === 403) {
+          // Ignore 403's for cost centers which are when users are not in the enterprise during assignment (more 404-like)
           logAsInfo = true;
         }
         if (logAsInfo) {

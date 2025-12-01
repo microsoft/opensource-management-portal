@@ -72,7 +72,7 @@ export interface ICreateRepositoryApiResult {
   repositoryId: number;
   organizationName: string;
   notified?: string[];
-  tasks?: any[];
+  tasks?: IRepositoryWorkflowOutput[];
 }
 
 export type CreateRepositoryMicrosoftProperties = {
@@ -415,7 +415,7 @@ export async function createRepositoryCore(
   };
   // req.approvalRequest['ms.approvalId'] = requestId; // TODO: is this ever used?
   const repoWorkflow = new RepoWorkflowEngine(providers, organization, repository, approvalPackage);
-  let output = [];
+  let output: IRepositoryWorkflowOutput[] = [];
   try {
     output = await generateAndRunSecondaryTasks(repoWorkflow);
   } catch (rollbackNeededError) {

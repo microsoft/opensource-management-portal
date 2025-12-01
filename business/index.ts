@@ -18,6 +18,7 @@ export * from './queryCache.js';
 export * from './repoSearch.js';
 export * from './repository.js';
 export * from './repositoryIssue.js';
+export * from './repositoryOidc.js';
 export * from './repositoryMetadata.js';
 export * from './repositoryPermission.js';
 export * from './team.js';

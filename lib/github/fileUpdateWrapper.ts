@@ -6,6 +6,7 @@
 import { Repository } from '../../business/index.js';
 import { CreateError } from '../transitional.js';
 import { GitHubRepositoryPermission } from '../../interfaces/github/repos.js';
+import getCompanySpecificDeployment from '../../middleware/companySpecificDeployment.js';
 
 import type { IProviders } from '../../interfaces/providers.js';
 import type { IRepositoryWorkflowOutput } from '../../routes/org/repoWorkflowEngine.js';
@@ -36,24 +37,44 @@ export class RepositoryFileWrapper {
       login: null,
       alternateToken: null,
     };
-    if (config?.github?.user?.initialCommit?.username && config.github.user.initialCommit.token) {
-      const login = config.github.user.initialCommit.username;
-      const alternateToken = config.github.user.initialCommit.token;
-      if (!this._hasAuthorizedTemplateCommitter) {
-        try {
-          this._contentCommitter = {
-            login,
-            alternateToken,
-            isUsingApp: false,
-          };
-          await this.prepareCommit();
-        } catch (error) {
-          const err = CreateError.Wrap(`Error trying to authorize template committer ${login}`, error);
-          if (this.log) {
-            this.log.push({ error: err });
-          } else {
-            throw err;
-          }
+    let login: string;
+    let token: string;
+    const companySpecific = getCompanySpecificDeployment();
+    if (companySpecific?.features?.personalAccessTokens?.tryGetCommitterToken) {
+      const committer = await companySpecific.features.personalAccessTokens.tryGetCommitterToken(
+        this.providers
+      );
+      if (committer) {
+        login = committer.login;
+        token = committer.token;
+      }
+    }
+    if (
+      !login &&
+      !token &&
+      config?.github?.user?.initialCommit?.username &&
+      config.github.user.initialCommit.token
+    ) {
+      login = config.github.user.initialCommit.username;
+      token = config.github.user.initialCommit.token;
+    }
+    if (login && !token) {
+      throw CreateError.InvalidParameters(`No access token available for committer login ${login}.`);
+    }
+    if (login && token && !this._hasAuthorizedTemplateCommitter) {
+      try {
+        this._contentCommitter = {
+          login,
+          alternateToken: token,
+          isUsingApp: false,
+        };
+        await this.prepareCommit();
+      } catch (error) {
+        const err = CreateError.Wrap(`Error trying to authorize template committer ${login}`, error);
+        if (this.log) {
+          this.log.push({ error: err?.message || err.toString() });
+        } else {
+          throw err;
         }
       }
     }
@@ -75,7 +96,7 @@ export class RepositoryFileWrapper {
       } catch (error) {
         const err = CreateError.Wrap(`Error trying to remove template committer ${login}`, error);
         if (this.log) {
-          this.log.push({ error: err });
+          this.log.push({ error: err?.message || err.toString() });
         } else {
           throw err;
         }
@@ -101,7 +122,7 @@ export class RepositoryFileWrapper {
           error
         );
         if (this.log) {
-          this.log.push({ error: err });
+          this.log.push({ error: err?.message || err.toString() });
         } else {
           throw err;
         }

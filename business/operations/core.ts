@@ -739,18 +739,26 @@ export class Operations {
   }
 
   getPublicReadOnlyStaticToken(): GetAuthorizationHeader {
+    const companySpecific = getCompanySpecificDeployment();
+    const companySpecificGetPublicReadToken =
+      companySpecific?.features?.personalAccessTokens?.getPublicReadToken;
     const { config } = this.providers;
-    if (config?.github?.operations?.publicAccessToken) {
-      const capturedToken = config.github.operations.publicAccessToken;
+    const capturedToken = config?.github?.operations?.publicAccessToken;
+    if (companySpecificGetPublicReadToken || capturedToken) {
       return async () => {
+        const token = companySpecificGetPublicReadToken
+          ? await companySpecificGetPublicReadToken(this.providers)
+          : capturedToken;
         return {
-          value: `token ${capturedToken}`,
+          value: `token ${token}`,
           purpose: null,
           source: 'public read-only token',
         };
       };
     }
-    throw CreateError.InvalidParameters('No configured read-only static token');
+    throw CreateError.InvalidParameters(
+      'No configured read-only static token or exposed company-specific feature'
+    );
   }
 
   createBoundAuthorizationHeader(
@@ -1003,8 +1011,12 @@ export class Operations {
     return this.getApplications().map((app) => `${app.slug.toLowerCase()}[bot]`);
   }
 
+  isGitHubApplicationLogin(login: string) {
+    return login.toLowerCase().includes('[bot]');
+  }
+
   isManagedGitHubApplicationLogin(login: string) {
-    if (!login.toLowerCase().includes('[bot]')) {
+    if (!this.isGitHubApplicationLogin(login)) {
       throw CreateError.InvalidParameters(`The GitHub login ${login} is not a GitHub App`);
     }
     return this.getApplicationsAsLogins().includes(login.toLowerCase());

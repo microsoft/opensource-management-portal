@@ -34,8 +34,8 @@ export class RepositoryProperties {
     const { rest } = operations.github.octokit;
     const requirements = operations.github.createRequirementsForFunction(
       this.authorize(purpose || AppPurpose.Data),
-      rest.repos.createOrUpdateCustomPropertiesValues,
-      'repos.createOrUpdateCustomPropertiesValues',
+      rest.repos.customPropertiesForReposCreateOrUpdateRepositoryValues,
+      'repos.customPropertiesForReposCreateOrUpdateRepositoryValues',
       {
         permissions: {
           permission: 'repository_custom_properties',
@@ -82,8 +82,8 @@ export class RepositoryProperties {
       const responseArray = await github.callWithRequirements(
         github.createRequirementsForFunction(
           this.authorize(purpose || AppPurpose.Data),
-          rest.repos.getCustomPropertiesValues,
-          'repos.getCustomPropertiesValues',
+          rest.repos.customPropertiesForReposGetRepositoryValues,
+          'repos.customPropertiesForReposGetRepositoryValues',
           {
             permissions: {
               access: 'read',

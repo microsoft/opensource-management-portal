@@ -495,6 +495,18 @@ export interface INewRepositoryContext {
   isCustomContext: boolean;
 }
 
+export function getDeploymentIdentifier(providers: IProviders) {
+  return Object.keys(providers.config.continuousDeployment)
+    .map((k) => {
+      const val = providers.config.continuousDeployment[k];
+      if (val) {
+        return k + '/' + val;
+      }
+    })
+    .filter((x) => x)
+    .join(' ');
+}
+
 export function validateGitHubLogin(username: string) {
   // There are some legitimate usernames at GitHub that have a dash
   // in them. While GitHub no longer allows this for new accounts,

@@ -50,7 +50,7 @@ export enum RepoWorkflowDecision {
 }
 
 export interface IRepositoryWorkflowOutput {
-  error?: any;
+  error?: string;
   message?: string;
 }
 
@@ -451,7 +451,7 @@ export class RepoWorkflowEngine {
         await this.repository.addCollaborator(login, GitHubRepositoryPermission.Admin);
         messages.push(`Added collaborator ${login} with admin permission`);
       } catch (error) {
-        errors.push(error.message);
+        errors.push(`Could not configure account to commit template: ${error.message}`);
       }
     }
     let error = null;
@@ -474,7 +474,7 @@ export class RepoWorkflowEngine {
     } catch (err) {
       error = new Error(`Error patching: ${err}`);
     }
-    this.log.push({ error, message });
+    this.log.push({ error: error?.message || error.toString(), message });
   }
 
   async tryResetReadme(initialDescription: string): Promise<void> {
@@ -498,7 +498,7 @@ export class RepoWorkflowEngine {
         error = new Error(`Could not reset README content: ${err}`);
       }
     }
-    this.log.push({ error, message });
+    this.log.push({ error: error?.message || error.toString(), message });
   }
 
   async addTemplateCollaborators(templateName: string): Promise<void> {

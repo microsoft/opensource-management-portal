@@ -46,6 +46,8 @@ import { IKeyVaultSecretResolver } from '../lib/keyVaultResolver.js';
 import { IOrganizationAnnotationMetadataProvider } from '../business/entities/organizationAnnotation.js';
 import type { IImmutableStorageProvider } from '../lib/immutable.js';
 
+export type AppInsightsTelemetryClient = TelemetryClient;
+
 type ProviderGenerator = (value: string) => IEntityMetadataProvider;
 
 export interface IProviders {

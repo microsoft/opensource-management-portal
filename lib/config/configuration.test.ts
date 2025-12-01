@@ -3,9 +3,9 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { createFakeVaults } from '../lib/config/fakeKeyVaultClient.js';
+import { createFakeVaults } from './fakeKeyVaultClient.js';
 
-import createAndWrapKeyVaultClient from '../lib/config/keyVaultConfigurationResolver.js';
+import createAndWrapKeyVaultClient from './keyVaultConfigurationResolver.js';
 
 const testVaultUri = 'https://fake.vault';
 

@@ -93,6 +93,8 @@ const knownParameterTranslations = {
   ':team': '{team}',
   ':username': '{login}',
   ':id': '', // /repositories/:id
+  ':owner': '{owner}',
+  ':repo': '{repo}',
   ':org': '{org}',
 };
 
@@ -344,6 +346,7 @@ export class GitHubTokenManager {
       const cleanedUrl = cleanupOctokitLookupUrl(parameterLessUrl);
       let permissions = githubAppPermissions.paths[cleanedUrl] as GitHubPathPermissionDefinitionsByMethod;
       const alternatePermissions = requirements.permissions;
+      const { allowBestFaithInstallationForAnyHttpMethod } = requirements;
       const forcePermissionsInLookup = requirements?.permissionsMatchRequired || false;
       if (
         !permissions &&
@@ -383,8 +386,14 @@ export class GitHubTokenManager {
         });
         // consider: return null; + warn
       }
-      if (httpMethod === 'GET' && appAuthenticationType === GitHubAppAuthenticationType.BestAvailable) {
-        debug(`Optimal installation requested for a GET request ${friendlyName}`);
+      const supportedMethodForBestFaith = httpMethod === 'GET' || allowBestFaithInstallationForAnyHttpMethod;
+      if (
+        supportedMethodForBestFaith &&
+        appAuthenticationType === GitHubAppAuthenticationType.BestAvailable
+      ) {
+        debug(
+          `Optimal installation requested for a ${httpMethod}${httpMethod !== 'GET' && allowBestFaithInstallationForAnyHttpMethod ? ' (as requirements authorize)' : ''} request ${friendlyName}`
+        );
         installationIdPair = await this.getOptimalInstallationPairWithPermission(
           organizationName,
           organizationSettings,
@@ -408,6 +417,7 @@ export class GitHubTokenManager {
     } else {
       debug('No requirements present');
     }
+    // NOTE: the 'permissionsMatchRequired' requirement option is currently only in audit mode
     if (!installationIdPair) {
       debug(
         `getOrganizationAuthorizationHeader(${organizationName}, ${this.getPurposeDisplayId(

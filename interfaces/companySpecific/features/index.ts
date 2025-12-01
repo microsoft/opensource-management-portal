@@ -16,6 +16,7 @@ import type { ICompanySpecificFeatureRepositoryState } from './repositoryActions
 import type { ICompanySpecificFeatureImmutableProvider } from './immutableProvider.js';
 import type { ICompanySpecificAugmentIdentity } from './identity.js';
 import type { ICompanySpecificFeatureCampaignStateProvider } from './campaignStateProvider.js';
+import type { ICompanySpecificFeaturePersonalAccessTokens } from './personalAccessTokens.js';
 import type { ICompanySpecificFeatureRestCacheProvider } from './restCacheProvider.js';
 import type { ICompanySpecificFeatureRepositorySearch } from '../index.js';
 import type { ICompanySpecificFeatureQueuesProvider } from './queuesProvider.js';
@@ -31,6 +32,7 @@ export * from './linking.js';
 export * from './mailProvider.js';
 export * from './organizationJoinAcl.js';
 export * from './organizationSudo.js';
+export * from './personalAccessTokens.js';
 export * from './portalSudo.js';
 export * from './repositoryActions.js';
 export * from './repositorySearch.js';
@@ -49,6 +51,7 @@ export interface ICompanySpecificFeatures {
   mailProvider?: ICompanySpecificFeatureMailProvider;
   organizationSudo?: ICompanySpecificFeatureOrganizationSudo;
   organizationJoinAcl?: ICompanySpecificFeatureOrganizationJoinAcl;
+  personalAccessTokens?: ICompanySpecificFeaturePersonalAccessTokens;
   portalSudo?: ICompanySpecificFeaturePortalSudo;
   repositoryActions?: ICompanySpecificFeatureRepositoryState;
   repositorySearch?: ICompanySpecificFeatureRepositorySearch;

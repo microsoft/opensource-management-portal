@@ -3,7 +3,6 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import GitHubEnterpriseCopilot from './enterpriseCopilot.js';
 import { GitHubTokenType, getGitHubTokenTypeFromValue } from '../lib/github/appTokens.js';
 import { CreateError } from '../lib/transitional.js';
 import { createPagedCacheOptions, getPageSize, symbolizeApiResponse } from './operations/core.js';
@@ -14,6 +13,7 @@ import type {
   IPagedCacheOptions,
   IProviders,
 } from '../interfaces/index.js';
+import GitHubEnterpriseBilling from './enterpriseBilling.js';
 
 // TODO: paginate across enterprise fix + support iterators
 
@@ -98,7 +98,7 @@ function isStringToken(token: string | GetAuthorizationHeader): token is string 
 }
 
 export default class GitHubEnterprise {
-  private _copilot: GitHubEnterpriseCopilot;
+  private _billing: GitHubEnterpriseBilling;
   private _graphqlNodeId: string;
 
   constructor(
@@ -138,15 +138,21 @@ export default class GitHubEnterprise {
   }
 
   get copilot() {
-    if (!this._copilot) {
+    throw CreateError.NotImplemented(
+      'GitHub Copilot use APIs are not published to the open source project currently.'
+    );
+  }
+
+  get billing() {
+    if (!this._billing) {
       if (!isStringToken(this.enterpriseToken)) {
         throw CreateError.InvalidParameters(
-          'Copilot APIs currently require a string token. Please use a separate instance.'
+          'Billing APIs currently require a string token. Please use a separate instance.'
         );
       }
-      this._copilot = new GitHubEnterpriseCopilot(this.providers, this, this.enterpriseToken);
+      this._billing = new GitHubEnterpriseBilling(this.providers, this, this.enterpriseToken);
     }
-    return this._copilot;
+    return this._billing;
   }
 
   async getId(): Promise<string> {
