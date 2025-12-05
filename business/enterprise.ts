@@ -7,6 +7,8 @@ import { GitHubTokenType, getGitHubTokenTypeFromValue } from '../lib/github/appT
 import { CreateError } from '../lib/transitional.js';
 import { createPagedCacheOptions, getPageSize, symbolizeApiResponse } from './operations/core.js';
 
+// import GitHubEnterpriseCopilot from ...; // this is a placeholder for an eventual import
+
 import type {
   GetAuthorizationHeader,
   GitHubSimpleAccount,
@@ -138,9 +140,7 @@ export default class GitHubEnterprise {
   }
 
   get copilot() {
-    throw CreateError.NotImplemented(
-      'GitHub Copilot use APIs are not published to the open source project currently.'
-    );
+    throw CreateError.NotImplemented('Copilot APIs are not available in this version of the code.');
   }
 
   get billing() {
