@@ -494,8 +494,8 @@ Other fields:
 - ms.onBehalfOf: the GitHub username this operation is performed on behalf of. Providing this is a good call as it will redirect questions about the repo to the individual if needed rather than the service account.
 - ms.project-type: product code, sample code, documentation, sdk, utility library / tool, other (new as of apiVersion=2017-07-27)
 - ms.maintainers: github accounts of individuals who should be granted maintain role.
-- ms.readme-moniker: Automation supports replacing placeholder strings in the readme with specific values.  This value is the placeholder string.
-- ms.readme-moniker-replace: Automation supports replacing placeholders strings in the readme with specific values.  This is the value that will replace the elements of the root readme.md where the string in ms.readme-moniker appears.
+- ms.readme-moniker: Automation supports replacing placeholder strings in the readme with specific values. This value is the placeholder string.
+- ms.readme-moniker-replace: Automation supports replacing placeholder strings in the readme with specific values. This is the value that will replace the elements of the root readme.md where the string in ms.readme-moniker appears.
 - ms-homepage: set the homepage of the repository (in the about section of the repo).
 - template_repo: Create the new repo from an existing template repo in the same github organization
 - template_owner: set it to "microsoft".
