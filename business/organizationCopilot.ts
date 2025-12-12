@@ -34,6 +34,7 @@ export type CopilotSeatData = {
   updated_at: string;
   last_activity_at: string;
   last_activity_editor: string;
+  last_authenticated_at: string;
 };
 
 export type CopilotDailyBreakdown = {
@@ -259,6 +260,7 @@ const copilotSeatPropertiesToCopy: WithSubPropertyReducer = [
   'updated_at',
   'last_activity_at',
   'last_activity_editor',
+  'last_authenticated_at',
   'assignee', // id, login; mostBasicAccountProperties
 ];
 copilotSeatPropertiesToCopy.subPropertiesToReduce = {
