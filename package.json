@@ -95,7 +95,7 @@
     "axios": "1.13.2",
     "axios-retry": "4.5.0",
     "basic-auth": "2.0.1",
-    "body-parser": "2.2.1",
+    "body-parser": "2.2.2",
     "color-contrast-checker": "2.1.0",
     "compression": "1.8.1",
     "connect-redis": "9.0.0",
