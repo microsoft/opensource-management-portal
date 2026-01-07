@@ -101,6 +101,7 @@ function isStringToken(token: string | GetAuthorizationHeader): token is string 
 
 export default class GitHubEnterprise {
   private _billing: GitHubEnterpriseBilling;
+
   private _graphqlNodeId: string;
 
   constructor(
