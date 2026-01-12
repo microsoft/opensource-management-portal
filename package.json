@@ -170,7 +170,7 @@
     "@types/express": "5.0.6",
     "@types/express-session": "1.18.2",
     "@types/get-pixels": "3.3.4",
-    "@types/lodash": "4.17.21",
+    "@types/lodash": "4.17.23",
     "@types/luxon": "3.7.1",
     "@types/memory-cache": "0.2.6",
     "@types/morgan": "1.9.10",
