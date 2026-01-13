@@ -206,7 +206,7 @@
     "prettier": "3.7.4",
     "ts-prune": "0.10.3",
     "typescript": "5.9.3",
-    "vitest": "4.0.16"
+    "vitest": "4.0.17"
   },
   "engines": {
     "node": ">=20"
