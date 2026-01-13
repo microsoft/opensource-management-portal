@@ -191,7 +191,7 @@
     "@types/simple-oauth2": "5.0.8",
     "@types/validator": "13.15.10",
     "@typescript-eslint/eslint-plugin": "8.49.0",
-    "@typescript-eslint/parser": "8.49.0",
+    "@typescript-eslint/parser": "8.53.0",
     "cross-env": "10.1.0",
     "cspell": "9.4.0",
     "eslint": "9.39.2",
