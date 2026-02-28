@@ -22,10 +22,21 @@ const rateLimitFreshnessMs = 1000 * 60 * 3; // 3 minutes
 
 const goodRateLimitAvailablePercent = 0.35;
 
-const BackgroundCacheOneWeek: ICacheOptions = {
+const BACKGROUND_CACHE_ONE_WEEK: ICacheOptions = {
   backgroundRefresh: true,
   maxAgeSeconds: 60 * 60 * 24 * 7, // 1 week
 };
+
+const NO_BACKGROUND_CACHE: ICacheOptions = {
+  backgroundRefresh: false,
+  maxAgeSeconds: 60 * 60 * 10,
+};
+
+// Make sure that for the OIDC work temporarily, we get the right info
+const now = new Date();
+const isJanuary15Or16Or17 =
+  now.getMonth() === 0 && (now.getDate() === 15 || now.getDate() === 16 || now.getDate() === 17);
+const appInstallationCacheMode = isJanuary15Or16Or17 ? NO_BACKGROUND_CACHE : BACKGROUND_CACHE_ONE_WEEK;
 
 export class AppInstallation {
   private _initialized = false;
@@ -56,7 +67,7 @@ export class AppInstallation {
       // console.warn('! no app for install ' + installationId + ' in ' + this.organizationName + ' for app ' + appId + ' purpose ' + (appPurposeId || 'unknown'));
       return;
     }
-    this._entity = await app.getInstallation(installationId, BackgroundCacheOneWeek);
+    this._entity = await app.getInstallation(installationId, appInstallationCacheMode);
     if (this._entity) {
       await this.refreshRateLimits();
     }

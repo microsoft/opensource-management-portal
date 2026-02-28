@@ -6,6 +6,7 @@
 export * from './account.js';
 export * from './apps.js';
 export * from './collaborators.js';
+export * from './enterprise.js';
 export * from './issues.js';
 export * from './members.js';
 export * from './teams.js';

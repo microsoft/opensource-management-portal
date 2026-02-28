@@ -36,12 +36,14 @@ import {
   IGetAuditLogOptions,
   GetOrganizationMembersOptions,
   IGitHubAccountDetails,
+  IGitHubAnnouncementBanner,
   IOrganizationMemberPair,
   IOrganizationMembership,
   IPagedCacheOptions,
   type PurposefulGetAuthorizationHeader,
   IReposError,
   IReposRestRedisCacheCost,
+  ISetOrganizationAnnouncementOptions,
   NoCacheNoBackground,
   OrganizationMembershipRoleQuery,
   OrganizationMembershipTwoFactorFilter,
@@ -57,6 +59,7 @@ import { GitHubTokenManager } from '../lib/github/tokenManager.js';
 import { OrganizationProjects } from './projects.js';
 import { OrganizationDomains } from './domains.js';
 import { OrganizationCopilot } from './organizationCopilot.js';
+import { OrganizationOidc } from './organizationOidc.js';
 import { OrganizationProperties } from './organizationProperties.js';
 import { Operations } from './operations/index.js';
 import { RepositoryPrimaryProperties } from './primaryProperties.js';
@@ -225,6 +228,7 @@ export class Organization {
   private _domains: OrganizationDomains;
 
   private _copilot: OrganizationCopilot;
+  private _oidc: OrganizationOidc;
   private _sso: OrganizationSingleSignOn;
   private _customProperties: OrganizationProperties;
 
@@ -376,6 +380,18 @@ export class Organization {
       );
     }
     return this._sso;
+  }
+
+  get oidc() {
+    if (!this._oidc) {
+      this._oidc = new OrganizationOidc(
+        this,
+        //this._getSpecificAuthorizationHeader.bind(this),
+        this._getAuthorizationHeader.bind(this),
+        this._operations
+      );
+    }
+    return this._oidc;
   }
 
   get customProperties() {
@@ -1553,6 +1569,89 @@ export class Organization {
         parameters
       );
       return invitations as GitHubOrganizationInvite[];
+    } catch (error) {
+      if (error.status == /* loose */ 404) {
+        return null;
+      }
+      throw error;
+    }
+  }
+
+  async setAnnouncementBanner(
+    options: ISetOrganizationAnnouncementOptions
+  ): Promise<IGitHubAnnouncementBanner> {
+    const operations = this._operations;
+    const { github } = operations;
+    const parameters = {
+      org: this.name,
+      announcement: options.announcement,
+      expires_at: options.expires_at,
+      user_dismissible: options.user_dismissible,
+    };
+    const result = await github.requestAsPostWithRequirements(
+      github.createRequirementsForRequest(
+        this.authorize(AppPurpose.CustomerFacing),
+        'PATCH /orgs/:org/announcement',
+        {
+          permissions: {
+            permission: 'organization_announcement_banners',
+            access: 'write',
+          },
+          permissionsMatchRequired: true,
+          allowBestFaithInstallationForAnyHttpMethod: true, // allows flowing to other app
+        }
+      ),
+      parameters
+    );
+    return result as IGitHubAnnouncementBanner;
+  }
+
+  async removeAnnouncementBanner(): Promise<void> {
+    const operations = this._operations;
+    const { github } = operations;
+    const parameters = {
+      org: this.name,
+    };
+    await github.requestAsPostWithRequirements(
+      github.createRequirementsForRequest(
+        this.authorize(AppPurpose.CustomerFacing),
+        'DELETE /orgs/:org/announcement',
+        {
+          permissions: {
+            permission: 'organization_announcement_banners',
+            access: 'write',
+          },
+          permissionsMatchRequired: true,
+          allowBestFaithInstallationForAnyHttpMethod: true,
+        }
+      ),
+      parameters
+    );
+  }
+
+  async getAnnouncementBanner(): Promise<IGitHubAnnouncementBanner | null> {
+    const operations = this._operations;
+    const { github } = operations;
+    const parameters = {
+      org: this.name,
+    };
+    try {
+      const result = await github.requestWithRequirements(
+        github.createRequirementsForRequest(
+          this.authorize(AppPurpose.CustomerFacing),
+          'GET /orgs/:org/announcement',
+          {
+            permissions: {
+              permission: 'organization_announcement_banners',
+              access: 'read',
+            },
+            permissionsMatchRequired: true,
+            allowBestFaithInstallationForAnyHttpMethod: true,
+          }
+        ),
+        parameters
+      );
+      return result as IGitHubAnnouncementBanner;
     } catch (error) {
       if (error.status == /* loose */ 404) {
         return null;

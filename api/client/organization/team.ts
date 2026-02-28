@@ -29,6 +29,7 @@ const router: Router = Router();
 
 router.get('/', async (req: ReposAppRequest, res: Response, next: NextFunction) => {
   const providers = getProviders(req);
+  const { insights } = req;
   const team = getContextualTeam(req);
   const format = TeamJsonFormat.Augmented; // includes corporateMetadata
   let json = team.asJson(format);
@@ -36,6 +37,7 @@ router.get('/', async (req: ReposAppRequest, res: Response, next: NextFunction) 
   if (companySpecific?.features?.augmentApiMetadata?.augmentTeamClientJson) {
     json = await companySpecific.features.augmentApiMetadata.augmentTeamClientJson(
       providers,
+      insights,
       team,
       json,
       format

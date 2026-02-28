@@ -3,9 +3,10 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
+import { randomUUID } from 'crypto';
 import { Session } from 'express-session';
 import { Strategy } from 'passport-strategy';
-import { ConfidentialClientApplication, CryptoProvider } from '@azure/msal-node';
+import { ConfidentialClientApplication } from '@azure/msal-node';
 import Debug from 'debug';
 
 import { ReposAppRequest } from '../../../interfaces/web.js';
@@ -19,7 +20,7 @@ import { ApplicationIdentityOverrides, EntraApplication } from '../../../lib/app
 import { getCodespacesHostname, isCodespacesAuthenticating } from '../../../lib/utils.js';
 import { CreateError, ErrorHelper, getProviders } from '../../../lib/transitional.js';
 
-import type { IProviders } from '../../../interfaces/providers.js';
+import type { AppInsightsTelemetryClient, IProviders } from '../../../interfaces/providers.js';
 import type { SiteConfiguration } from '../../../config/index.types.js';
 import type {
   AadJwtJson,
@@ -35,6 +36,19 @@ const debug = Debug.debug('startup');
 const debugAuthentication = Debug.debug('authentication');
 
 const strategyId = 'entra-id';
+
+// Validates that a query parameter is a string if present.
+// Throws an error if the value is present but not a string.
+// Returns undefined if the value is not present.
+function validateStringQueryParam(value: unknown, paramName: string): string | undefined {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  if (typeof value !== 'string') {
+    throw CreateError.InvalidParameters(`Query parameter '${paramName}' must be a string`);
+  }
+  return value;
+}
 
 export type EntraStrategyOptions = {
   identity: EntraApplicationIdentity;
@@ -68,9 +82,13 @@ type AugmentedSession = Session & {
   };
 };
 
-export function createEntraStrategies(app: IReposApplication, config: SiteConfiguration) {
+export function createEntraStrategies(
+  app: IReposApplication,
+  insights: AppInsightsTelemetryClient,
+  config: SiteConfiguration
+) {
   const strategies: Record<string, Strategy> = {};
-  const entraStrategy = createEntraUserAuthenticatorStrategy(app, config);
+  const entraStrategy = createEntraUserAuthenticatorStrategy(app, insights, config);
   if (entraStrategy) {
     strategies[entraStrategy.name] = entraStrategy;
   }
@@ -129,7 +147,11 @@ function getEntraAuthenticationClientIdentity(
   return entraConfiguration;
 }
 
-function createEntraUserAuthenticatorStrategy(app: IReposApplication, config: SiteConfiguration) {
+function createEntraUserAuthenticatorStrategy(
+  app: IReposApplication,
+  insights: AppInsightsTelemetryClient,
+  config: SiteConfiguration
+) {
   const identity = getEntraAuthenticationClientIdentity(config, false);
   if (!identity || !identity.clientId) {
     debug('No Entra ID client configured, corporate authentication will be unavailable.');
@@ -170,7 +192,7 @@ function createEntraUserAuthenticatorStrategy(app: IReposApplication, config: Si
       ? getCodespacesHostname(config) + redirectSuffix
       : redirectUrl;
   debug(`Entra ID auth: clientId=${clientId}, redirectUrl=${finalRedirectUrl}`);
-  providers.insights?.trackEvent({
+  insights?.trackEvent({
     name: 'StartupConfiguredAuthenticationEntraID',
     properties: {
       clientId: clientIdentity.clientId,
@@ -189,8 +211,6 @@ function createEntraUserAuthenticatorStrategy(app: IReposApplication, config: Si
 class EntraIDStrategy extends Strategy {
   private static instanceCounter = 0;
   public readonly name: string;
-
-  private cryptoProvider: CryptoProvider;
   private fixedTokenRequest: EntraTokenRequestParameters;
 
   constructor(private options: EntraStrategyOptions) {
@@ -202,7 +222,6 @@ class EntraIDStrategy extends Strategy {
       ++EntraIDStrategy.instanceCounter;
       this.name = `${strategyId}:${EntraIDStrategy.instanceCounter}`;
     }
-    this.cryptoProvider = new CryptoProvider();
     this.fixedTokenRequest = {
       scopes: ['user.read'],
       redirectUri: this.redirectUrl,
@@ -257,23 +276,26 @@ class EntraIDStrategy extends Strategy {
   }
 
   private async navigateToEntra(req: ReposAppRequest): Promise<StrategyOutcome> {
+    const stateParam = validateStringQueryParam(req.query?.state, 'state');
+    const nonceParam = validateStringQueryParam(req.query?.nonce, 'nonce');
     const authCodeUrlParameters: EntraAuthCodeUrlParameters = {
       ...this.fixedTokenRequest,
-      state: (req.query?.state as string) || this.cryptoProvider.createNewGuid(),
-      nonce: (req.query?.nonce as string) || this.cryptoProvider.createNewGuid(),
+      state: stateParam || randomUUID(),
+      nonce: nonceParam || randomUUID(),
     };
     if (req.query?.prompt) {
+      const prompt = validateStringQueryParam(req.query.prompt, 'prompt');
       const validPrompts = ['login', 'consent', 'select_account', 'admin_consent', 'none'];
-      if (!validPrompts.includes(req.query.prompt as string)) {
-        throw CreateError.InvalidParameters('Invalid prompt value: ' + req.query.prompt);
+      if (prompt && !validPrompts.includes(prompt)) {
+        throw CreateError.InvalidParameters('Invalid prompt value: ' + prompt);
       }
-      authCodeUrlParameters.prompt = req.query.prompt as string;
+      authCodeUrlParameters.prompt = prompt;
     }
     if (req.query.loginHint) {
-      authCodeUrlParameters.loginHint = req.query.loginHint as string;
+      authCodeUrlParameters.loginHint = validateStringQueryParam(req.query.loginHint, 'loginHint');
     }
     if (req.query.domainHint) {
-      authCodeUrlParameters.domainHint = req.query.domainHint as string;
+      authCodeUrlParameters.domainHint = validateStringQueryParam(req.query.domainHint, 'domainHint');
     }
     if (!req.session) {
       throw CreateError.InvalidParameters('Session required');

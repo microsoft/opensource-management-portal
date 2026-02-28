@@ -12,7 +12,6 @@ import { ReposAppRequest } from '../interfaces/index.js';
 import RouteTeamsPager from './teamsPager.js';
 
 router.use(function (req: ReposAppRequest, res: Response, next: NextFunction) {
-  req.individualContext.webContext.pushBreadcrumb('Teams');
   req.reposContext = {
     section: 'teams',
     pivotDirectlyToOtherOrg: '/teams/', // hack

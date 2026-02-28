@@ -7,15 +7,14 @@ import { NextFunction, Response, Router } from 'express';
 const router: Router = Router();
 
 import { getProviders } from '../lib/transitional.js';
-
 import { requirePortalAdministrationPermission } from '../middleware/business/administration.js';
 import { PostgresLinkProvider } from '../lib/linkProviders/postgres/postgresLinkProvider.js';
 import { Operations } from '../business/index.js';
 import { Organization } from '../business/index.js';
 import { Account } from '../business/index.js';
-import { ILinkProvider } from '../lib/linkProviders/index.js';
 import { ICorporateLink, ReposAppRequest, IProviders, UnlinkPurpose } from '../interfaces/index.js';
 import { isCodespacesAuthenticating } from '../lib/utils.js';
+import type { ILinkProvider } from '../lib/linkProviders/index.js';
 
 // - - - Middleware: require that the user isa portal administrator to continue
 router.use(requirePortalAdministrationPermission);
@@ -545,10 +544,11 @@ async function destructiveLogic(
   providers: IProviders,
   identifier: IIDValue,
   action: OperationsAction,
-  req,
+  req: ReposAppRequest,
   res,
   next
 ): Promise<any> {
+  const { insights } = req;
   const { operations } = providers;
   let usernameInfo = null;
   const state = {
@@ -647,7 +647,7 @@ async function destructiveLogic(
   }
   if (thirdPartyId) {
     const purpose = dataAsTerminated ? UnlinkPurpose.Termination : UnlinkPurpose.Operations;
-    state.results = await operations.terminateLinkAndMemberships(thirdPartyId, { purpose });
+    state.results = await operations.terminateLinkAndMemberships(insights, thirdPartyId, { purpose });
   } else {
     state.messages.push('Could not terminate the account, no link was found');
   }

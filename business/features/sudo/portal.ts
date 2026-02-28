@@ -5,7 +5,7 @@
 
 import { IPortalSudo } from './index.js';
 import { Organization } from '../../index.js';
-import { IProviders, ICorporateLink } from '../../../interfaces/index.js';
+import { IProviders, ICorporateLink, AppInsightsTelemetryClient } from '../../../interfaces/index.js';
 import getCompanySpecificDeployment from '../../../middleware/companySpecificDeployment.js';
 import { ErrorHelper } from '../../../lib/transitional.js';
 
@@ -39,7 +39,11 @@ class PortalSudoPrimaryOrganization extends PortalSudoBase implements IPortalSud
     this._providers = providers;
   }
 
-  isSudoer(githubLogin: string, link?: ICorporateLink): Promise<boolean> {
+  isSudoer(
+    insights: AppInsightsTelemetryClient,
+    githubLogin: string,
+    link?: ICorporateLink
+  ): Promise<boolean> {
     if (this.isOff()) {
       return Promise.resolve(false);
     }
@@ -74,7 +78,11 @@ class PortalSudoSecurityGroup extends PortalSudoBase implements IPortalSudo {
     this._groupId = securityGroupId;
   }
 
-  async isSudoer(githubLogin: string, link?: ICorporateLink): Promise<boolean> {
+  async isSudoer(
+    insights: AppInsightsTelemetryClient,
+    githubLogin: string,
+    link?: ICorporateLink
+  ): Promise<boolean> {
     if (this.isOff()) {
       return false;
     }
@@ -84,7 +92,6 @@ class PortalSudoSecurityGroup extends PortalSudoBase implements IPortalSudo {
     if (!link || !link.corporateId) {
       return false;
     }
-    const insights = this._providers.insights;
     try {
       if (await this._providers.graphProvider.isUserInGroup(link.corporateId, this._groupId)) {
         insights?.trackEvent({

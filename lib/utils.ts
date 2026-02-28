@@ -3,15 +3,16 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Response, Request } from 'express';
+import { Response } from 'express';
 import fs from 'fs';
 import path from 'path';
 import { URL, fileURLToPath, pathToFileURL } from 'url';
 import zlib from 'zlib';
 
-import { type Repository } from '../business/repository.js';
-import type { ReposAppRequest, IAppSession, IReposError, SiteConfiguration } from '../interfaces/index.js';
 import { CreateError, getProviders } from './transitional.js';
+
+import type { Repository } from '../business/repository.js';
+import type { ReposAppRequest, IAppSession, IReposError, SiteConfiguration } from '../interfaces/index.js';
 
 const isWindows = process.platform === 'win32';
 
@@ -163,7 +164,7 @@ export function sortRepositoriesByNameCaseInsensitive(a: Repository, b: Reposito
 // Session utility: store the original URL
 // ----------------------------------------------------------------------------
 export function storeOriginalUrlAsReferrer(
-  req: Request,
+  req: ReposAppRequest,
   res: Response,
   redirect: string,
   optionalReason?: string
@@ -171,20 +172,26 @@ export function storeOriginalUrlAsReferrer(
   storeOriginalUrlAsVariable(req, res, 'referer', redirect, optionalReason);
 }
 
-export function redirectToReferrer(req, res, url, optionalReason) {
+export function redirectToReferrer(req: ReposAppRequest, res: Response, url, optionalReason) {
+  const activeContext = req.apiContext || req.individualContext;
   url = url || '/';
   const alternateUrl = popSessionVariable(req, res, 'referer');
   const eventDetails = {
     method: 'redirectToReferrer',
     reason: optionalReason || 'unknown reason',
   };
-  if (req.insights) {
-    req.insights.trackEvent({ name: 'RedirectToReferrer', properties: eventDetails });
-  }
+  activeContext?.insights?.trackEvent({ name: 'RedirectToReferrer', properties: eventDetails });
   res.redirect(alternateUrl || url);
 }
 
-export function storeOriginalUrlAsVariable(req, res, variable, redirect, optionalReason) {
+export function storeOriginalUrlAsVariable(
+  req: ReposAppRequest,
+  res: Response,
+  variable,
+  redirect,
+  optionalReason
+) {
+  const activeContext = req.apiContext || req.individualContext;
   const eventDetails = {
     method: 'storeOriginalUrlAsVariable',
     variable,
@@ -196,14 +203,12 @@ export function storeOriginalUrlAsVariable(req, res, variable, redirect, optiona
     eventDetails['ou'] = req.originalUrl;
   }
   if (redirect) {
-    if (req.insights) {
-      req.insights.trackEvent({ name: 'RedirectFromOriginalUrl', properties: eventDetails });
-    }
+    activeContext?.insights?.trackEvent({ name: 'RedirectFromOriginalUrl', properties: eventDetails });
     res.redirect(redirect);
   }
 }
 
-export function popSessionVariable(req, res, variableName) {
+export function popSessionVariable(req: ReposAppRequest, res: Response, variableName) {
   if (req.session && req.session[variableName] !== undefined) {
     const url = req.session[variableName];
     delete req.session[variableName];
@@ -235,30 +240,6 @@ export function wrapError(error, message, userIntendedMessage?: boolean): IRepos
     err.skipLog = true;
   }
   return err;
-}
-
-// ----------------------------------------------------------------------------
-// A very basic breadcrumb stack that ties in to an Express request object.
-// ----------------------------------------------------------------------------
-export function addBreadcrumb(req, breadcrumbTitle, optionalBreadcrumbLink) {
-  if (req === undefined || req.baseUrl === undefined) {
-    throw new Error('addBreadcrumb: did you forget to provide a request object instance?');
-  }
-  if (!optionalBreadcrumbLink && optionalBreadcrumbLink !== false) {
-    optionalBreadcrumbLink = req.baseUrl;
-  }
-  if (!optionalBreadcrumbLink && optionalBreadcrumbLink !== false) {
-    optionalBreadcrumbLink = '/';
-  }
-  let breadcrumbs = req.breadcrumbs;
-  if (breadcrumbs === undefined) {
-    breadcrumbs = [];
-  }
-  breadcrumbs.push({
-    title: breadcrumbTitle,
-    url: optionalBreadcrumbLink,
-  });
-  req.breadcrumbs = breadcrumbs;
 }
 
 export function sleep(milliseconds: number): Promise<void> {

@@ -3,7 +3,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { IMailProvider, IMail } from './index.js';
+import type { AppInsightsTelemetryClient } from '../../interfaces/providers.js';
+import type { IMailProvider, IMail } from './index.js';
 
 import nodemailer from 'nodemailer';
 
@@ -23,7 +24,7 @@ export default class SmtpMailService implements IMailProvider {
 
   async initialize() {}
 
-  async sendMail(mail: IMail): Promise<any> {
+  async sendMail(insights: AppInsightsTelemetryClient, mail: IMail): Promise<any> {
     if (!this._config.smtpMailService) {
       throw new Error('SMTP Mail configuration not given, mail sending failed');
     }

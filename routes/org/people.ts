@@ -11,7 +11,6 @@ import { ReposAppRequest } from '../../interfaces/index.js';
 import RoutePeopleSearch from '../peopleSearch.js';
 
 router.use(function (req: ReposAppRequest, res: Response, next: NextFunction) {
-  req.individualContext.webContext.pushBreadcrumb('People');
   req.reposContext = {
     section: 'people',
     organization: req.organization,

@@ -7,11 +7,12 @@ import { Response } from 'express';
 import fs from 'fs';
 import objectPath from 'object-path';
 import pugLoad from 'pug-load';
+import type { TelemetryClient } from 'applicationinsights';
 
 import Debug from 'debug';
 const debug = Debug.debug('context');
 
-import { addBreadcrumb, isCodespacesAuthenticating } from '../../lib/utils.js';
+import { isCodespacesAuthenticating } from '../../lib/utils.js';
 import { Operations } from '../operations/index.js';
 import { UserContext } from './aggregate.js';
 import {
@@ -238,11 +239,6 @@ export class WebContext {
     return `${approvalScheme}://${displayHostname}${slashPrefix}${relative}`;
   }
 
-  pushBreadcrumb(title: string, optionalLink?: string | boolean): void {
-    const req = this._request;
-    addBreadcrumb(req, title, optionalLink);
-  }
-
   // NOTE: This function is direct from the legacy provider... it could move to
   // a dedicated alert provider or something else in the future.
   saveUserAlert(message: string, title: string, context: UserAlertType, optionalLink?, optionalCaption?) {
@@ -405,7 +401,7 @@ export class WebContext {
 export interface IIndividualContextOptions {
   corporateIdentity: ICorporateIdentity;
   link: ICorporateLink | null | undefined;
-  insights: any;
+  insights: TelemetryClient;
   webApiContext: WebApiContext | null | undefined;
   webContext: WebContext | null | undefined;
   operations: Operations;
@@ -421,6 +417,7 @@ export class IndividualContext {
   private _operations: Operations;
   private _aggregations: UserContext;
   private _initialView: IDictionary<any>;
+  private _insights: TelemetryClient;
 
   constructor(options: IIndividualContextOptions) {
     this._initialView = {};
@@ -430,6 +427,7 @@ export class IndividualContext {
     this._additionalLinks = [];
     this._webContext = options.webContext;
     this._operations = options.operations;
+    this._insights = options.insights;
   }
 
   get corporateIdentity(): ICorporateIdentity {
@@ -456,6 +454,10 @@ export class IndividualContext {
 
   get hasAdditionalLinks() {
     return this._additionalLinks.length > 0;
+  }
+
+  get insights() {
+    return this._insights;
   }
 
   setAdditionalLinks(additionalLinks: ICorporateLink[]) {
@@ -536,10 +538,11 @@ export class IndividualContext {
   }
 
   async isPortalAdministrator(): Promise<boolean> {
+    const { insights } = this;
     const operations = this._operations;
     const ghi = this.getGitHubIdentity()?.username;
     const link = this._link;
-    this._isPortalAdministrator = await operations.isPortalSudoer(ghi, link);
+    this._isPortalAdministrator = await operations.isPortalSudoer(insights, ghi, link);
     return this._isPortalAdministrator;
   }
 

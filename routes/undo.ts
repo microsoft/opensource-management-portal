@@ -319,7 +319,8 @@ router.use(async function (req: IHaveUndoCandidates, res: Response, next: NextFu
 
 router.post('/', async (req: IHaveUndoCandidates, res: Response, next: NextFunction) => {
   const { operations } = getProviders(req);
-  const insights = operations.insights;
+  const activeContext = req.individualContext || req.apiContext;
+  const insights = activeContext?.insights;
   const link = req.individualContext.link;
   const githubId = req.individualContext.getGitHubIdentity().id;
   const undoOperations = req.undoOperations;
@@ -386,26 +387,13 @@ router.post('/', async (req: IHaveUndoCandidates, res: Response, next: NextFunct
   }
 });
 
-router.get('/', async (req: IHaveUndoCandidates, res: Response, next: NextFunction) => {
-  const { operations } = getProviders(req);
-  const insights = operations.insights;
-  insights?.trackMetric({ name: 'UndoPageViews', value: 1 });
-  return req.individualContext.webContext.render({
-    view: 'undo',
-    title: 'Undo',
-    state: {
-      undoOperations: req.undoOperations,
-    },
-  });
-});
-
 function nextTickAsyncSendMail(
   operations: Operations,
   context: IndividualContext,
   undoEntry: IUndoEntry,
   undoOutcome: IUndoOutcome
 ) {
-  const insights = operations.insights;
+  const insights = context.insights;
   process.nextTick(() => {
     sendUndoMailNotification(operations, context, undoEntry, undoOutcome)
       .then((ok) => {
@@ -430,6 +418,7 @@ async function sendUndoMailNotification(
   undoEntry: IUndoEntry,
   undoOutcome: IUndoOutcome
 ) {
+  const insights = context.insights;
   const operationsMails = [operations.getOperationsMailAddress()];
   const ghi = context.getGitHubIdentity();
   const link = context.link;
@@ -447,7 +436,7 @@ async function sendUndoMailNotification(
         to: operationsMails,
         subject: `GitHub undo operation completed for ${ghi.username}`,
       };
-      await operations.emailRenderSend('undo', mailToOperations, {
+      await operations.emailRenderSend(insights, 'undo', mailToOperations, {
         reason: `A user just used the undo function on the site. As the operations contact for this system, you are receiving this e-mail.
                   This mail was sent to: ${operationsMails.join(', ')}`,
         headline: 'Undo operation complete',
@@ -473,7 +462,7 @@ async function sendUndoMailNotification(
         to: mailAddress,
         subject: `GitHub undo operation completed for ${mailAddress}`,
       };
-      await operations.emailRenderSend('undo', mailToCreator, {
+      await operations.emailRenderSend(insights, 'undo', mailToCreator, {
         reason: `You just used the undo feature on the GitHub management site. This mail confirms the operation.
                   This mail was sent to: ${mailAddress} and also the GitHub administrators for the system.`,
         headline: 'Undo',

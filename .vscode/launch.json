@@ -34,8 +34,7 @@
         "NODE_OPTIONS": "--dns-result-order=ipv4first",
         "PORT": "4000",
         "FRONTEND_MODE": "proxied",
-        "DEBUG": "startup,g:server,context,*simple-oauth2*,appinsights,insights,appinsights",
-        "_DEBUG": "cosmosdb,cache"
+        "DEBUG": "startup,g:server,context,*simple-oauth2*,entra,entra:*"
       }
     },
     {

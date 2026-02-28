@@ -13,7 +13,6 @@ import RoutePeopleSearch from './peopleSearch.js';
 import MiddlewareSystemWidePermissions from '../middleware/github/systemWidePermissions.js';
 
 router.use(function (req: ReposAppRequest, res: Response, next: NextFunction) {
-  req.individualContext.webContext.pushBreadcrumb('People');
   req.reposContext = {
     section: 'people',
     pivotDirectlyToOtherOrg: '/people/', // hack

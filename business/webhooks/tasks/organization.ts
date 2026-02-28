@@ -11,6 +11,7 @@ import {
   type IProviders,
   NoCacheNoBackground,
   OrganizationMembershipState,
+  AppInsightsTelemetryClient,
 } from '../../../interfaces/index.js';
 import { WebhookProcessor } from '../organizationProcessor.js';
 
@@ -33,7 +34,12 @@ export default class OrganizationWebhookProcessor implements WebhookProcessor {
     return eventType === 'organization';
   }
 
-  async run(providers: IProviders, organization: Organization, data: any): Promise<boolean> {
+  async run(
+    providers: IProviders,
+    insights: AppInsightsTelemetryClient,
+    organization: Organization,
+    data: any
+  ): Promise<boolean> {
     const queryCache = providers.queryCache;
 
     const event = data.body;

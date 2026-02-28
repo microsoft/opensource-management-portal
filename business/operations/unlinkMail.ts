@@ -90,7 +90,7 @@ export async function sendTerminatedAccountMail(
         } unlinked from GitHub ${subjectSuffix}`.trim(),
       };
       const viewName = companySpecific?.views?.email?.linking?.unlink || 'unlink';
-      const selfReceipt = await operations.emailRenderSend(viewName, mail, {
+      const selfReceipt = await operations.emailRenderSend(insights, viewName, mail, {
         reason: `This is a mandatory notice: your GitHub account and corporate identity have been unlinked. This mail was sent to: ${
           link.corporateMailAddress || link.corporateUsername
         }`,
@@ -176,7 +176,7 @@ export async function sendTerminatedAccountMail(
     category: ['link'],
   };
   const managerViewName = companySpecific?.views?.email?.linking?.unlinkManager || 'managerunlink';
-  const receipt = await operations.emailRenderSend(managerViewName, mail, {
+  const receipt = await operations.emailRenderSend(insights, managerViewName, mail, {
     reason: `As a manager you receive one-time security-related messages regarding your direct reports who have linked their GitHub account to the company.
               This mail was sent to: ${toAsString}`,
     headline,

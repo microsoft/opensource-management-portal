@@ -61,6 +61,7 @@ router.get('/setNote/:action', function (req: ILocalRequest, res) {
 router.post('/', async (req: ILocalRequest, res: Response, next: NextFunction) => {
   const providers = getProviders(req);
   const { individualContext } = req;
+  const insights = individualContext.insights;
   const engine = req.approvalEngine as PermissionWorkflowEngine;
   const message = req.body.text as string;
   const teamBaseUrl = req.teamUrl as string;
@@ -84,10 +85,10 @@ router.post('/', async (req: ILocalRequest, res: Response, next: NextFunction) =
     message
   );
   if (outcome.message) {
-    req.individualContext.webContext.saveUserAlert(outcome.message, engine.typeName, UserAlertType.Success);
+    individualContext.webContext.saveUserAlert(outcome.message, engine.typeName, UserAlertType.Success);
   }
   if (outcome.error) {
-    req.insights.trackException({
+    insights.trackException({
       exception: outcome.error,
     });
     return next(outcome.error);
@@ -212,7 +213,12 @@ export async function postActionDecision(
       correlationId: individualContext.webContext?.correlationId,
     };
     try {
-      const mailResult = await operations.emailRenderSend(getDecisionEmailViewName, mail, contentOptions);
+      const mailResult = await operations.emailRenderSend(
+        insights,
+        getDecisionEmailViewName,
+        mail,
+        contentOptions
+      );
       insights?.trackEvent({
         name: 'ReposRequestDecisionMailSuccess',
         properties: Object.assign(

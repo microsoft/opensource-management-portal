@@ -19,6 +19,7 @@ import {
   GitHubCollaboratorPermissionLevel,
   ICorporateLink,
   GitHubRepositoryPermission,
+  AppInsightsTelemetryClient,
 } from '../../interfaces/index.js';
 
 const repoPermissionsCacheKeyName = 'repoPermissions';
@@ -50,16 +51,21 @@ export function getContextualRepository(req: ReposAppRequest) {
   return req[requestScopedRepositoryKeyName] as Repository;
 }
 
-export async function getComputedRepositoryPermissionsByUsername(
+// export async function getComputedRepositoryPermissionsByUsername(
+//   providers: IProviders,
+//   insights: AppInsightsTelemetryClient,
+//   repository: Repository,
+//   githubLogin: string
+// ) {
+//   const context = await createTemporaryContextByUsername(providers, insights, githubLogin);
+//   return await getComputedRepositoryPermissions(providers, context, repository);
+// }
+
+async function createTemporaryContextByUsername(
   providers: IProviders,
-  repository: Repository,
+  insights: AppInsightsTelemetryClient,
   githubLogin: string
 ) {
-  const context = await createTemporaryContextByUsername(providers, githubLogin);
-  return await getComputedRepositoryPermissions(providers, context, repository);
-}
-
-async function createTemporaryContextByUsername(providers: IProviders, githubLogin: string) {
   const { operations } = providers;
   let link: ICorporateLink = null;
   try {
@@ -78,7 +84,7 @@ async function createTemporaryContextByUsername(providers: IProviders, githubLog
         }
       : null,
     link,
-    insights: null,
+    insights,
     operations,
     webApiContext: null,
     webContext: null,

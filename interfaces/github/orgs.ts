@@ -139,3 +139,15 @@ export type GitHubOrganizationInvite = {
   role: string; // 'direct_member'
   team_count: number;
 };
+
+export interface ISetOrganizationAnnouncementOptions {
+  announcement: string;
+  expires_at?: string;
+  user_dismissible?: boolean;
+}
+
+export interface IGitHubAnnouncementBanner {
+  announcement: string;
+  expires_at: string | null;
+  user_dismissible: boolean;
+}

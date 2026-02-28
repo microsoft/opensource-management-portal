@@ -165,10 +165,11 @@ export default function routeApi(config: SiteConfiguration) {
   router.post(
     '/:org/repos',
     async function (req: CreateRepositoryRequest, res: Response, next: NextFunction) {
+      const activeContext = req.apiContext || req.individualContext;
       const providers = getProviders(req);
       const organization = req.organization;
       const convergedObject = Object.assign({}, req.headers);
-      req.insights.trackEvent({ name: 'ApiRepoCreateRequest', properties: convergedObject });
+      activeContext?.insights?.trackEvent({ name: 'ApiRepoCreateRequest', properties: convergedObject });
       Object.assign(convergedObject, req.body);
       delete convergedObject.access_token;
       delete convergedObject.authorization;
@@ -215,7 +216,7 @@ export default function routeApi(config: SiteConfiguration) {
           CreateRepositoryEntrypoint.Api
         );
         res.status(201);
-        req.insights.trackEvent({
+        activeContext?.insights?.trackEvent({
           name: 'ApiRepoCreateRequestSuccess',
           properties: {
             request: JSON.stringify(convergedObject),
@@ -227,7 +228,7 @@ export default function routeApi(config: SiteConfiguration) {
         const data = { ...convergedObject };
         data.error = error.message;
         data.encodedError = JSON.stringify(error);
-        req.insights.trackEvent({ name: 'ApiRepoCreateFailed', properties: data });
+        activeContext?.insights?.trackEvent({ name: 'ApiRepoCreateFailed', properties: data });
         return next(error);
       }
     }

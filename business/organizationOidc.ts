@@ -3,80 +3,46 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { Repository } from './repository.js';
+import { Organization } from './organization.js';
 import { Operations, symbolizeApiResponse } from './index.js';
 import { AppPurpose } from '../lib/github/appPurposes.js';
 
 import type { PurposefulGetAuthorizationHeader, GetAuthorizationHeader } from '../interfaces/index.js';
+import type { GitHubOidcClaimKey } from './repositoryOidc.js';
 
-const OIDC_CUSTOMIZATION_ROUTE = '/repos/:owner/:repo/actions/oidc/customization/sub';
+const OIDC_CUSTOMIZATION_ROUTE = '/orgs/:org/actions/oidc/customization/sub';
 
-// Based on documentation as of 2025-11-19 at https://docs.github.com/en/enterprise-cloud@latest/actions/concepts/security/openid-connect
-export type GitHubOidcClaimKey =
-  | 'jti'
-  | 'sub'
-  | 'environment'
-  | 'aud'
-  | 'ref'
-  | 'sha'
-  | 'context'
-  | 'repository'
-  | 'repository_owner'
-  | 'actor_id'
-  | 'repository_visibility'
-  | 'repository_id'
-  | 'repository_owner_id'
-  | 'run_id'
-  | 'run_number'
-  | 'run_attempt'
-  | 'runner_environment'
-  | 'actor'
-  | 'workflow'
-  | 'head_ref'
-  | 'base_ref'
-  | 'event_name'
-  | 'enterprise'
-  | 'enterprise_id'
-  | 'ref_type'
-  | 'job_workflow_ref'
-  | 'iss'
-  | 'nbf'
-  | 'exp'
-  | 'iat';
-
-export type GitHubActionsOidcCustomization = {
-  use_default: boolean;
-  include_claim_keys?: GitHubOidcClaimKey[];
+export type GitHubActionsOrgOidcCustomization = {
+  include_claim_keys: GitHubOidcClaimKey[];
 };
 
-export class RepositoryOidc {
-  private _repository: Repository;
+export class OrganizationOidc {
+  private _organization: Organization;
   private _getAuthorizationHeader: PurposefulGetAuthorizationHeader;
   private _operations: Operations;
 
   constructor(
-    repository: Repository,
+    organization: Organization,
     getAuthorizationHeader: PurposefulGetAuthorizationHeader,
     operations: Operations
   ) {
-    this._repository = repository;
+    this._organization = organization;
     this._getAuthorizationHeader = getAuthorizationHeader;
     this._operations = operations;
   }
 
-  async getCustomization(): Promise<GitHubActionsOidcCustomization> {
+  async getCustomization(): Promise<GitHubActionsOrgOidcCustomization> {
     const operations = this._operations as Operations;
     const { github } = operations;
     const parameters = {
-      owner: this._repository.organization.name,
-      repo: this._repository.name,
+      org: this._organization.name,
     };
     const requirements = github.createRequirementsForRequest(
-      this.authorize(AppPurpose.Security),
+      this.authorize(AppPurpose.Operations),
       `GET ${OIDC_CUSTOMIZATION_ROUTE}`,
       {
         permissions: {
-          permission: 'actions',
+          permission: 'organization_administration',
           access: 'read',
         },
         permissionsMatchRequired: true,
@@ -85,25 +51,24 @@ export class RepositoryOidc {
     const response = (await github.requestWithRequirements(
       requirements,
       parameters
-    )) as GitHubActionsOidcCustomization;
+    )) as GitHubActionsOrgOidcCustomization;
     return symbolizeApiResponse(response);
   }
 
-  async setCustomization(customization: GitHubActionsOidcCustomization): Promise<void> {
+  async setCustomization(customization: GitHubActionsOrgOidcCustomization): Promise<void> {
     const payload = customization || {};
     const operations = this._operations as Operations;
     const { github } = operations;
     const parameters = {
-      owner: this._repository.organization.name,
-      repo: this._repository.name,
+      org: this._organization.name,
       ...payload,
     };
     const requirements = github.createRequirementsForRequest(
-      this.authorize(AppPurpose.Updates),
+      this.authorize(AppPurpose.Operations),
       `PUT ${OIDC_CUSTOMIZATION_ROUTE}`,
       {
         permissions: {
-          permission: 'actions',
+          permission: 'organization_administration',
           access: 'write',
         },
         permissionsMatchRequired: true,

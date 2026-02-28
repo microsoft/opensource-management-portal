@@ -53,7 +53,7 @@ router.use('/', async function (req: ReposAppRequest, res: Response, next: NextF
   // Make sure both account types are authenticated before showing the link pg [wi 12690]
   const individualContext = req.individualContext;
   if (!individualContext.corporateIdentity || !individualContext.getGitHubIdentity()) {
-    req.insights.trackEvent({ name: 'PortalSessionNeedsBothGitHubAndAadUsernames' });
+    individualContext?.insights?.trackEvent({ name: 'PortalSessionNeedsBothGitHubAndAadUsernames' });
     return res.redirect('/?signin');
   }
   return next();
@@ -63,9 +63,9 @@ router.use('/', async function (req: ReposAppRequest, res: Response, next: NextF
 
 router.use(async (req: IRequestHacked, res: Response, next: NextFunction) => {
   const individualContext = req.individualContext as IndividualContext;
+  const { insights } = individualContext;
   const providers = getProviders(req);
-  const insights = providers.insights;
-  const config = providers.config;
+  const { config } = providers;
   let validateAndBlockGuests = false;
   if (config?.activeDirectory?.authentication?.blockGuestUserTypes) {
     validateAndBlockGuests = true;
@@ -153,19 +153,20 @@ router.get('/', async function (req: ReposAppRequest, res: Response, next: NextF
   const { config } = getProviders(req);
   const individualContext = req.individualContext;
   const link = individualContext.link;
+  const insights = individualContext.insights;
   if (!individualContext.corporateIdentity && !individualContext.getGitHubIdentity()) {
-    req.insights.trackEvent({ name: 'PortalSessionNeedsBothGitHubAndAadUsernames' });
+    insights?.trackEvent({ name: 'PortalSessionNeedsBothGitHubAndAadUsernames' });
     return res.redirect('/?signin');
   }
   if (!individualContext.getGitHubIdentity()) {
-    req.insights.trackEvent({ name: 'PortalSessionNeedsGitHubUsername' });
+    insights?.trackEvent({ name: 'PortalSessionNeedsGitHubUsername' });
     const signinPath = isCodespacesAuthenticating(config, 'github') ? 'sign-in' : 'signin';
     return res.redirect(`/${signinPath}/github/`);
   }
   if (!link) {
     return await showLinkPage(req, res);
   } else {
-    req.insights.trackEvent({ name: 'LinkRouteLinkLocated' });
+    insights?.trackEvent({ name: 'LinkRouteLinkLocated' });
     let organizations = null;
     try {
       organizations = await individualContext.aggregations.organizations();
@@ -208,14 +209,16 @@ async function showLinkPage(req: ReposAppRequest, res) {
   });
 }
 
-router.get('/enableMultipleAccounts', function (req: IRequestWithSession, res) {
+router.get('/enableMultipleAccounts', function (req: IRequestWithSession & ReposAppRequest, res) {
   // LEGACY
+  const activeContext = req.individualContext || req.apiContext;
+  const insights = activeContext?.insights;
   // TODO: is this code still ever really used?
   if (req.user.github) {
     req.session.enableMultipleAccounts = true;
     return res.redirect('/link/cleanup');
   }
-  req.insights.trackEvent({ name: 'PortalUserEnabledMultipleAccounts' });
+  insights?.trackEvent({ name: 'PortalUserEnabledMultipleAccounts' });
   storeOriginalUrlAsReferrer(
     req,
     res,
@@ -299,16 +302,18 @@ router.get('/reconnect', function (req: ReposAppRequest, res: Response, next: Ne
       )
     );
   }
+  const activeContext = req.individualContext || req.apiContext;
+  const insights = activeContext?.insights;
   // If the request comes back to the reconnect page, the authenticated app will
   // actually update the link the next time around.
-  const ghi = req.individualContext.getGitHubIdentity();
-  const hasToken = !!req.individualContext.webContext.tokens.gitHubReadToken;
+  const ghi = activeContext.getGitHubIdentity();
+  const hasToken = !!activeContext.webContext.tokens.gitHubReadToken;
   if (ghi && ghi.id && ghi.username && hasToken) {
-    req.insights.trackEvent({ name: 'PortalUserReconnected' });
+    insights?.trackEvent({ name: 'PortalUserReconnected' });
     return res.redirect('/');
   }
-  req.insights.trackEvent({ name: 'PortalUserReconnectNeeded' });
-  req.individualContext.webContext.render({
+  insights?.trackEvent({ name: 'PortalUserReconnectNeeded' });
+  activeContext.webContext.render({
     view: 'reconnectGitHub',
     title: 'Please sign in with GitHub',
     state: {

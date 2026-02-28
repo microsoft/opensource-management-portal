@@ -5,16 +5,18 @@
 
 import { Team } from '../index.js';
 import { Operations } from '../index.js';
-import { IndividualContext } from '../user/index.js';
 import { addArrayToSet } from '../../lib/utils.js';
-import { IMail } from '../../lib/mailProvider/index.js';
 import {
   NoCacheNoBackground,
   ITeamMembershipRoleState,
   OrganizationMembershipState,
   GitHubTeamRole,
+  AppInsightsTelemetryClient,
 } from '../../interfaces/index.js';
 import { ErrorHelper } from '../../lib/transitional.js';
+
+import type { IMail } from '../../lib/mailProvider/index.js';
+import type { IndividualContext } from '../user/index.js';
 
 interface ISelfServiceAllowedResult {
   currentMaintainerCount: number;
@@ -22,39 +24,42 @@ interface ISelfServiceAllowedResult {
 }
 
 export interface ISelfServiceTeamMemberToMaintainerUpgradeOptions {
+  insights: AppInsightsTelemetryClient;
   operations: Operations;
   team: Team;
 }
 
 export default class SelfServiceTeamMemberToMaintainerUpgrades {
-  #team: Team;
-  #operations: Operations;
+  private team: Team;
+  private operations: Operations;
+  private insights: AppInsightsTelemetryClient;
 
   constructor(options: ISelfServiceTeamMemberToMaintainerUpgradeOptions) {
-    if (!options.operations || !options.team) {
-      throw new Error('options.operations and options.team are required');
+    if (!options.operations || !options.team || !options.insights) {
+      throw new Error('options.operations, options.team, and options.insights are required');
     }
-    this.#operations = options.operations;
-    this.#team = options.team;
+    this.operations = options.operations;
+    this.team = options.team;
+    this.insights = options.insights;
   }
 
   isSelfServiceUpgradeEnabled(): boolean {
-    return this.#operations.allowSelfServiceTeamMemberToMaintainerUpgrades();
+    return this.operations.allowSelfServiceTeamMemberToMaintainerUpgrades();
   }
 
   maximumAllowedMembers(): number {
-    const value = this.#operations.config.github?.teams?.maximumMembersToAllowUpgrade;
+    const value = this.operations.config.github?.teams?.maximumMembersToAllowUpgrade;
     return value ? Number(value) : 0;
   }
 
   maximumAllowedMaintainers(): number {
-    const value = this.#operations.config.github?.teams?.maximumMaintainersToAllowUpgrade;
+    const value = this.operations.config.github?.teams?.maximumMaintainersToAllowUpgrade;
     return value ? Number(value) : 0;
   }
 
   async isTeamEligible(cacheOk?: boolean): Promise<ISelfServiceAllowedResult | string> {
     const cacheOptions = cacheOk ? {} : NoCacheNoBackground;
-    const team = this.#team;
+    const team = this.team;
     const maintainersCount = (await team.getMaintainers(cacheOptions)).length;
     if (maintainersCount > this.maximumAllowedMaintainers()) {
       return `There are currently ${maintainersCount} maintainers of the team. Self-service upgrade is only available if there are ${this.maximumAllowedMaintainers()} or fewer maintainers.`;
@@ -67,7 +72,7 @@ export default class SelfServiceTeamMemberToMaintainerUpgrades {
   }
 
   async isUserTeamMember(login: string): Promise<boolean> {
-    const membership = (await this.#team.getMembership(
+    const membership = (await this.team.getMembership(
       login,
       NoCacheNoBackground
     )) as ITeamMembershipRoleState;
@@ -102,8 +107,8 @@ export default class SelfServiceTeamMemberToMaintainerUpgrades {
   }
 
   async upgrade(individualContext: IndividualContext): Promise<void> {
-    const team = this.#team;
-    const operations = this.#operations;
+    const team = this.team;
+    const operations = this.operations;
     await team.getDetails();
     const canUpgradeDetails = await this.validateUserCanSelfServicePromote(individualContext);
     const login = individualContext.getGitHubIdentity().username;
@@ -138,6 +143,7 @@ export default class SelfServiceTeamMemberToMaintainerUpgrades {
       console.log('ignoreTeamRefreshErrors:');
       console.warn(ignoreTeamRefreshErrors);
     }
+    const insights = this.insights;
     // Send a notification mail to many folks... with this logic:
     // If the Team Maintainer count before the upgrade was > 0, just notify the current team maintainers.
     // Otherwise, notify all Team Members of the upgrade.
@@ -171,7 +177,7 @@ export default class SelfServiceTeamMemberToMaintainerUpgrades {
         cc: opsAddress ? [opsAddress] : null,
         subject: `${team.organization.name}/${team.name}: GitHub Team Member ${identifierForRequester} upgraded themselves to Team Maintainer`,
       };
-      await this.#operations.emailRenderSend('teamMemberSelfServiceMaintainerUpgrade', mail, {
+      await this.operations.emailRenderSend(insights, 'teamMemberSelfServiceMaintainerUpgrade', mail, {
         reason: `This is a required operational notification: ${identifierForRequester} used a self-service permission upgrade feature. ${notifyDescription}`,
         headline: `Team maintainer upgrade`,
         notification: 'information',
@@ -187,7 +193,6 @@ export default class SelfServiceTeamMemberToMaintainerUpgrades {
       console.log('mailError:');
       console.warn(mailError);
     }
-    const insights = this.#operations.insights;
     if (insights) {
       insights.trackMetric({ name: 'TeamSelfServiceMemberToMaintainerUpgrades', value: 1 });
     }

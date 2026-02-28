@@ -16,6 +16,7 @@
     "**/sentiment/**",
     "**/thirdparty/**",
     "**/vendor/**",
+    "**/vendor.nocommit/**",
     "launch.json",
     "config/github.gitignore.json",
     "default-assets-package/resources/repos-css/oss.css",
@@ -35,6 +36,7 @@
   "words": [
     "1es",
     "1escopilot",
+    "nocommit",
     "aadalias",
     "aademail",
     "aadgraph",
@@ -818,6 +820,7 @@
     "signout",
     "signup",
     "sitecontainers",
+    "skus",
     "smartcard",
     "smashgg",
     "socialimages",

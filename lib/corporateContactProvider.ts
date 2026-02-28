@@ -5,8 +5,9 @@
 
 export interface ICorporateContactInformation {
   openSourceContact?: string;
-  primaryLegalContact?: string;
-  secondaryLegalContact?: string;
+  // No longer used: kept documented to clarify legacy identity payload:
+  // primaryLegalContact?: string;
+  // secondaryLegalContact?: string;
   highRiskBusinessReviewer?: string;
   lowRiskBusinessReviewer?: string;
   managerUsername?: string;

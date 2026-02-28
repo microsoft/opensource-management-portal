@@ -109,6 +109,36 @@ export default class GitHubApplication {
     }
   }
 
+  async getInstallationForOrganization(
+    organizationName: string,
+    options?: ICacheOptions
+  ): Promise<IGitHubAppInstallation> {
+    const operations = this.operations;
+    const parameters = {
+      org: organizationName,
+    };
+    const cacheOptions = { ...options };
+    const github = operations.github;
+    const { rest } = github.octokit;
+    try {
+      const entity = await operations.github.callWithRequirements(
+        github.createRequirementsForFunction(
+          this.authorize(),
+          rest.apps.getOrgInstallation,
+          'apps.getOrgInstallation'
+        ),
+        parameters,
+        cacheOptions
+      );
+      return entity as IGitHubAppInstallation;
+    } catch (error) {
+      throw wrapError(
+        error,
+        `Could not get installation for app ${this.id} in organization ${organizationName}: ${error.message}`
+      );
+    }
+  }
+
   async deleteInstallation(installationId: number): Promise<void> {
     const parameters = {
       installation_id: installationId.toString(),
@@ -136,6 +166,7 @@ export default class GitHubApplication {
       ),
       {
         app_id: this.id.toString(),
+        per_page: 100,
       },
       caching
     );

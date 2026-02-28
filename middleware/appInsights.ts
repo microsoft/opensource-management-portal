@@ -104,8 +104,18 @@ export default function initializeAppInsights(
     const extraProperties = {
       correlationId: req.correlationId,
     };
-    req.insights = wrapOrCreateInsightsConsoleClient(extraProperties, client);
-    return next();
+    const requestInsights = wrapOrCreateInsightsConsoleClient(extraProperties, client);
+    const operationContext = client ? appinsights.startOperation(req) : null;
+
+    if (!operationContext) {
+      req.insights = requestInsights;
+      return next();
+    }
+
+    return appinsights.wrapWithCorrelationContext(() => {
+      req.insights = requestInsights;
+      return next();
+    }, operationContext)();
   });
 
   return wrapOrCreateInsightsConsoleClient({}, client);

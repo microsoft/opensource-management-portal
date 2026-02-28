@@ -49,7 +49,9 @@ export function requestLog(octokit: Octokit) {
         if (error?.status === 304) {
           logAsInfo = true;
         } else if (
-          (path?.includes('/memberships/') || path?.includes('/repositories/')) &&
+          (path?.includes('/memberships/') ||
+            path?.includes('/repositories/') ||
+            path?.endsWith('/oidc/customization/sub')) &&
           error.status === 404
         ) {
           // Ignore 404's for memberships

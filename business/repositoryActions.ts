@@ -220,7 +220,16 @@ export class RepositoryActions {
       github.createRequirementsForFunction(
         this.authorize(AppPurpose.ActionsData),
         rest.actions.listRepoWorkflows,
-        'actions.listRepoWorkflows'
+        'actions.listRepoWorkflows',
+        {
+          permissions: {
+            // NOTE: current Octokit data file, this is inaccurate for URL lookups
+            // Likely bug in the open api specs.
+            permission: 'actions',
+            access: 'read',
+          },
+          permissionsMatchRequired: true,
+        }
       ),
       parameters,
       cacheOptions

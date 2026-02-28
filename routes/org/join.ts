@@ -183,8 +183,9 @@ async function addMemberToOrganizationCache(
 }
 
 router.get('/express', async function (req: ReposAppRequest, res: Response, next: NextFunction) {
+  const individualContext = req.individualContext;
+  const { insights } = individualContext;
   const providers = getProviders(req);
-  const insights = providers.insights;
   const username = req.individualContext.getGitHubIdentity().username;
   const organization = req.organization;
   const onboarding = queryParamAsBoolean(req.query.onboarding as string);
@@ -234,14 +235,14 @@ router.get('/express', async function (req: ReposAppRequest, res: Response, next
 
 async function joinOrg(req: ReposAppRequest, res: Response, next: NextFunction) {
   const individualContext = req.individualContext as IndividualContext;
-  const { insights } = getProviders(req);
+  const { insights } = individualContext;
   const organization = req.organization as Organization;
   const onboarding = queryParamAsBoolean(req.query.onboarding as string);
   const username = individualContext.getGitHubIdentity().username;
   if (!username) {
     throw new Error("A GitHub username was not found in the user's link.");
   }
-  const result = await joinOrganization(req, individualContext, organization, req.insights, onboarding);
+  const result = await joinOrganization(req, individualContext, organization, insights, onboarding);
   insights?.trackEvent({
     name: 'OrganizationJoinOrgMethod',
     properties: {
@@ -422,8 +423,9 @@ router.post('/', joinOrg);
 // /orgname/join/byClient
 router.post('/byClient', async (req: ReposAppRequest, res: Response, next: NextFunction) => {
   const shouldAttemptAcceptingInvitations = false;
-  const { queryCache, insights } = getProviders(req);
+  const { queryCache } = getProviders(req);
   const individualContext = req.individualContext as IndividualContext;
+  const insights = individualContext.insights;
   const organization = req.organization as Organization;
   const username = individualContext.getGitHubIdentity().username;
   const onboarding = queryParamAsBoolean(req.query.onboarding as string);
@@ -436,7 +438,7 @@ router.post('/byClient', async (req: ReposAppRequest, res: Response, next: NextF
     },
   });
   try {
-    const result = await joinOrganization(req, individualContext, organization, req.insights, onboarding);
+    const result = await joinOrganization(req, individualContext, organization, insights, onboarding);
     if (result && result.multipleInvitationDebugMessage) {
       res.header('x-multiple-invitation-debug-message', result.multipleInvitationDebugMessage);
     }

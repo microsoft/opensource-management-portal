@@ -40,6 +40,7 @@ import {
   GitHubRepositoryPermission,
   ReposApiRequest,
   IProviders,
+  AppInsightsTelemetryClient,
 } from '../interfaces/index.js';
 import getCompanySpecificDeployment from '../middleware/companySpecificDeployment.js';
 
@@ -67,6 +68,7 @@ const hardcodedApprovalTypes = [
 ];
 
 export interface ICreateRepositoryApiResult {
+  insights: AppInsightsTelemetryClient;
   github: any;
   name: string;
   repositoryId: number;
@@ -182,7 +184,7 @@ export async function createRepositoryCore(
   let repoCreateResponse: ICreateRepositoryApiResult = null;
   // CodeQL [SM01513] this is not technically a security decision, as it's reacting to GitHub-native events
   if (!existingRepoId) {
-    providers.insights?.trackEvent({
+    insights?.trackEvent({
       name: 'ApiRepoTryCreateForOrg',
       properties: {
         parameterName: parameters.name,
@@ -200,7 +202,7 @@ export async function createRepositoryCore(
         repository = organization.repositoryFromEntity(createResult.repository.getEntity());
       }
     } catch (error) {
-      providers.insights?.trackEvent({
+      insights?.trackEvent({
         name: 'ApiRepoCreateForOrgGitHubFailure',
         properties: {
           parameterName: parameters.name,
@@ -212,7 +214,7 @@ export async function createRepositoryCore(
       });
       if (error?.cause) {
         const cause = error.cause;
-        req.insights.trackException({
+        individualContext.insights?.trackException({
           exception: cause,
           properties: {
             event: 'ApiRepoCreateGitHubErrorInside',
@@ -222,7 +224,7 @@ export async function createRepositoryCore(
           },
         });
       }
-      req.insights.trackException({
+      individualContext.insights?.trackException({
         exception: error,
         properties: {
           event: 'ApiRepoCreateGitHubError',
@@ -232,7 +234,7 @@ export async function createRepositoryCore(
       throw jsonError(error, error.status || 500);
     }
     response = createResult.response;
-    providers.insights?.trackEvent({
+    insights?.trackEvent({
       name: 'ApiRepoCreateForOrg',
       properties: {
         parameterName: parameters.name,
@@ -247,6 +249,7 @@ export async function createRepositoryCore(
     delete response.cost;
     // from this point on any errors should roll back
     const repoCreateResponse: ICreateRepositoryApiResult = {
+      insights,
       github: response,
       name: response && response.name ? response.name : undefined,
       organizationName: repository.organization.name,
@@ -271,7 +274,7 @@ export async function createRepositoryCore(
       const account = await operations.getAccountByUsername(metadata.createdByThirdPartyUsername);
       metadata.createdByThirdPartyId = account.id.toString();
     } catch (noAvailableUsername) {
-      providers.insights?.trackEvent({
+      insights?.trackEvent({
         name: 'ApiRepoCreateInvalidUsername',
         properties: {
           username: metadata.createdByThirdPartyUsername,
@@ -322,6 +325,7 @@ export async function createRepositoryCore(
     repository = repositoryByName;
     metadata.lockdownState = RepositoryLockdownState.Unlocked;
     repoCreateResponse = {
+      insights,
       github: response,
       name: response && response.name ? response.name : undefined,
       repositoryId: Number(existingRepoId),
@@ -381,7 +385,7 @@ export async function createRepositoryCore(
       ),
       500
     );
-    req.insights.trackException({
+    individualContext?.insights?.trackException({
       exception: insertRequestError,
       properties: {
         event: 'ApiRepoCreateRollbackError',
@@ -423,6 +427,7 @@ export async function createRepositoryCore(
   }
   if (!req.repoCreateResponse) {
     req.repoCreateResponse = {
+      insights,
       tasks: null,
       github: null,
       name: null,
@@ -529,7 +534,8 @@ async function sendEmail(
   repository: Repository,
   createdUserLink: ICorporateLink
 ): Promise<void> {
-  const { config, insights, viewServices } = getProviders(req);
+  const { insights } = req;
+  const { config, viewServices } = getProviders(req);
   const deployment = getCompanySpecificDeployment();
   const emailTemplate = deployment?.views?.email?.repository?.new || defaultMailView;
   const excludeNotificationsValue = config.notifications?.reposNotificationExcludeForUsers;
@@ -646,7 +652,7 @@ async function sendEmail(
   try {
     await (operations as Operations).emailTestRender(emailTemplate, contentOptions);
   } catch (renderError) {
-    req.insights.trackException({
+    insights.trackException({
       exception: renderError,
       properties: {
         correlationId,
@@ -679,6 +685,7 @@ async function sendEmail(
       },
     });
     customData.receipt = await (operations as Operations).emailRenderSend(
+      insights,
       emailTemplate,
       mail,
       contentOptions
@@ -707,7 +714,12 @@ async function sendEmail(
       return;
     }
     try {
-      await (operations as Operations).emailRenderSend(emailTemplate, additionalMail, contentOptions);
+      await (operations as Operations).emailRenderSend(
+        insights,
+        emailTemplate,
+        additionalMail,
+        contentOptions
+      );
     } catch (ignoredError) {
       console.dir(ignoredError);
       return;

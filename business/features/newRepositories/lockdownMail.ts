@@ -5,17 +5,20 @@
 
 import { Operations, Repository } from '../../index.js';
 import {
+  AppInsightsTelemetryClient,
   ICachedEmployeeInformation,
   ICorporateLink,
   RepositoryLockdownState,
 } from '../../../interfaces/index.js';
-import { IMail } from '../../../lib/mailProvider/index.js';
 import getCompanySpecificDeployment from '../../../middleware/companySpecificDeployment.js';
 import { ILockdownResult, IMailToLockdownRepo, RepositoryLockdownCreateType } from './interfaces.js';
+
+import type { IMail } from '../../../lib/mailProvider/index.js';
 
 const defaultMailTemplate = 'newrepolockdown';
 
 export async function sendLockdownMails(
+  insights: AppInsightsTelemetryClient,
   operations: Operations,
   repository: Repository,
   outcome: ILockdownResult,
@@ -114,7 +117,7 @@ export async function sendLockdownMails(
           to: mailAddress,
           subject,
         };
-        await operations.emailRenderSend(mailView, mailToCreator, {
+        await operations.emailRenderSend(insights, mailView, mailToCreator, {
           reason,
           headline,
           notification: isForkAdministratorLocked ? 'action' : 'information',
@@ -156,7 +159,7 @@ export async function sendLockdownMails(
         to: operationsMails,
         subject,
       };
-      await operations.emailRenderSend(mailView, mailToOperations, {
+      await operations.emailRenderSend(insights, mailView, mailToOperations, {
         reason: `A user just ${repoActionType} this repository directly on GitHub. As the operations contact for this system, you are receiving this e-mail.
                   This mail was sent to: ${operationsMails.join(', ')}`,
         headline: isForkAdministratorLocked

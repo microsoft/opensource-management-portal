@@ -9,6 +9,7 @@ import { WebhookProcessor } from '../organizationProcessor.js';
 import { Organization } from '../../index.js';
 import NewRepositoryLockdownSystem from '../../features/newRepositories/newRepositoryLockdown.js';
 import {
+  AppInsightsTelemetryClient,
   getRepositoryMetadataProvider,
   RepositoryLockdownState,
   type IProviders,
@@ -22,8 +23,13 @@ export default class RepositoryWebhookProcessor implements WebhookProcessor {
     return eventType === 'repository';
   }
 
-  async run(providers: IProviders, organization: Organization, data: any): Promise<boolean> {
-    const { immutable, insights, operations } = providers;
+  async run(
+    providers: IProviders,
+    insights: AppInsightsTelemetryClient,
+    organization: Organization,
+    data: any
+  ): Promise<boolean> {
+    const { immutable, operations } = providers;
     const event = data.body as GitHubWebhookRepositoryEventBody;
     const queryCache = operations.providers.queryCache;
     let update = false;

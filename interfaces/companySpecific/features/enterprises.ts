@@ -4,13 +4,14 @@
 //
 
 import type { GitHubAppConfiguration } from '../../../lib/github/appPurposes.js';
-import type { IProviders } from '../../../interfaces/index.js';
+import type { AppInsightsTelemetryClient, IProviders } from '../../../interfaces/index.js';
 import type { UnlinkOptions } from '../../../business/operations/core.js';
 
 export interface ICompanySpecificFeatureEnterprises {
   getEnterpriseConfigurations?: (providers: IProviders) => GitHubAppConfiguration[];
   onUnlink?: (
     providers: IProviders,
+    insights: AppInsightsTelemetryClient,
     gitHubAccountId: number,
     options?: UnlinkOptions,
     unlinkLog?: string[]

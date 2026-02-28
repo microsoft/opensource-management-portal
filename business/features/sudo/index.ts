@@ -3,16 +3,21 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import type { Organization } from '../../index.js';
 import getCompanySpecificDeployment from '../../../middleware/companySpecificDeployment.js';
-import { ICorporateLink, IProviders } from '../../../interfaces/index.js';
+
+import type { Organization } from '../../index.js';
+import type { AppInsightsTelemetryClient, ICorporateLink, IProviders } from '../../../interfaces/index.js';
 
 export interface IOrganizationSudo {
   isSudoer(githubLogin: string, link?: ICorporateLink): Promise<boolean>;
 }
 
 export interface IPortalSudo {
-  isSudoer(githubLogin: string, link?: ICorporateLink): Promise<boolean>;
+  isSudoer(
+    insights: AppInsightsTelemetryClient,
+    githubLogin: string,
+    link?: ICorporateLink
+  ): Promise<boolean>;
 }
 
 export { OrganizationFeatureSecurityGroupProperty } from './securityGroup.js';
