@@ -65,6 +65,7 @@ router.get('/:approvalId', async (req: ReposAppRequest, res: Response, next: Nex
   if (!activeContext.link) {
     return res.json({});
   }
+  const { insights } = activeContext;
   const { approvalProvider, operations } = getProviders(req);
   const corporateId = activeContext.corporateIdentity.id;
   let request: TeamJoinApprovalEntity = null;
@@ -81,7 +82,7 @@ router.get('/:approvalId', async (req: ReposAppRequest, res: Response, next: Nex
     if (corporateId === request.corporateId) {
       return res.json(approvalPairToJson({ request, team }));
     }
-    const isPortalSudoer = await operations.isPortalSudoer(username, activeContext.link);
+    const isPortalSudoer = await operations.isPortalSudoer(insights, username, activeContext.link);
     const isOrgSudoer = isPortalSudoer || (await organization.isSudoer(username, activeContext.link));
     isMaintainer = isPortalSudoer || isOrgSudoer;
     const maintainers = await team.getOfficialMaintainers();

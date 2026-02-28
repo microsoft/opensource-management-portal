@@ -41,6 +41,7 @@ export default [
       '.ossdev/build/*.cjs',
       '**/frontend/',
       '**/vendor/**/*',
+      '**/vendor.nocommit/**/*',
       'views/js/**/*',
       '.eslint.config.mjs', // this file
     ],

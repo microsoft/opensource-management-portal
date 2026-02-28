@@ -445,7 +445,7 @@ export abstract class IntelligentEngine {
     try {
       response = (await this.callApi(apiContext, `GET:               ${displayKey}`)) as RestResponse;
     } catch (error) {
-      if (error && error.status && error.status === 304) {
+      if (error?.status === 304) {
         const liveHeaders = error.response?.headers || {};
         const headers = {};
         for (let i = 0; i < headerKeysWanted.length; i++) {
@@ -457,6 +457,12 @@ export abstract class IntelligentEngine {
         const notModifiedResponse = { data: undefined, headers, notModified: true };
         response = notModifiedResponse;
       } else {
+        if (error?.status === 403) {
+          console.log();
+          // if it's a resource or integration not available... do we have the context
+          // to at least augment our error to have information about the token or
+          // app installation used?
+        }
         throw error;
       }
     }

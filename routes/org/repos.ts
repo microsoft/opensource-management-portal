@@ -65,7 +65,6 @@ const teamsFilterType = {
 };
 
 router.use(function (req: ReposAppRequest, res: Response, next: NextFunction) {
-  req.individualContext.webContext.pushBreadcrumb('Repositories');
   req.reposContext = {
     section: 'repos',
     organization: req.organization,

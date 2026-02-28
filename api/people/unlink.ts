@@ -46,6 +46,7 @@ router.use('/*splat', (req: ILinksApiRequestWithUnlink, res: Response, next: Nex
 });
 
 router.delete('/*splat', (req: ILinksApiRequestWithUnlink, res: Response, next: NextFunction) => {
+  const { insights } = req;
   const { config, operations } = getProviders(req);
   const link = req.unlink;
   let purpose: UnlinkPurpose = null;
@@ -57,7 +58,7 @@ router.delete('/*splat', (req: ILinksApiRequestWithUnlink, res: Response, next: 
   const unlinkWithoutDrops = config?.debug?.unlinkWithoutDrops;
   const options = { purpose, unlinkWithoutDrops };
   return operations
-    .terminateLinkAndMemberships(link.thirdPartyId, options)
+    .terminateLinkAndMemberships(insights, link.thirdPartyId, options)
     .then((results) => {
       res.json({
         messages: Array.isArray(results) ? (results as any as string[]).reverse() : results,

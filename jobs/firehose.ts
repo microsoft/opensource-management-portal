@@ -39,7 +39,7 @@ job.run(firehose, {
 });
 
 async function firehose(providers: IProviders, { started }: IReposJob): Promise<IReposJobResult> {
-  const { insights } = providers;
+  const { genericInsights: insights } = providers;
   const processedEventTypes = {};
   const interestingEvents = 0;
   recentlyProcessedEvents = 0;
@@ -155,6 +155,7 @@ async function firehose(providers: IProviders, { started }: IReposJob): Promise<
     threadNumber: number,
     startupDelay: number
   ): Promise<void> {
+    const { genericInsights: insights } = providers;
     if (startupDelay > 0) {
       const ms = startupDelay * 1000;
       console.log(`[thread ${threadNumber}] delay ${ms}ms`);
@@ -342,6 +343,7 @@ async function firehose(providers: IProviders, { started }: IReposJob): Promise<
     }
     const options = {
       providers,
+      insights,
       organization,
       event: {
         properties: message.customProperties as unknown as GitHubWebhookProperties,

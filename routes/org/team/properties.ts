@@ -25,7 +25,6 @@ router.get(
       if (error) {
         return next(wrapError(error, 'Had trouble getting the detailed properties for this team.'));
       }
-      req.individualContext.webContext.pushBreadcrumb('Properties');
       req.individualContext.webContext.render({
         view: 'org/team/properties',
         title: team2.name + ' - Properties',

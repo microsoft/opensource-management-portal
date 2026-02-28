@@ -8,7 +8,6 @@ export type ConfigGitHubRootOperations = {
 };
 
 export type ConfigGitHubOperations = {
-  centralOperationsToken: string;
   publicAccessToken: string;
   primaryOrganizationId: number;
 };

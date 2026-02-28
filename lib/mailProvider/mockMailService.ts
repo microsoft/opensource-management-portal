@@ -3,7 +3,9 @@
 //
 
 import { randomUUID } from 'crypto';
-import { IMail, IMailProvider } from './index.js';
+
+import type { IMail, IMailProvider } from './index.js';
+import type { AppInsightsTelemetryClient } from '../../interfaces/providers.js';
 
 export default class MockMailService implements IMailProvider {
   html: true;
@@ -27,7 +29,7 @@ export default class MockMailService implements IMailProvider {
     return `mockMailService-${this.customServiceConfig.version} v${this.appVersion}`;
   }
 
-  async sendMail(mail: IMail): Promise<any> {
+  async sendMail(insights: AppInsightsTelemetryClient, mail: IMail): Promise<any> {
     const receipt = Object.assign(
       {
         id: randomUUID(),

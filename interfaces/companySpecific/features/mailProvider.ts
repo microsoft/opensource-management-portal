@@ -5,12 +5,13 @@
 
 import type { IMail, IMailProvider } from '../../../lib/mailProvider/index.js';
 import type { SiteConfiguration } from '../../config.js';
-import type { IProviders } from '../../providers.js';
+import type { AppInsightsTelemetryClient, IProviders } from '../../providers.js';
 
 export interface ICompanySpecificFeatureMailProvider {
   tryCreateInstance?: (providers: IProviders, config: SiteConfiguration) => IMailProvider;
   combinedRenderSendMail?: (
     providers: IProviders,
+    insights: AppInsightsTelemetryClient,
     mailTemplate: string,
     mail: IMail,
     contentOptions: Record<string, unknown>,

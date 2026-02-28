@@ -12,6 +12,7 @@
     ".github/prompts/**",
     "**/node_modules/**",
     "frontend/**",
+    "vendor.nocommit/**",
     "microsoft/assets/**",
     "**/frontend/node_modules/**",
     "**/frontend/src/thirdParty/**"

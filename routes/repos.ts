@@ -12,7 +12,6 @@ import lowercaser from '../middleware/lowercaser.js';
 import RouteReposPager from './reposPager.js';
 
 router.use(function (req: ReposAppRequest, res: Response, next: NextFunction) {
-  req.individualContext.webContext.pushBreadcrumb('Repositories');
   req.reposContext = {
     section: 'repos',
     pivotDirectlyToOtherOrg: '/repos/', // hack

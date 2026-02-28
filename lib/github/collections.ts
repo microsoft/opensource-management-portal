@@ -217,6 +217,11 @@ export class RestCollections {
     cacheOptions: IPagedCacheOptions,
     arrayReducePropertyName?: string
   ): Promise<IRequestWithData> {
+    if ((options as any)?.page !== undefined) {
+      throw CreateError.InvalidParameters(
+        'The "page" option should not be passed to getGithubCollection as it manages pagination internally'
+      );
+    }
     const insights = this.libraryContext.insights;
     const hasNextPage = this.libraryContext.hasNextPage;
     const githubCall = this.githubCall;
@@ -226,7 +231,7 @@ export class RestCollections {
     const requests = [];
     let emptyDataResponses = 0;
     let pages = 0;
-    let currentPage = 0;
+    let currentPage = 1; // GitHub API uses 1-based pagination
     const pageLimit = (options as any)?.pageLimit || cacheOptions['pageLimit'] || Number.MAX_VALUE;
     const pageRequestDelay = cacheOptions.pageRequestDelay || null;
     while (!done) {
@@ -235,9 +240,7 @@ export class RestCollections {
       const currentToken = typeof token === 'string' ? token : await token();
       args.push(currentToken);
       const clonedOptions: WithPage<OptionsType> = Object.assign({}, options);
-      if (currentPage > 0) {
-        clonedOptions.page = currentPage;
-      }
+      clonedOptions.page = currentPage;
       const octokitRequest = (clonedOptions as any)?.octokitRequest as string;
       args.push(methodName, clonedOptions);
       let error = null;
@@ -278,9 +281,8 @@ export class RestCollections {
       } catch (iterationError) {
         if (
           iterationError?.message === 'no response.data' &&
-          currentPage > 1 &&
-          octokitRequest &&
-          octokitRequest.endsWith('/copilot/billing/seats')
+          octokitRequest?.endsWith('/copilot/billing/seats') &&
+          currentPage > 1
         ) {
           // The Copilot seat APIs occasionally return empty data temporarily. This is not
           // ideal, but it slows gathering. This telemetry will help monitor how common the

@@ -19,7 +19,6 @@ interface ITeamsRequest extends ReposAppRequest {
 }
 
 router.use(function (req: ReposAppRequest, res: Response, next: NextFunction) {
-  req.individualContext.webContext.pushBreadcrumb('Teams');
   req.reposContext = {
     section: 'teams',
     organization: req.organization,
@@ -27,7 +26,7 @@ router.use(function (req: ReposAppRequest, res: Response, next: NextFunction) {
   next();
 });
 
-router.get('/', function (req, res: Response, next: NextFunction) {
+router.get('/', function (req: ITeamsRequest, res: Response, next: NextFunction) {
   const beforeLinkReferrer = popSessionVariable(req, res, 'beforeLinkReferrer');
   if (beforeLinkReferrer !== undefined) {
     return res.redirect(beforeLinkReferrer);
@@ -46,7 +45,6 @@ router.use('/:teamSlug', async (req: ITeamsRequest, res: Response, next: NextFun
     req.team2 = team;
     // Breadcrumb and path updates
     req.teamUrl = `${orgBaseUrl}teams/${team.slug}/`;
-    req.individualContext.webContext.pushBreadcrumb(team.name);
     return next();
   } catch (getTeamError) {
     if (getTeamError && getTeamError.slug) {

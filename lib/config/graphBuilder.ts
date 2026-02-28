@@ -18,6 +18,7 @@ const SUPPORTED_EXTENSIONS = new Map([
 ]);
 
 const EXCLUDED_CONFIG_FILE_PREFIXES = ['environmentFileReader', 'utils'];
+const EXCLUDED_CONFIG_FILE_EXTENSIONS = ['.d.ts', '.js.map'];
 
 async function scriptProcessor(api: ILibraryOptions, config: any, p: string) {
   const alteredImport = importPathSchemeChangeIfWindows(p);
@@ -56,6 +57,9 @@ export default async (api: ILibraryOptions, dirPath: string) => {
   }
   for (let i = 0; i < files.length; i++) {
     const file = path.join(dirPath, files[i]);
+    if (EXCLUDED_CONFIG_FILE_EXTENSIONS.some((extension) => file.endsWith(extension))) {
+      continue;
+    }
     const ext = path.extname(file);
     const nodeName = path.basename(file, ext);
     // Exclude any TypeScript-related typing files (special case)

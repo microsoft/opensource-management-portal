@@ -217,10 +217,6 @@ export async function setIdentity(req: ReposAppRequest, res: Response, next: Nex
   activeContext.corporateIdentity = corporateIdentity;
   activeContext.setSessionBasedGitHubIdentity(gitHubIdentity);
 
-  if (activeContext.webContext) {
-    activeContext.webContext.pushBreadcrumb('Organizations');
-  }
-
   if (!corporateIdentity) {
     return next(new Error('Not a valid corporate user'));
   }

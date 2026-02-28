@@ -182,7 +182,9 @@ async function refresh(providers: IProviders): Promise<IReposJobResult> {
             });
             if (terminateLinksAndMemberships) {
               try {
-                await operations.terminateLinkAndMemberships(id, { purpose: UnlinkPurpose.Deleted });
+                await operations.terminateLinkAndMemberships(insights, id, {
+                  purpose: UnlinkPurpose.Deleted,
+                });
                 insights.trackEvent({
                   name: 'JobRefreshUsernamesUnlinkDelete',
                   properties: { githubid: id, error: getDetailsError.message },

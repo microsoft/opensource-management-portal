@@ -65,6 +65,7 @@ interface ILocalRequest extends ReposAppRequest {
 }
 
 router.use(async (req: ILocalRequest, res: Response, next: NextFunction) => {
+  const { insights } = req;
   const { operations } = getProviders(req);
   const login = req.individualContext.getGitHubIdentity().username;
   const team2 = req.team2 as Team;
@@ -85,6 +86,7 @@ router.use(async (req: ILocalRequest, res: Response, next: NextFunction) => {
     req.selfServiceTeamMemberToMaintainerUpgrades = new SelfServiceTeamMemberToMaintainerUpgrades({
       operations,
       team: team2,
+      insights,
     });
   }
   return next();
@@ -419,6 +421,7 @@ export async function submitTeamJoinRequest(
           },
         });
         const mailResult = await operations.emailRenderSend(
+          insights,
           'membershipApprovals/pleaseApprove',
           mail,
           contentOptions
@@ -490,6 +493,7 @@ export async function submitTeamJoinRequest(
           },
         });
         const mailResult = await operations.emailRenderSend(
+          insights,
           'membershipApprovals/requestSubmitted',
           mail,
           contentOptions

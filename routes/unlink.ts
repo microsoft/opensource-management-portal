@@ -65,8 +65,9 @@ export async function unlinkInteractive(
   res,
   next
 ) {
+  const { insights } = req;
   const id = individualContext.getGitHubIdentity().id;
-  const { operations, insights } = getProviders(req);
+  const { operations } = getProviders(req);
   const terminationOptions = {
     reason: 'User used the unlink function on the web site',
     purpose: UnlinkPurpose.Self,
@@ -74,7 +75,7 @@ export async function unlinkInteractive(
   let history: string[] = [];
   let error = null;
   try {
-    history = await operations.terminateLinkAndMemberships(id, terminationOptions);
+    history = await operations.terminateLinkAndMemberships(insights, id, terminationOptions);
   } catch (exception) {
     insights?.trackException({ exception });
     error = exception;

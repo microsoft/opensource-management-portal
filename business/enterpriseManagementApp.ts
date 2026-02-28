@@ -3,7 +3,7 @@
 //
 
 import {
-  CustomAppPurposeOrganizationVariance,
+  CustomAppPurposeTargetConfigurationVaries,
   GitHubAppConfiguration,
   GitHubAppPurposes,
 } from '../lib/github/appPurposes.js';
@@ -31,8 +31,8 @@ export class EnterpriseManagementApp {
   }
 
   static Initialize(providers: IProviders) {
-    if (this._instance) {
-      throw CreateError.InvalidParameters(`${appTypeName} already initialized`);
+    if (EnterpriseManagementApp._instance) {
+      return;
     }
     const companySpecific = getCompanySpecificDeployment();
     // The open source variant of the app does not contemplate specific configuration
@@ -49,10 +49,11 @@ export class EnterpriseManagementApp {
             : '')
       );
     }
-    const customAppPurpose = new CustomAppPurposeOrganizationVariance(
+    const customAppPurpose = new CustomAppPurposeTargetConfigurationVaries(
       providers.operations,
       appPurposeId,
       appPurposeName,
+      'enterprise',
       configurations
     );
     GitHubAppPurposes.RegisterCustomPurpose(customAppPurpose);
@@ -60,6 +61,6 @@ export class EnterpriseManagementApp {
   }
 
   constructor(
-    readonly appPurpose: CustomAppPurposeOrganizationVariance // ICustomAppPurpose
+    readonly appPurpose: CustomAppPurposeTargetConfigurationVaries // ICustomAppPurpose
   ) {}
 }

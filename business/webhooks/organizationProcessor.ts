@@ -7,9 +7,9 @@ import crypto from 'crypto';
 import secureCompare from 'secure-compare';
 
 import { Organization } from '../index.js';
-
 import { sleep } from '../../lib/utils.js';
-import { type IProviders } from '../../interfaces/index.js';
+
+import type { AppInsightsTelemetryClient, IProviders } from '../../interfaces/index.js';
 
 import defaultWebhookTasks from './tasks/index.js';
 import getCompanySpecificDeployment from '../../middleware/companySpecificDeployment.js';
@@ -23,7 +23,12 @@ let companySpecificWebhookTasks: WebhookProcessor[] = null;
 
 export abstract class WebhookProcessor {
   abstract filter(data: any): boolean;
-  abstract run(providers: IProviders, organization: Organization, data: any): Promise<boolean>;
+  abstract run(
+    providers: IProviders,
+    insights: AppInsightsTelemetryClient,
+    organization: Organization,
+    data: any
+  ): Promise<boolean>;
 }
 
 export type OrganizationWebhookEvent<T = any> = {
@@ -40,6 +45,7 @@ export type GitHubWebhookProperties = {
 };
 
 export type ProcessOrganizationWebhookOptions = {
+  insights: AppInsightsTelemetryClient;
   providers: IProviders;
   organization: Organization;
   event: OrganizationWebhookEvent;
@@ -53,6 +59,7 @@ export default async function ProcessOrganizationWebhook(
   if (!providers) {
     throw new Error('No providers provided');
   }
+  const { insights } = options;
   const companySpecific = getCompanySpecificDeployment();
   if (
     companySpecific?.features?.firehose?.getAdditionalWebhookTasks &&
@@ -133,7 +140,7 @@ export default async function ProcessOrganizationWebhook(
 
   for (const processor of work) {
     try {
-      await processor.run(providers, organization, event);
+      await processor.run(providers, insights, organization, event);
     } catch (processInitializationError) {
       if (processInitializationError.status === 403) {
         console.log(`403: ${processInitializationError}`);

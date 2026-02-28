@@ -13,6 +13,7 @@ import jsonImportAppPermissions from '@octokit/app-permissions';
 
 import Debug from 'debug';
 const debug = Debug('github:tokens');
+const debugSelection = Debug('github:tokens:selection');
 
 import {
   AppPurpose,
@@ -122,6 +123,9 @@ function cleanupOctokitLookupUrl(url: string) {
     url = url.substring(0, url.length - 1);
   }
   const permissionsExist = githubAppPermissions.paths[url];
+  if (permissionsExist) {
+    debug(`Found permissions for exact ${url}`);
+  }
   if (!permissionsExist) {
     // try removing the last segment
     const parts = url.split('/');
@@ -136,6 +140,9 @@ function cleanupOctokitLookupUrl(url: string) {
         return newUrl;
       }
     }
+  }
+  if (!githubAppPermissions.paths[url]) {
+    debug(`No permissions found for cleaned URL: ${url}`);
   }
   return url;
 }
@@ -182,7 +189,7 @@ export class GitHubTokenManager {
     GitHubTokenManager._forceBackgroundTokens =
       executionEnvironment.isJob && !executionEnvironment.enableAllGitHubApps;
     GitHubTokenManager.RegisterManagerForOperations(options.operations, this);
-    this._insights = options.operations.providers.insights;
+    this._insights = options.insights;
   }
 
   private operations() {
@@ -321,7 +328,9 @@ export class GitHubTokenManager {
         );
       }
       const friendlyName = func ? requirements.octokitFunctionName : requirements.octokitRequest;
-      debug(`Requirements present for ${func ? 'Octokit function' : 'REST API request'} ${friendlyName}`);
+      debugSelection(
+        `Requirements present for ${func ? 'Octokit function' : 'REST API request'} ${friendlyName}`
+      );
       let httpMethod: string = null;
       let url: string = null;
       let parameterLessUrl: string = null;
@@ -343,55 +352,61 @@ export class GitHubTokenManager {
         );
         // consider: return null; + warn
       }
-      const cleanedUrl = cleanupOctokitLookupUrl(parameterLessUrl);
-      let permissions = githubAppPermissions.paths[cleanedUrl] as GitHubPathPermissionDefinitionsByMethod;
-      const alternatePermissions = requirements.permissions;
       const { allowBestFaithInstallationForAnyHttpMethod } = requirements;
       const forcePermissionsInLookup = requirements?.permissionsMatchRequired || false;
-      if (
-        !permissions &&
-        requirements.usePermissionsFromAlternateUrl &&
-        githubAppPermissions.paths[requirements.usePermissionsFromAlternateUrl]
-      ) {
-        permissions = githubAppPermissions.paths[
-          requirements.usePermissionsFromAlternateUrl
-        ] as GitHubPathPermissionDefinitionsByMethod;
-      } else if (!permissions && requirements.usePermissionsFromAlternateUrl) {
-        const alt = cleanupOctokitLookupUrl(
-          removeOctokitParametersFromUrl(requirements.usePermissionsFromAlternateUrl)
-        );
-        permissions = githubAppPermissions.paths[alt] as GitHubPathPermissionDefinitionsByMethod;
-      }
+      const alternatePermissions = requirements.permissions;
+      let permissions: GitHubPathPermissionDefinitionsByMethod;
+      let approach: string;
       if (alternatePermissions) {
+        approach = 'defined requirement permissions';
+        debugSelection(`Defined requirement permissions: ${JSON.stringify(alternatePermissions)}`);
         permissions = {
           [httpMethod]: alternatePermissions,
         };
-      }
-      if (!permissions) {
-        debug(
-          `No known permissions data for the URL ${url} [lookup via ${cleanedUrl}] (requirements ignored)`
-        );
-        if (forcePermissionsInLookup) {
-          throw CreateError.InvalidParameters(
-            `GitHubTokenManager: no known permissions data for the URL ${url} [lookup via ${cleanedUrl}] while requiring`
+      } else {
+        const cleanedUrl = cleanupOctokitLookupUrl(parameterLessUrl);
+        permissions = githubAppPermissions.paths[cleanedUrl] as GitHubPathPermissionDefinitionsByMethod;
+        if (
+          !permissions &&
+          requirements.usePermissionsFromAlternateUrl &&
+          githubAppPermissions.paths[requirements.usePermissionsFromAlternateUrl]
+        ) {
+          permissions = githubAppPermissions.paths[
+            requirements.usePermissionsFromAlternateUrl
+          ] as GitHubPathPermissionDefinitionsByMethod;
+        } else if (!permissions && requirements.usePermissionsFromAlternateUrl) {
+          const alt = cleanupOctokitLookupUrl(
+            removeOctokitParametersFromUrl(requirements.usePermissionsFromAlternateUrl)
           );
+          permissions = githubAppPermissions.paths[alt] as GitHubPathPermissionDefinitionsByMethod;
         }
-        console.warn(`No known permissions data for the URL ${url} [lookup via ${cleanedUrl}]`);
-        this._insights?.trackEvent({
-          name: 'GitHubTokenManagerNoPermissionsData',
-          properties: {
-            url,
-            cleanedUrl,
-          },
-        });
-        // consider: return null; + warn
+        if (!permissions) {
+          debugSelection(
+            `No known permissions data for the URL ${url} [lookup via ${cleanedUrl}] (requirements ignored)`
+          );
+          if (forcePermissionsInLookup) {
+            throw CreateError.InvalidParameters(
+              `GitHubTokenManager: no known permissions data for the URL ${url} [lookup via ${cleanedUrl}] while requiring`
+            );
+          }
+          console.warn(`No known permissions data for the URL ${url} [lookup via ${cleanedUrl}]`);
+          this._insights?.trackEvent({
+            name: 'GitHubTokenManagerNoPermissionsData',
+            properties: {
+              url,
+              cleanedUrl,
+            },
+          });
+          // consider: return null; + warn
+        }
+        approach = `lookup via ${cleanedUrl}`;
       }
       const supportedMethodForBestFaith = httpMethod === 'GET' || allowBestFaithInstallationForAnyHttpMethod;
       if (
         supportedMethodForBestFaith &&
         appAuthenticationType === GitHubAppAuthenticationType.BestAvailable
       ) {
-        debug(
+        debugSelection(
           `Optimal installation requested for a ${httpMethod}${httpMethod !== 'GET' && allowBestFaithInstallationForAnyHttpMethod ? ' (as requirements authorize)' : ''} request ${friendlyName}`
         );
         installationIdPair = await this.getOptimalInstallationPairWithPermission(
@@ -403,23 +418,24 @@ export class GitHubTokenManager {
         );
         if (installationIdPair) {
           const { purpose } = installationIdPair;
-          debug(
+          debugSelection(
             `smart header(${organizationName}, ${this.getPurposeDisplayId(purpose)}, ${appAuthenticationType})`
           );
           foundOptimal = true;
         } else if (forcePermissionsInLookup) {
           // only auditing for now
           console.warn(
-            `GitHubTokenManager: no installations found with the required permissions for the URL ${url} [lookup via ${cleanedUrl}]`
+            `GitHubTokenManager: no installations found with the required permissions for the URL ${url} [${approach}]`
           );
         }
       }
     } else {
-      debug('No requirements present');
+      debugSelection('No requirements present');
     }
     // NOTE: the 'permissionsMatchRequired' requirement option is currently only in audit mode
+    // CONSIDER: appropriate warning if the permission is known to not exist
     if (!installationIdPair) {
-      debug(
+      debugSelection(
         `getOrganizationAuthorizationHeader(${organizationName}, ${this.getPurposeDisplayId(
           preferredPurpose
         )}, ${appAuthenticationType})`
@@ -443,19 +459,19 @@ export class GitHubTokenManager {
       installationIdPair.purpose !== preferredPurpose &&
       !foundOptimal
     ) {
-      debug(
+      debugSelection(
         `preferred GitHub App type ${preferredPurpose} not configured for organization ${organizationName}, falling back to ${installationIdPair.purpose}`
       );
     }
     const asCustomPurpose = this.getCustomPurpose(installationIdPair.purpose);
     const asStandardPurpose =
-      !asCustomPurpose?.getForOrganizationName && (installationIdPair.purpose as AppPurpose);
+      !asCustomPurpose?.getForTargetName && (installationIdPair.purpose as AppPurpose);
     let app: GitHubAppTokens = null;
     let customPurposeConfiguration: GitHubAppConfiguration = null;
-    if (asCustomPurpose?.getForOrganizationName) {
-      customPurposeConfiguration = asCustomPurpose?.getForOrganizationName(organizationName);
+    if (asCustomPurpose?.getForTargetName) {
+      customPurposeConfiguration = asCustomPurpose?.getForTargetName(organizationName);
       if (customPurposeConfiguration?.appId) {
-        debug(
+        debugSelection(
           `purpose-specific configuration for ${organizationName} retrieved; appId=${customPurposeConfiguration.appId}`
         );
         const appId =
@@ -464,13 +480,13 @@ export class GitHubTokenManager {
             : parseInt(customPurposeConfiguration.appId, 10);
         app = this._appsById.get(appId);
       } else {
-        debug(`purpose-specific configuration for ${organizationName} not available}`);
+        debugSelection(`purpose-specific configuration for ${organizationName} not available}`);
       }
-      debug(`app retrieved: ${app ? 'yes' : 'no'}`);
+      debugSelection(`app retrieved: ${app ? 'yes' : 'no'}`);
     }
     if (!app) {
       app = this._apps.get(asStandardPurpose);
-      debug(
+      debugSelection(
         `app retrieved with standard purpose ${this.getPurposeDisplayId(asStandardPurpose)}: ${
           app ? 'yes' : 'no'
         }`
@@ -511,8 +527,8 @@ export class GitHubTokenManager {
 
   async getAppForPurpose(purpose: AppPurposeTypes, organizationName?: string) {
     const asCustomPurpose = this.getCustomPurpose(purpose);
-    if (asCustomPurpose?.getForOrganizationName) {
-      const configForOrganization = asCustomPurpose.getForOrganizationName(organizationName);
+    if (asCustomPurpose?.getForTargetName) {
+      const configForOrganization = asCustomPurpose.getForTargetName(organizationName);
       const appId = configForOrganization.appId;
       if (appId) {
         let instance = this._appsById.get(appId);
@@ -576,8 +592,8 @@ export class GitHubTokenManager {
     }
     let expectedAppId: number = null;
     const asCustomPurpose = this.getCustomPurpose(purpose);
-    if (asCustomPurpose?.getForOrganizationName) {
-      const configForOrganization = asCustomPurpose.getForOrganizationName(organization.name);
+    if (asCustomPurpose?.getForTargetName) {
+      const configForOrganization = asCustomPurpose.getForTargetName(organization.name);
       if (configForOrganization.appId) {
         expectedAppId =
           typeof configForOrganization.appId === 'string'
@@ -599,8 +615,8 @@ export class GitHubTokenManager {
         }
       }
     }
-    if (asCustomPurpose?.getForOrganizationName) {
-      const configForOrganization = asCustomPurpose.getForOrganizationName(organization.name);
+    if (asCustomPurpose?.getForTargetName) {
+      const configForOrganization = asCustomPurpose.getForTargetName(organization.name);
       if (configForOrganization.slug) {
         throw CreateError.NotImplemented(
           `While a custom purpose is configured for the "${organization.name}" with the app ${configForOrganization.slug}, the installation ID is not yet available with this call. This is a known limitation.`
@@ -760,7 +776,7 @@ export class GitHubTokenManager {
     let installationsWithPermissions = installations.filter((installation) => {
       return installation.supportsPermission(httpMethod, neededPermissions, installation);
     });
-    debug(
+    debugSelection(
       `Found ${installationsWithPermissions.length} installations with the needed permissions (${JSON.stringify(neededPermissions)}) and ${installations.length - installationsWithPermissions.length} without`
     );
     installationsWithPermissions = shuffle(installationsWithPermissions);
@@ -1055,7 +1071,7 @@ export class GitHubTokenManager {
             baseUrl
           );
     }
-    const hasCustomConfigurationByOrganization = customPurpose?.getForOrganizationName;
+    const hasCustomConfigurationByOrganization = customPurpose?.getForTargetName;
     const standardPurpose = purpose as AppPurpose;
     if (!hasCustomConfigurationByOrganization) {
       this._apps.set(standardPurpose, app);

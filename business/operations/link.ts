@@ -200,7 +200,7 @@ export async function sendLinkedAccountMail(
     eventName: undefined,
   };
   try {
-    const receipt = await operations.emailRenderSend(viewName, mail, contentOptions);
+    const receipt = await operations.emailRenderSend(insights, viewName, mail, contentOptions);
     insights.trackEvent({
       name: 'LinkMailSuccess',
       properties: customData as any as { [key: string]: string },

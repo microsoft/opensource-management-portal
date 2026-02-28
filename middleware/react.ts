@@ -273,13 +273,14 @@ type CacheBuffer = {
 const localFallbackBlobCache = new Map<string, CacheBuffer>();
 
 export async function TryFallbackToBlob(req: ReposAppRequest, res: Response): Promise<boolean> {
+  const { insights } = req;
   if (!req.path) {
     return false;
   }
   const providers = getProviders(req);
   const baseUrl = req.originalUrl;
   if (localFallbackBlobCache.has(baseUrl)) {
-    providers.insights.trackEvent({ name: 'FallbackToBlob', properties: { baseUrl } });
+    insights.trackEvent({ name: 'FallbackToBlob', properties: { baseUrl } });
     const entry = localFallbackBlobCache.get(baseUrl);
     if (entry.contentType) {
       res.contentType(entry.contentType);
@@ -293,7 +294,7 @@ export async function TryFallbackToBlob(req: ReposAppRequest, res: Response): Pr
   }
   const [buffer, contentType] = await fallbackBlob.get(baseUrl);
   if (buffer) {
-    providers.insights.trackEvent({ name: 'FallbackToBlob', properties: { baseUrl } });
+    insights.trackEvent({ name: 'FallbackToBlob', properties: { baseUrl } });
     localFallbackBlobCache.set(baseUrl, { buffer, contentType });
     if (contentType) {
       res.contentType(contentType);

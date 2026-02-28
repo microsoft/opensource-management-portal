@@ -51,7 +51,8 @@ export function webContextMiddleware(req: ReposAppRequest, res: Response, next: 
 }
 
 export function apiContextMiddleware(req: ReposApiRequest, res: Response, next: NextFunction) {
-  const { operations, insights } = getProviders(req);
+  const { insights } = req;
+  const { operations } = getProviders(req);
   if (req.individualContext) {
     const msg = 'INVALID: API and web contexts should not be mixed';
     console.warn(msg);

@@ -5,7 +5,7 @@
 
 import { WebhookProcessor } from '../organizationProcessor.js';
 import { Operations, Organization } from '../../index.js';
-import { IProviders, GitHubTeamRole } from '../../../interfaces/index.js';
+import { IProviders, GitHubTeamRole, AppInsightsTelemetryClient } from '../../../interfaces/index.js';
 
 export default class MembershipWebhookProcessor implements WebhookProcessor {
   filter(data: any) {
@@ -13,7 +13,12 @@ export default class MembershipWebhookProcessor implements WebhookProcessor {
     return eventType === 'membership';
   }
 
-  async run(providers: IProviders, organization: Organization, data: any): Promise<any> {
+  async run(
+    providers: IProviders,
+    insights: AppInsightsTelemetryClient,
+    organization: Organization,
+    data: any
+  ): Promise<any> {
     const operations = providers.operations as Operations;
     const queryCache = providers.queryCache;
     const event = data.body;

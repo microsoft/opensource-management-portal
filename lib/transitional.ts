@@ -14,6 +14,7 @@ import appPackage from '../package.json' with { type: 'json' };
 import type { ICreateRepositoryApiResult } from '../api/createRepo.js';
 import { Repository } from '../business/repository.js';
 import {
+  AppInsightsTelemetryClient,
   GitHubRepositoryPermission,
   type ICorporateLink,
   type IDictionary,
@@ -493,6 +494,7 @@ export interface ICustomizedTeamPermissionsWebhookLogic {
 
 export interface INewRepositoryContext {
   isCustomContext: boolean;
+  insights: AppInsightsTelemetryClient;
 }
 
 export function getDeploymentIdentifier(providers: IProviders) {

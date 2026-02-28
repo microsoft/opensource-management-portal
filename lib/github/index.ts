@@ -78,6 +78,7 @@ const ERROR_RESPONSE_HEADERS = [
 ];
 
 interface IRestLibraryOptions {
+  insights: TelemetryClient;
   config: SiteConfiguration;
   cacheProvider: ICacheHelper;
   github?: Octokit;
@@ -106,11 +107,7 @@ export class RestLibrary {
       throw new Error('No Redis instance provided to the GitHub library context constructor.');
     }
     this.cacheProvider = cacheProvider;
-
-    if (options.operations?.insights) {
-      this._insights = options.operations.insights;
-    }
-
+    this._insights = options.insights;
     const config = options.config;
     if (!config) {
       throw new Error('No runtime configuration instance provided to the library context constructor');

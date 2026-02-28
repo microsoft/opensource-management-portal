@@ -81,6 +81,7 @@ import type {
   IProviders,
   IReposApplication,
   SiteConfiguration,
+  AppInsightsTelemetryClient,
 } from '../interfaces/index.js';
 import type { ConfigDataPostgres } from '../config/data.postgres.types.js';
 import { prepareSessionMiddleware } from './session/index.js';
@@ -105,6 +106,7 @@ type CompanyStartupEntrypoint = (
 async function initializeAsync(
   executionEnvironment: ExecutionEnvironment,
   providers: IProviders,
+  insights: AppInsightsTelemetryClient,
   // app: IReposApplication,
   // express,
   rootdir: string,
@@ -137,7 +139,7 @@ async function initializeAsync(
     debug(`mail provider initialization failure: ${mailInitError}`);
   }
 
-  providers.github = configureGitHubLibrary(providers.cacheProvider, config);
+  providers.github = configureGitHubLibrary(insights, providers.cacheProvider, config);
 
   // always check if config exists to prevent crashing because of trying to access an undefined object
   const emOptions: IEntityMetadataProvidersOptions = {
@@ -300,6 +302,7 @@ async function initializeAsync(
       entityMetadataProvider: providerNameToInstance(config.entityProviders.repositorymetadata),
     });
     const operations = new Operations({
+      insights,
       executionEnvironment,
       providers,
       repositoryMetadataProvider,
@@ -321,10 +324,15 @@ async function initializeAsync(
   }
 }
 
-function configureGitHubLibrary(cacheProvider: ICacheHelper, config: SiteConfiguration): RestLibrary {
+function configureGitHubLibrary(
+  insights: AppInsightsTelemetryClient,
+  cacheProvider: ICacheHelper,
+  config: SiteConfiguration
+): RestLibrary {
   const libraryContext = new RestLibrary({
     config,
     cacheProvider,
+    insights,
   });
   return libraryContext;
 }
@@ -423,6 +431,8 @@ export default async function initialize(
     applicationProfile,
   };
   executionEnvironment.providers = providers;
+  const insights = appInsights(providers, executionEnvironment, app, config);
+  providers.genericInsights = insights;
   if (app) {
     app.set('providers', providers);
     app.providers = providers;
@@ -443,8 +453,6 @@ export default async function initialize(
   if (app) {
     app.use(routeCorrelationId);
   }
-  const insights = appInsights(providers, executionEnvironment, app, config);
-  providers.insights = insights;
   if (!exception && (!config || !config.activeDirectory)) {
     exception = new Error(
       `config.activeDirectory.clientId and config.activeDirectory.clientSecret are required to initialize KeyVault`
@@ -490,7 +498,7 @@ export default async function initialize(
       throw noKeyVault;
     }
     try {
-      await initializeAsync(executionEnvironment, providers, rootdir, config);
+      await initializeAsync(executionEnvironment, providers, insights, rootdir, config);
     } catch (initializeError) {
       console.dir(initializeError);
       debug(`Initialization failure: ${initializeError}`);
@@ -502,7 +510,7 @@ export default async function initialize(
   try {
     if (app) {
       const express = (app as any)?.expressInstance as Express;
-      await middlewareIndex(app, express, providers, config, rootdir, hasCustomRoutes, exception);
+      await middlewareIndex(app, express, providers, insights, config, rootdir, hasCustomRoutes, exception);
     }
   } catch (middlewareError) {
     exception = middlewareError;

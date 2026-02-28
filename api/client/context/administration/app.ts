@@ -5,13 +5,9 @@
 
 import { NextFunction, Response, Router } from 'express';
 
-import { ReposAppRequest } from '../../../../interfaces/index.js';
-import { CreateError, getProviders } from '../../../../lib/transitional.js';
+import { CreateError } from '../../../../lib/transitional.js';
 
-import routeIndividualApp from './app.js';
 import GitHubApplication from '../../../../business/application.js';
-import { OrganizationSetting } from '../../../../business/entities/organizationSettings/organizationSetting.js';
-import { sortByCaseInsensitive } from '../../../../lib/utils.js';
 import routeApplicationInstallation from './appInstallation.js';
 import { ApiRequestWithGitHubApplication, RequestWithInstallation } from './types.js';
 
@@ -26,7 +22,6 @@ router.get('/', async function (req: ApiRequestWithGitHubApplication, res: Respo
   //     `./${githubApplication.id}/installations/${installationIdString}?setup_action=${setupAction}`
   //   );
   // }
-  // const individualContext = req.individualContext;
   const allInstalls = await gitHubApplication.getInstallations({ maxAgeSeconds: 5 });
   const { valid, invalid } = GitHubApplication.filterInstallations(allInstalls);
   return res.json({
@@ -41,8 +36,6 @@ router.get('/', async function (req: ApiRequestWithGitHubApplication, res: Respo
 });
 
 router.use('/installations/:installationId', async function (req: RequestWithInstallation, res, next) {
-  // const installationIdString = req.query.installation_id;
-  // const setupAction = req.query.setup_action;
   const { gitHubApplication } = req;
   const { installationId: installationIdAsString } = req.params;
   const installationId = Number(installationIdAsString);

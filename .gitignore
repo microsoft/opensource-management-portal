@@ -21,3 +21,7 @@ junit.xml
 DO_NOT_COMMIT*
 .secrets.env
 secrets/
+vendor.nocommit/
+
+# If used by an agent
+.*.txt

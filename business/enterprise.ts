@@ -3,21 +3,47 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
 
-import { GitHubTokenType, getGitHubTokenTypeFromValue } from '../lib/github/appTokens.js';
-import { CreateError } from '../lib/transitional.js';
-import { createPagedCacheOptions, getPageSize, symbolizeApiResponse } from './operations/core.js';
+import type { GraphqlResponseError } from '@octokit/graphql';
 
+import { GitHubTokenType, getGitHubTokenTypeFromValue } from '../lib/github/appTokens.js';
+import { CreateError, ErrorHelper } from '../lib/transitional.js';
+import {
+  createPagedCacheOptions,
+  GetInvisibleOrganizationOptions,
+  getPageSize,
+  symbolizeApiResponse,
+} from './operations/core.js';
+import { Organization } from './organization.js';
+
+import GitHubEnterpriseBilling from './enterpriseBilling.js';
 // import GitHubEnterpriseCopilot from ...; // this is a placeholder for an eventual import
 
 import type {
   GetAuthorizationHeader,
   GitHubSimpleAccount,
+  IGitHubAppInstallation,
   IPagedCacheOptions,
   IProviders,
 } from '../interfaces/index.js';
-import GitHubEnterpriseBilling from './enterpriseBilling.js';
+import {
+  getAppPurposeId,
+  GitHubAppConfiguration,
+  isCustomAppPurpose,
+  AppPurposeTypes,
+  isCustomAppPurposeWithGetTargetedAppInstance,
+  isCustomAppPurposeWithGetAppInstance,
+  GitHubAppAuthenticationType,
+} from '../lib/github/appPurposes.js';
+import {
+  BasicGitHubAppInstallation,
+  OrganizationFeature,
+  OrganizationSetting,
+} from './entities/organizationSettings/organizationSetting.js';
+import GitHubApplication from './application.js';
 
 // TODO: paginate across enterprise fix + support iterators
+
+type AppAndInstallationIds = Omit<BasicGitHubAppInstallation, 'appPurposeId'>;
 
 type EnterpriseMemberBasics = {
   __typename: string;
@@ -99,15 +125,26 @@ function isStringToken(token: string | GetAuthorizationHeader): token is string 
   return typeof token === 'string';
 }
 
+type EnterpriseOptions = {
+  fixedPurpose?: AppPurposeTypes;
+  useEnterpriseTokenForOrganizations?: boolean;
+};
+
 export default class GitHubEnterprise {
   private _billing: GitHubEnterpriseBilling;
 
   private _graphqlNodeId: string;
+  private _knownOrgInstallations = new Map<
+    string,
+    IGitHubAppInstallation | GitHubAppOrganizationInstallationDetail
+  >();
+  private _invisibleOrganizations = new Map<string, Organization>();
 
   constructor(
     private providers: IProviders,
     public slug: string,
-    private enterpriseToken: string | GetAuthorizationHeader
+    private enterpriseToken: string | GetAuthorizationHeader,
+    private options?: EnterpriseOptions
   ) {
     if (isStringToken(enterpriseToken)) {
       if (enterpriseToken.startsWith('bearer')) {
@@ -391,6 +428,45 @@ export default class GitHubEnterprise {
     }
   }
 
+  // Organizations
+
+  async createOrganization(
+    login: string,
+    profileName: string,
+    adminLogins: string[],
+    billingEmail: string
+  ): Promise<{ id: string; login: string; name: string }> {
+    const github = this.providers.github;
+    const mutation = queries.createEnterpriseOrganization;
+    const nodeId = this.requireGraphqlNodeId();
+    try {
+      const result = await github.graphql(this.enterpriseToken, mutation, {
+        enterpriseId: nodeId,
+        login,
+        profileName,
+        adminLogins,
+        billingEmail,
+      });
+      const organization = result?.createEnterpriseOrganization?.organization;
+      if (!organization) {
+        throw CreateError.InvalidParameters('Organization creation failed or returned no data');
+      }
+      return organization;
+    } catch (error) {
+      const asGraphqlError = error as GraphqlResponseError<unknown>;
+      if (asGraphqlError?.name === 'GraphqlResponseError') {
+        const message = asGraphqlError.message;
+        if (message.includes('Organization name is not available')) {
+          throw CreateError.Conflict(
+            `The organization name "${login}" is not available. Please choose another name.`,
+            asGraphqlError
+          );
+        }
+      }
+      throw error;
+    }
+  }
+
   async getGitHubLoginForUserPrincipalName(userPrincipalName: string): Promise<string> {
     const node = await this.getSamlNodeFromUserPrincipalName(userPrincipalName);
     return node?.user?.login;
@@ -537,6 +613,164 @@ export default class GitHubEnterprise {
     }
   }
 
+  private guardFixedAppPurposeRequired() {
+    if (!this.options?.fixedPurpose) {
+      throw CreateError.InvalidParameters(
+        'Cannot create organization instance without a fixed app purpose provided to the enterprise constructor.'
+      );
+    }
+  }
+
+  async installEnterpriseAppOnOrganization(
+    orgName: string
+  ): Promise<GitHubAppOrganizationInstallationDetail> {
+    const lc = orgName.toLowerCase();
+    this.guardFixedAppPurposeRequired();
+    const purpose = this.options.fixedPurpose;
+    let enterpriseAppConfiguration: GitHubAppConfiguration;
+    if (isCustomAppPurpose(purpose) && purpose.getForTargetName) {
+      enterpriseAppConfiguration = purpose.getForTargetName(this.slug);
+    }
+    if (!enterpriseAppConfiguration) {
+      throw CreateError.InvalidParameters(
+        `No defined enterprise configuration is available from the fixed app purpose for "${this.slug}".`
+      );
+    }
+    const clientId = enterpriseAppConfiguration.clientId;
+    if (!clientId) {
+      throw CreateError.InvalidParameters(
+        `No client ID is defined in the enterprise configuration for "${this.slug}" and purpose ${purpose}.`
+      );
+    }
+    const installation = await this.installGitHubAppOnOrganization(orgName, clientId, {
+      repository_selection: GitHubAppInstallationRepositoryScope.All,
+    });
+    this._knownOrgInstallations.set(lc, installation);
+    return installation;
+  }
+
+  async isEnterpriseAppInstalledOnOrganization(orgName: string): Promise<boolean> {
+    this.guardFixedAppPurposeRequired();
+    try {
+      await this.getOrganizationEnterpriseAppInstallationDetails(orgName);
+      return true;
+    } catch (error) {
+      if (ErrorHelper.IsNotFound(error)) {
+        return false;
+      }
+      throw error;
+    }
+  }
+
+  async getOrganizationEnterpriseAppInstallationDetails(orgName: string) {
+    this.guardFixedAppPurposeRequired();
+    const lc = orgName.toLowerCase();
+    let existing = this._knownOrgInstallations.get(lc);
+    if (existing) {
+      return existing;
+    }
+    const purpose = this.options.fixedPurpose;
+    if (!isCustomAppPurpose(purpose)) {
+      throw CreateError.InvalidParameters(
+        'From an enterprise instance, only custom app purposes are supported.'
+      );
+    }
+    let enterpriseAppConfiguration: GitHubAppConfiguration;
+    if (purpose.getForTargetName) {
+      enterpriseAppConfiguration = purpose.getForTargetName(this.slug);
+    }
+    if (!enterpriseAppConfiguration) {
+      throw CreateError.InvalidParameters(
+        `No defined enterprise configuration is available from the fixed app purpose for "${this.slug}".`
+      );
+    }
+    let instance: GitHubApplication;
+    if (isCustomAppPurposeWithGetAppInstance(purpose)) {
+      instance = purpose.getGitHubAppInstance();
+    } else if (isCustomAppPurposeWithGetTargetedAppInstance(purpose)) {
+      instance = purpose.getGitHubAppInstanceForTargetName(this.slug);
+    } else {
+      throw CreateError.InvalidParameters(
+        'Cannot resolve GitHub Application instance from the provided app purpose. No appropriate helper methods.'
+      );
+    }
+    try {
+      existing = await instance.getInstallationForOrganization(orgName);
+      this._knownOrgInstallations.set(lc, existing);
+    } catch (error) {
+      if (ErrorHelper.IsNotFound(error)) {
+        throw CreateError.NotFound(
+          `The GitHub App "${instance.slug}" is not installed on the "${orgName}" organization in the "${this.slug}" enterprise, or, the organization does not exist in the enterprise.`
+        );
+      }
+      throw ErrorHelper.WrapError(
+        error,
+        `Could not get installation details for the GitHub App "${instance.slug}" on the "${orgName}" organization in the "${this.slug}" enterprise: ${error.message}`
+      );
+    }
+    return existing;
+  }
+
+  async getOrganization(orgName: string) {
+    const lc = orgName.toLowerCase();
+    if (this._invisibleOrganizations.has(lc)) {
+      return this._invisibleOrganizations.get(lc);
+    }
+    // Support using the enterprise token directly for org operations
+    if (this.options?.useEnterpriseTokenForOrganizations) {
+      if (!isStringToken(this.enterpriseToken)) {
+        throw CreateError.InvalidParameters(
+          'useEnterpriseTokenForOrganizations requires a string token in the enterprise constructor.'
+        );
+      }
+      // Strip "token " prefix since CreateEmptyWithOldToken expects raw token
+      // (getAuthorizationHeader in operations will add it back)
+      const rawToken = this.enterpriseToken.replace(/^token\s+/i, '');
+      const orgSettings = OrganizationSetting.CreateEmptyWithOldToken(
+        rawToken,
+        `${orgName} in ${this.slug} enterprise (enterprise token)`
+      );
+      orgSettings.active = true;
+      orgSettings.features.push(OrganizationFeature.Invisible);
+      const invisibleOrgOptions: GetInvisibleOrganizationOptions = {
+        requireExplicitSettings: true,
+        settings: orgSettings,
+        authenticationType: GitHubAppAuthenticationType.BestAvailable,
+        storeInstanceByName: false,
+      };
+      const { operations } = this.providers;
+      const org = operations.getInvisibleOrganization(orgName, invisibleOrgOptions);
+      this._invisibleOrganizations.set(lc, org);
+      return org;
+    }
+    const installation = await this.getOrganizationEnterpriseAppInstallationDetails(orgName);
+    const install: AppAndInstallationIds = {
+      appId: installation.app_id,
+      installationId: installation.id,
+    };
+    const orgSettings = new OrganizationSetting();
+    orgSettings.organizationId = installation.account.id;
+    const purpose = this.options.fixedPurpose;
+    const appPurposeId = getAppPurposeId(purpose);
+    orgSettings.active = true;
+    orgSettings.operationsNotes = `${orgName} in ${this.slug} enterprise (${appPurposeId})`;
+    orgSettings.features.push(OrganizationFeature.Invisible);
+    orgSettings.installations.push({
+      ...install,
+      appPurposeId,
+    });
+    const invisibleOrgOptions: GetInvisibleOrganizationOptions = {
+      requireExplicitSettings: true,
+      settings: orgSettings,
+      authenticationType: GitHubAppAuthenticationType.ForceSpecificInstallation,
+      storeInstanceByName: false, // don't keep this around in Operations
+    };
+    const { operations } = this.providers;
+    const org = operations.getInvisibleOrganization(orgName, invisibleOrgOptions);
+    this._invisibleOrganizations.set(lc, org);
+    return org;
+  }
+
   async getOrganizations(): Promise<EnterpriseOrganizationBasics[]> {
     const github = this.providers.github;
     try {
@@ -559,6 +793,23 @@ export default class GitHubEnterprise {
 }
 
 const queries = {
+  createEnterpriseOrganization: `
+    mutation createEnterpriseOrganization($enterpriseId: ID!, $login: String!, $profileName: String!, $adminLogins: [String!]!, $billingEmail: String!) {
+      createEnterpriseOrganization(input: {
+        enterpriseId: $enterpriseId,
+        login: $login,
+        profileName: $profileName,
+        adminLogins: $adminLogins,
+        billingEmail: $billingEmail
+      }) {
+        organization {
+          id
+          login
+          name
+        }
+      }
+    }
+  `,
   removeEnterpriseMember: `
     mutation removeEnterpriseMember($enterpriseId:ID!, $userId:ID!) {
       removeEnterpriseMember(input:{

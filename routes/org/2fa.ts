@@ -16,7 +16,6 @@ router.get('/', async function (req: ReposAppRequest, res: Response, next: NextF
   const onboarding = req.query.onboarding;
   const joining = req.query.joining;
 
-  req.individualContext.webContext.pushBreadcrumb('Multi-factor authentication check');
   const username = req.individualContext.getGitHubIdentity().username;
   try {
     const state = await organization.isMemberSingleFactor(username, NoCacheNoBackground);

@@ -10,6 +10,7 @@ import lodash from 'lodash';
 import { throat } from '../../vendor/throat/index.js';
 
 import {
+  BasicGitHubAppInstallation,
   OrganizationFeature,
   OrganizationSetting,
 } from '../entities/organizationSettings/organizationSetting.js';
@@ -52,6 +53,7 @@ import {
   IPagedCrossOrganizationCacheOptions,
   ISupportedLinkTypeOutcome,
   IUnlinkMailStatus,
+  AppInsightsTelemetryClient,
 } from '../../interfaces/index.js';
 import { linkAccounts as linkAccountsMethod } from './link.js';
 import { RestLibrary } from '../../lib/github/index.js';
@@ -67,12 +69,16 @@ import { Repository } from '../repository.js';
 import { GitHubOrganizationResponse, Organization } from '../organization.js';
 import { GraphManager } from '../graphManager.js';
 
-import { ConfigGitHubOrganizationsSpecializedList } from '../../config/github.organizations.types.js';
+import {
+  ConfigGitHubOrganization,
+  ConfigGitHubOrganizationsSpecializedList,
+} from '../../config/github.organizations.types.js';
 import { renderHtmlMail } from '../../lib/mail/render.js';
 import { sendTerminatedAccountMail as sendTerminatedAccountMailMethod } from './unlinkMail.js';
 import { OrganizationSettingProvider } from '../entities/organizationSettings/organizationSettingProvider.js';
 import { Team } from '../team.js';
 
+import type { ICorporateIdentity } from '../user/index.js';
 import type { GitHubAppInformation, GitHubAuthenticationRequirement } from '../../lib/github/types.js';
 import type { ICacheHelper } from '../../lib/caching/index.js';
 import type { ILinkProvider } from '../../lib/linkProviders/index.js';
@@ -111,6 +117,7 @@ export function getApiSymbolMetadata(response: any) {
 export interface IOperationsOptions {
   github: RestLibrary;
   providers: IProviders;
+  insights: AppInsightsTelemetryClient;
   baseUrl?: string;
   executionEnvironment: ExecutionEnvironment;
   repositoryMetadataProvider: IRepositoryMetadataProvider;
@@ -187,6 +194,7 @@ const defaultGitHubPageSize = 100;
 export type CrossOrganizationMembersResult = Map<number, ICrossOrganizationMembershipByOrganization>;
 
 export type GetInvisibleOrganizationOptions = {
+  requireExplicitSettings?: boolean;
   settings?: OrganizationSetting;
   authenticationType?: GitHubAppAuthenticationType;
   storeInstanceByName?: boolean;
@@ -355,6 +363,7 @@ export class Operations {
     }
     this._tokenManager = new GitHubTokenManager({
       operations: this,
+      insights: options.insights,
       configurations: purposesToConfigurations,
       executionEnvironment: options.executionEnvironment,
     });
@@ -485,10 +494,6 @@ export class Operations {
 
   get config(): SiteConfiguration {
     return this.providers.config;
-  }
-
-  get insights(): any {
-    return this.providers.insights;
   }
 
   get nativeUrl() {
@@ -720,11 +725,11 @@ export class Operations {
     return isAuthorizedSystemAdministrator(this.providers, corporateId, corporateUsername);
   }
 
-  isPortalSudoer(githubLogin: string, link: ICorporateLink) {
+  isPortalSudoer(insights: AppInsightsTelemetryClient, githubLogin: string, link: ICorporateLink) {
     if (!this.initialized) {
       throw new Error('The application is not yet initialized');
     }
-    return this._portalSudo.isSudoer(githubLogin, link);
+    return this._portalSudo.isSudoer(insights, githubLogin, link);
   }
 
   isSystemAccountByUsername(username: string): boolean {
@@ -1302,31 +1307,81 @@ export class Operations {
     });
   }
 
+  async createDynamicSettingsForNewOrganization(
+    staticSettings: ConfigGitHubOrganization | OrganizationSetting,
+    installation: IGitHubAppInstallation,
+    corporateIdentity: ICorporateIdentity
+  ): Promise<OrganizationSetting> {
+    const settings = OrganizationSetting.CreateFromStaticSettings(staticSettings as ConfigGitHubOrganization);
+    if (installation.target_type !== 'Organization') {
+      throw new Error(`Unsupported GitHub App target of ${installation.target_type}.`);
+    }
+    settings.organizationName = installation.account.login;
+    settings.organizationId = installation.account.id;
+    const thisInstallation: BasicGitHubAppInstallation = {
+      appId: installation.app_id,
+      installationId: installation.id,
+    };
+    settings.installations.push(thisInstallation);
+    settings.updated = new Date();
+    settings.setupDate = new Date();
+    settings.setupByCorporateDisplayName = corporateIdentity.displayName;
+    settings.setupByCorporateId = corporateIdentity.id;
+    settings.setupByCorporateUsername = corporateIdentity.username;
+    settings.active = false;
+    let organizationDetails = null;
+    try {
+      const unconfiguredOrganization = this.getUnconfiguredOrganization(settings);
+      organizationDetails = await unconfiguredOrganization.getDetails();
+    } catch (organizationDetailsError) {
+      throw new Error(
+        `Is the app still installed correctly? The app needs to be able to read the organization plan information. ${organizationDetailsError.message}`
+      );
+    }
+    if (organizationDetails?.plan) {
+      settings.properties['plan'] = organizationDetails.plan.name;
+      if (!settings.properties['type']) {
+        settings.properties['type'] = organizationDetails.plan.name === 'free' ? 'public' : 'publicprivate';
+      }
+    }
+    return settings;
+  }
+
   // An invisible organization does not appear in the cross-organization
   // views or arrays provided by operations. However, they can still be
   // retrieved directly and connected to live tokens and objects.
   getInvisibleOrganization(name: string, options?: GetInvisibleOrganizationOptions) {
+    const requireExplicitSettings = options?.requireExplicitSettings;
     if (!this._invisibleOrganizations) {
       this._invisibleOrganizations = new Map();
     }
     const lowercase = name.toLowerCase();
-    if (this._invisibleOrganizations.has(lowercase) && options?.storeInstanceByName) {
+    if (
+      this._invisibleOrganizations.has(lowercase) &&
+      options?.storeInstanceByName &&
+      !requireExplicitSettings
+    ) {
       return this._invisibleOrganizations.get(lowercase);
     }
     let dynamicSettings: OrganizationSetting = null;
-    this._organizationSettings.map((dos) => {
-      if (
-        dos.active &&
-        dos.organizationName.toLowerCase() === lowercase &&
-        dos.hasFeature(OrganizationFeature.Invisible)
-      ) {
-        dynamicSettings = dos;
+    if (!requireExplicitSettings) {
+      this._organizationSettings.map((dos) => {
+        if (
+          dos.active &&
+          dos.organizationName.toLowerCase() === lowercase &&
+          dos.hasFeature(OrganizationFeature.Invisible)
+        ) {
+          dynamicSettings = dos;
+        }
+      });
+      if (!dynamicSettings && !options?.settings) {
+        throw CreateError.InvalidParameters(
+          `No organization settings available or configured for the ${name} organization`
+        );
       }
-    });
-    if (!dynamicSettings && !options?.settings) {
-      throw CreateError.InvalidParameters(
-        `No organization settings available or configured for the ${name} organization`
-      );
+    }
+    if (requireExplicitSettings && !options?.settings) {
+      throw CreateError.ParameterRequired('options.settings');
     }
     if (options?.settings) {
       dynamicSettings = options.settings;
@@ -1364,14 +1419,19 @@ export class Operations {
     return org;
   }
 
-  getPublicOnlyAccessOrganization(organizationName: string, organizationId?: number): Organization {
+  async getPublicOnlyAccessOrganization(
+    organizationName: string,
+    organizationId?: number
+  ): Promise<Organization> {
     organizationName = organizationName.toLowerCase();
-    const publicAccessToken = this.config.github.operations.publicAccessToken;
-    if (!publicAccessToken) {
+    const publicAccessTokenHeader = this.getPublicReadOnlyStaticToken();
+    if (!publicAccessTokenHeader) {
       throw CreateError.InvalidParameters('not configured for public read-only tokens');
     }
+    const publicToken = await publicAccessTokenHeader();
+    const [, tokenValue] = publicToken.value.split(' ');
     const emptySettings = OrganizationSetting.CreateEmptyWithOldToken(
-      publicAccessToken,
+      tokenValue,
       `Uncontrolled public organization - ${organizationName}`,
       organizationId
     );
@@ -1525,8 +1585,11 @@ export class Operations {
     return { type: SupportedLinkType.User, graphEntry };
   }
 
-  async terminateLinkAndMemberships(thirdPartyId: string, options?: UnlinkOptions): Promise<string[]> {
-    const insights = this.insights;
+  async terminateLinkAndMemberships(
+    insights: AppInsightsTelemetryClient,
+    thirdPartyId: string,
+    options?: UnlinkOptions
+  ): Promise<string[]> {
     options = options || {};
     const history: string[] = [];
     const continueOnError = options.continueOnError || false;
@@ -1618,7 +1681,13 @@ export class Operations {
     const companySpecific = getCompanySpecificDeployment();
     if (companySpecific?.features?.enterprises?.onUnlink) {
       try {
-        await companySpecific.features.enterprises.onUnlink(this.providers, account.id, options, history);
+        await companySpecific.features.enterprises.onUnlink(
+          this.providers,
+          insights,
+          account.id,
+          options,
+          history
+        );
       } catch (error) {
         insights?.trackException({ exception: error });
         console.warn(`Error during company-specific unlink operations: ${error}`);
@@ -1629,7 +1698,7 @@ export class Operations {
         if (unlinkWithoutUnlink) {
           history.push('This environment is configured to skip removing the actual link.');
         } else {
-          history.push(...(await account.removeLink()));
+          history.push(...(await account.removeLink(insights)));
         }
       }
     } catch (removeLinkError) {
@@ -2100,15 +2169,14 @@ export class Operations {
     return organization.repository(repositoryName, entity);
   }
 
-  private async sendMail(mail: IMail): Promise<any> {
+  private async sendMail(insights: AppInsightsTelemetryClient, mail: IMail): Promise<any> {
     const mailProvider = this.providers.mailProvider;
-    const insights = this.providers.insights;
     const customData = {
       receipt: null,
       eventName: undefined,
     };
     try {
-      const mailResult = await mailProvider.sendMail(mail);
+      const mailResult = await mailProvider.sendMail(insights, mail);
       customData.receipt = mailResult;
       insights.trackEvent({ name: 'MailSuccess', properties: customData });
       return mailResult;
@@ -2131,6 +2199,7 @@ export class Operations {
   }
 
   async emailRenderSend(
+    insights: AppInsightsTelemetryClient,
     emailViewName: string,
     mail: IMail,
     contentOptions: Record<string, any>,
@@ -2140,6 +2209,7 @@ export class Operations {
     if (companySpecific?.features?.mailProvider?.combinedRenderSendMail) {
       const receipt = await companySpecific.features.mailProvider.combinedRenderSendMail(
         this.providers,
+        insights,
         emailViewName,
         mail,
         contentOptions,
@@ -2150,7 +2220,6 @@ export class Operations {
         return receipt;
       }
     }
-    const { insights } = this.providers;
     try {
       const html = await renderHtmlMail(
         insights,
@@ -2160,7 +2229,7 @@ export class Operations {
         /* live telemetry, not a test */ false
       );
       mail.content = html;
-      const receipt = await this.sendMail(mail);
+      const receipt = await this.sendMail(insights, mail);
       return receipt;
     } catch (renderError) {
       console.warn('Error rendering email:', renderError);

@@ -30,7 +30,6 @@ router.get(
       /* ignored */
     }
     const publicMembership = result === true;
-    req.individualContext.webContext.pushBreadcrumb('Membership Visibility');
     let teamPostfix = '';
     if (onboarding || joining) {
       teamPostfix = '?' + (onboarding ? 'onboarding' : 'joining') + '=' + (onboarding || joining);

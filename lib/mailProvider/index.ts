@@ -9,7 +9,7 @@ import { randomUUID } from 'crypto';
 import MockMailService from './mockMailService.js';
 import SmtpMailService from './smtpMailService.js';
 import getCompanySpecificDeployment from '../../middleware/companySpecificDeployment.js';
-import type { IProviders, SiteConfiguration } from '../../interfaces/index.js';
+import type { AppInsightsTelemetryClient, IProviders, SiteConfiguration } from '../../interfaces/index.js';
 import ConsoleMailService from './consoleMailService.js';
 
 export interface IMail {
@@ -67,7 +67,7 @@ export function createMailAttachmentFromBase64(
 
 export interface IMailProvider {
   info: string;
-  sendMail(mail: IMail): Promise<any>;
+  sendMail(insights: AppInsightsTelemetryClient, mail: IMail): Promise<any>;
   html: boolean;
   getSentMessages(): any[];
   initialize(): Promise<string | void>;
@@ -79,7 +79,7 @@ export function isOverridingRecipients(config: SiteConfiguration) {
 
 function patchOverride(provider, newToAddress, htmlOrNot) {
   const sendMail = provider.sendMail.bind(provider);
-  provider.sendMail = (mailOptions: IMail): Promise<any> => {
+  provider.sendMail = (insights: AppInsightsTelemetryClient, mailOptions: IMail): Promise<any> => {
     let originalTo = mailOptions.to;
     if (typeof originalTo !== 'string' && originalTo && Array.isArray(originalTo) && originalTo.join) {
       originalTo = originalTo.join(', ');

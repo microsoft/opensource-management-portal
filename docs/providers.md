@@ -81,7 +81,7 @@ use cases:
 - `applicationProfile`: allows for hosting a separate set of routes replacing the main app
 - `corporateAdministrationProfile`: adds new sections and routes to the administration UI
 - `corporateViews`: a set of additional views that can be included in Pug templates
-- `corporateContactProvider`: a Microsoft-specific provider to retrieve information such as the open source attorney a given employee has, their business reviewer for open source, etc.
+- `corporateContactProvider`: a Microsoft-specific provider to resolve employee contact and reviewer data (for example legal and OSS attorney contacts) used by the portal. goes direct to blob now, no interim upstream dependency.
 
 Special providers for gold plated features:
 

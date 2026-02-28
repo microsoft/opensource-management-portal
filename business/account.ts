@@ -35,6 +35,7 @@ import {
   OrganizationMembershipRole,
   GitHubOrganizationEntity,
   GitHubSimpleAccount,
+  AppInsightsTelemetryClient,
 } from '../interfaces/index.js';
 import { ErrorHelper } from '../lib/transitional.js';
 
@@ -488,7 +489,7 @@ export class Account {
     }
   }
 
-  async removeLink(): Promise<any> {
+  async removeLink(insights: AppInsightsTelemetryClient): Promise<any> {
     const linkProvider = this._operations.providers.linkProvider as ILinkProvider;
     if (!linkProvider) {
       throw new Error('No link provider');
@@ -498,7 +499,6 @@ export class Account {
       await this.getDetailsAndDirectLink(/* do not throw if deleted account */ false);
     } catch (getDetailsError) {
       // We ignore any error to make sure link removal always works
-      const insights = this._operations.providers.insights;
       if (getDetailsError) {
         insights?.trackException({
           exception: getDetailsError,

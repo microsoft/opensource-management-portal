@@ -13,9 +13,18 @@ import createGithubStrategy from './passport/githubStrategy.js';
 import serializer from './passport/serializer.js';
 import { CreateError } from '../lib/transitional.js';
 
-import type { IReposApplication, ReposAppRequest, SiteConfiguration } from '../interfaces/index.js';
+import type {
+  AppInsightsTelemetryClient,
+  IReposApplication,
+  ReposAppRequest,
+  SiteConfiguration,
+} from '../interfaces/index.js';
 
-export default function (app: IReposApplication, config: SiteConfiguration) {
+export default function (
+  app: IReposApplication,
+  insights: AppInsightsTelemetryClient,
+  config: SiteConfiguration
+) {
   const supportedAuth = ['aad', 'oauth2', 'entra-id'];
 
   if (!supportedAuth.includes(config.authentication.scheme)) {
@@ -54,7 +63,7 @@ export default function (app: IReposApplication, config: SiteConfiguration) {
   }
 
   if (config.authentication.scheme === 'entra-id') {
-    const strategies = createEntraStrategies(app, config);
+    const strategies = createEntraStrategies(app, insights, config);
     for (const name in strategies) {
       passport.use(name, strategies[name]);
     }
@@ -76,8 +85,13 @@ export default function (app: IReposApplication, config: SiteConfiguration) {
   serializer.initialize(serializerOptions, app);
 
   app.use((req: ReposAppRequest, res: Response, next: NextFunction) => {
-    if (req?.insights?.commonProperties && config.authentication.scheme === 'aad' && req?.user?.azure?.oid) {
-      req.insights.commonProperties.aadId = req.user.azure.oid;
+    const activeContext = req.apiContext || req.individualContext;
+    if (
+      activeContext?.insights?.commonProperties &&
+      config.authentication.scheme === 'aad' &&
+      req?.user?.azure?.oid
+    ) {
+      activeContext.insights.commonProperties.aadId = req.user.azure.oid;
     }
     return next();
   });

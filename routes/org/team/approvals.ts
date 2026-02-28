@@ -91,7 +91,6 @@ export class PermissionWorkflowEngine {
 // Find the request and assign the workflow engine
 
 router.use(function (req: ReposAppRequest, res: Response, next: NextFunction) {
-  req.individualContext.webContext.pushBreadcrumb('Approvals');
   next();
 });
 
@@ -137,7 +136,6 @@ router.use(
         return next(new Error('Mismatch on team'));
       }
       const engine = new PermissionWorkflowEngine(team, approvalPackage);
-      req.individualContext.webContext.pushBreadcrumb(engine.typeName + ' Request');
       req.approvalEngine = engine;
       return next();
     } catch (error) {

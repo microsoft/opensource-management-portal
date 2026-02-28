@@ -4,7 +4,8 @@
 //
 
 import { Organization, Team } from '../../../business/index.js';
-import type { IProviders, TeamJsonFormat } from '../../../interfaces/index.js';
+
+import type { AppInsightsTelemetryClient, IProviders, TeamJsonFormat } from '../../../interfaces/index.js';
 
 export interface ICompanySpecificAugmentApiMetadata {
   augmentOrganizationClientJson?: (
@@ -15,6 +16,7 @@ export interface ICompanySpecificAugmentApiMetadata {
 
   augmentTeamClientJson?: (
     providers: IProviders,
+    insights: AppInsightsTelemetryClient,
     team: Team,
     standardJsonMetadata: object,
     jsonFormat: TeamJsonFormat

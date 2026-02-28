@@ -10,6 +10,7 @@ import { OrganizationSetting } from '../../../../business/entities/organizationS
 import { AdministrativeGitHubAppInstallationResponse, RequestWithInstallation } from './types.js';
 import { IGitHubAppInstallation, IProviders } from '../../../../interfaces/index.js';
 import GitHubApplication from '../../../../business/application.js';
+import { IndividualContext } from '../../../../business/user/index.js';
 
 const router: Router = Router();
 
@@ -120,6 +121,41 @@ router.post('/addInstallation', async (req: RequestWithInstallation, res: Respon
   }
 });
 
+// --- First-time organization installation (creates dynamic settings) ---
+
+router.post(
+  '/installNewOrganization',
+  async (req: RequestWithInstallation, res: Response, next: NextFunction) => {
+    const providers = getProviders(req);
+    const { organizationSettingsProvider, operations } = providers;
+    const { gitHubApplication, installation, organizationDynamicSettings, organizationStaticSettings } = req;
+    const individualContext = (req.individualContext || req.apiContext) as IndividualContext;
+    if (organizationDynamicSettings) {
+      return next(
+        CreateError.InvalidParameters(
+          'Settings already exist. The organization has already been adopted. Use addInstallation to add additional app installations.'
+        )
+      );
+    }
+    try {
+      const settings = await operations.createDynamicSettingsForNewOrganization(
+        organizationStaticSettings,
+        installation,
+        individualContext.corporateIdentity
+      );
+      await organizationSettingsProvider.createOrganizationSetting(settings);
+      const response: AdministrativeGitHubAppInstallationResponse = {
+        app: gitHubApplication.asClientJson(),
+        installationId: installation.id,
+        dynamicSettings: settings,
+      };
+      return res.json(response) as unknown as void;
+    } catch (error) {
+      return next(error);
+    }
+  }
+);
+
 // --- Activation and deactivation ---
 
 async function changeInstallationActivation(
@@ -188,6 +224,57 @@ router.post('/deactivate', async (req: RequestWithInstallation, res: Response, n
   } catch (error) {
     return next(error);
   }
+});
+
+// --- Feature flag management ---
+
+router.delete('/feature/:flag', async (req: RequestWithInstallation, res: Response, next: NextFunction) => {
+  const { gitHubApplication, installation, organizationDynamicSettings } = req;
+  const { organizationSettingsProvider, insights } = getProviders(req);
+  if (!organizationDynamicSettings) {
+    return next(CreateError.NotFound('No dynamic settings available for the organization.'));
+  }
+  const { features } = organizationDynamicSettings;
+  const flag = req.params.flag as string;
+  const restart = req.query.restart === '1';
+  insights?.trackEvent({
+    name: 'RemoveOrganizationFeatureFlagViaInstallation',
+    properties: {
+      flag,
+      restart,
+      appId: String(gitHubApplication.id),
+      installationId: String(installation.id),
+      organizationName: installation.account.login,
+      currentFeatureFlags: features.join(', '),
+    },
+  });
+  if (flag === 'active') {
+    if (!organizationDynamicSettings.active) {
+      return next(CreateError.InvalidParameters('The organization is already inactive.'));
+    }
+    organizationDynamicSettings.active = false;
+  } else {
+    if (!features.includes(flag)) {
+      return next(CreateError.InvalidParameters(`flag "${flag}" is not set`));
+    }
+    organizationDynamicSettings.features = organizationDynamicSettings.features.filter(
+      (flagEntry) => flagEntry !== flag
+    );
+  }
+  try {
+    if (restart) {
+      organizationDynamicSettings.updated = new Date();
+    }
+    await organizationSettingsProvider.updateOrganizationSetting(organizationDynamicSettings);
+  } catch (error) {
+    return next(error);
+  }
+  const response: AdministrativeGitHubAppInstallationResponse = {
+    app: gitHubApplication.asClientJson(),
+    installationId: installation.id,
+    dynamicSettings: organizationDynamicSettings,
+  };
+  return res.json(response) as unknown as void;
 });
 
 router.use('/*splat', (req, res: Response, next: NextFunction) => {

@@ -27,4 +27,5 @@ export type ConfigGitHubApp = {
   operations: ConfigGitHubAppGeneric;
   security: ConfigGitHubAppGeneric;
   ui: ConfigGitHubAppGeneric;
+  updates: ConfigGitHubAppGeneric;
 };

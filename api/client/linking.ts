@@ -17,8 +17,8 @@ const router: Router = Router();
 
 async function validateLinkOk(req: ReposAppRequest, res: Response, next: NextFunction) {
   const activeContext = (req.individualContext || req.apiContext) as IndividualContext;
+  const { insights } = activeContext;
   const providers = getProviders(req);
-  const insights = providers.insights;
   const config = providers.config;
   let validateAndBlockGuests = false;
   if (config && config.activeDirectory && config.activeDirectory.authentication.blockGuestUserTypes) {

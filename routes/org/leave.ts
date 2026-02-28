@@ -37,7 +37,6 @@ router.use(async (req: ILocalLeaveRequest, res: Response, next: NextFunction) =>
     return res.redirect('/');
   } else {
     req.orgLeave.memberOfOrgs = memberOfOrgs;
-    req.individualContext.webContext.pushBreadcrumb('Leave');
     return next();
   }
 });

@@ -34,7 +34,6 @@ interface ILocalOrgRequest extends ReposAppRequest {
 router.use(function (req: ReposAppRequest, res: Response, next: NextFunction) {
   const onboarding = req.query.onboarding;
   const organization = req.organization;
-  req.individualContext.webContext.pushBreadcrumb(organization.name, onboarding ? false : undefined);
   req.reposContext = {
     section: 'org',
     organization: req.organization,

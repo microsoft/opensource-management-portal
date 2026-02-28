@@ -84,7 +84,6 @@ router.get('/', async function (req: ReposAppRequest, res: Response, next: NextF
   if (!approvalProvider) {
     return next(new Error('No approval provider instance available'));
   }
-  req.individualContext.webContext.pushBreadcrumb('Requests');
   // CONSIDER: Requests on GitHub.com should be shown, too, now that that's integrated in many cases
   const id = req.individualContext.getGitHubIdentity().id;
   const aggregateTeams = await req.individualContext.aggregations.teams();
@@ -140,7 +139,6 @@ router.post('/:requestid/cancel', function (req: ReposAppRequest, res: Response,
 router.get('/:requestid', async function (req: ReposAppRequest, res: Response, next: NextFunction) {
   const requestid = req.params.requestid;
   const { approvalProvider, operations } = getProviders(req);
-  req.individualContext.webContext.pushBreadcrumb('Your Request');
   let isMaintainer = false;
   let pendingRequest: TeamJoinApprovalEntity = null;
   let team2: Team = null;

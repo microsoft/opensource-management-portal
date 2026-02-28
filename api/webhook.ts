@@ -20,6 +20,7 @@ interface IRequestWithRaw extends ReposAppRequest {
 }
 
 router.use(async (req: IRequestWithRaw, res: Response, next: NextFunction) => {
+  const { insights } = req;
   if (!isWebhookIngestionEndpointEnabled(req)) {
     return next(
       jsonError(
@@ -63,6 +64,7 @@ router.use(async (req: IRequestWithRaw, res: Response, next: NextFunction) => {
   };
   const options = {
     providers,
+    insights,
     organization: req.organization,
     event,
   };

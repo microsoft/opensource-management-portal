@@ -14,6 +14,7 @@ import { CreateError } from '../transitional.js';
 import { getKeyVaultKeyCryptographyClient } from '../signing.js';
 
 import type { AuthorizationHeaderValue, IProviders } from '../../interfaces/index.js';
+import { CryptographyClient } from '@azure/keyvault-keys';
 
 const debug = Debug('github:tokens');
 
@@ -224,6 +225,8 @@ export class GitHubAppTokens {
     if (!signUrl) {
       throw CreateError.InvalidParameters('Missing remote JWT signing URL from configuration');
     }
+    let stage = 'acquiring crypto client';
+    let cryptoClient: CryptographyClient;
     try {
       insights?.trackEvent({
         name: 'github_app.remote_jwt_sign.start',
@@ -232,7 +235,8 @@ export class GitHubAppTokens {
           clientIdOrAppId,
         },
       });
-      const cryptoClient = await getKeyVaultKeyCryptographyClient(this.providers, signUrl);
+      cryptoClient = await getKeyVaultKeyCryptographyClient(this.providers, signUrl);
+      stage = 'preparing payload';
       const header = { alg: 'RS256', typ: 'JWT' };
       const now = Math.floor(Date.now() / 1000);
       const payload = {
@@ -247,7 +251,9 @@ export class GitHubAppTokens {
       const encoder = new TextEncoder();
       const signingInputBytes = encoder.encode(signingInput);
       const hash = createHash('sha256').update(signingInputBytes).digest();
+      stage = 'signing with remote key';
       const signResult = await cryptoClient.sign('RS256', hash);
+      stage = 'signed';
       const signature = base64url.encode(signResult.result);
       insights?.trackEvent({
         name: 'github_app.remote_jwt_sign.signed',
@@ -277,7 +283,10 @@ export class GitHubAppTokens {
         name: 'github_app.remote_jwt_sign.failures',
         value: 1,
       });
-      throw error;
+      throw CreateError.Wrap(
+        `Unable to sign with key vault key at ${signUrl} (stage: ${stage}, client: ${clientIdOrAppId})`,
+        error
+      );
     }
   }
 

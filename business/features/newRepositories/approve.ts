@@ -4,12 +4,18 @@
 //
 
 import { Operations, Repository } from '../../index.js';
-import { IRepositoryMetadataProvider } from '../../entities/repositoryMetadata/repositoryMetadataProvider.js';
-import { ICachedEmployeeInformation, RepositoryLockdownState } from '../../../interfaces/index.js';
-import { IMail } from '../../../lib/mailProvider/index.js';
-import { IMailToRemoveAdministrativeLock } from './interfaces.js';
+import {
+  AppInsightsTelemetryClient,
+  ICachedEmployeeInformation,
+  RepositoryLockdownState,
+} from '../../../interfaces/index.js';
+
+import type { IMail } from '../../../lib/mailProvider/index.js';
+import type { IMailToRemoveAdministrativeLock } from './interfaces.js';
+import type { IRepositoryMetadataProvider } from '../../entities/repositoryMetadata/repositoryMetadataProvider.js';
 
 export async function administrativeApproval(
+  insights: AppInsightsTelemetryClient,
   operations: Operations,
   repositoryMetadataProvider: IRepositoryMetadataProvider,
   repository: Repository
@@ -64,7 +70,7 @@ export async function administrativeApproval(
     if (managerInfo && managerInfo.managerMail) {
       mailToCreator.cc = managerInfo.managerMail;
     }
-    await operations.emailRenderSend('newrepolockremoved', mailToCreator, {
+    await operations.emailRenderSend(insights, 'newrepolockremoved', mailToCreator, {
       reason: `Your new repo was approved. Additional actions are now required to gain access to continue to use it after classification.
                 ${reasonInfo}.`,
       headline: 'Repo approved',
@@ -86,7 +92,7 @@ export async function administrativeApproval(
         to: operationsMails,
         subject,
       };
-      await operations.emailRenderSend('newrepolockremoved', mailToOperations, {
+      await operations.emailRenderSend(insights, 'newrepolockremoved', mailToOperations, {
         reason: `An administrator has approved this repo, removing an administrative lock. As the operations contact for this system, you are receiving this e-mail.
                   This mail was sent to: ${operationsMails.join(', ')}`,
         headline: `Administrative lock removed: ${organization.name}/${repository.name}`,
@@ -100,8 +106,5 @@ export async function administrativeApproval(
       console.dir(mailIssue);
     }
   }
-  const insights = operations.insights;
-  if (insights) {
-    insights.trackMetric({ name: 'LockedRepoAdminUnlocks', value: 1 });
-  }
+  insights?.trackMetric({ name: 'LockedRepoAdminUnlocks', value: 1 });
 }

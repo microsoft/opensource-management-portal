@@ -6,6 +6,7 @@
 import { NextFunction, Response } from 'express';
 
 import { getProviders } from '../lib/transitional.js';
+import { ReposAppRequest } from '../interfaces/web.js';
 
 interface ICampaignData {
   uri?: any;
@@ -52,20 +53,14 @@ export default function initializeCampaigns(app) {
     return data;
   }
 
-  function processCampaignTelemetry(req) {
+  function processCampaignTelemetry(req: ReposAppRequest) {
+    const { insights } = req;
     // Required campaign-related query parameters
     const data = getCampaignTelemetry(req);
     if (!data) {
       return;
     }
-
-    const providers = getProviders(req);
-    const insights = providers.insights;
-    if (!insights) {
-      return;
-    }
-
-    insights.trackEvent({
+    insights?.trackEvent({
       name: 'ReposCampaignInteraction',
       properties: {
         source: data.source,
@@ -75,8 +70,7 @@ export default function initializeCampaigns(app) {
         path: req.path,
       },
     });
-
-    insights.trackMetric({ name: 'ReposCampaignInteractions', value: 1 });
+    insights?.trackMetric({ name: 'ReposCampaignInteractions', value: 1 });
   }
 
   function redirectGitHubMiddleware(req, res, next, getIdentity) {

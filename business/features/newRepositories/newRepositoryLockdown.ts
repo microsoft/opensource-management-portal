@@ -60,7 +60,12 @@ export default class NewRepositoryLockdownSystem {
   }
 
   removeAdministrativeLock(): Promise<void> {
-    return administrativeApproval(this.operations, this.repositoryMetadataProvider, this.repository);
+    return administrativeApproval(
+      this.insights,
+      this.operations,
+      this.repositoryMetadataProvider,
+      this.repository
+    );
   }
 
   async deleteLockedRepository(
@@ -69,6 +74,7 @@ export default class NewRepositoryLockdownSystem {
   ): Promise<void> {
     selfServiceDeleteLockedRepository(
       this.operations,
+      this.insights,
       this.repositoryMetadataProvider,
       this.repository,
       onlyDeleteIfAdministrativeLocked,
@@ -84,6 +90,7 @@ export default class NewRepositoryLockdownSystem {
     webhookEvent: GitHubWebhookRepositoryEventBody,
     doNotLockdown?: boolean
   ): Promise<RepositoryLockdownState> {
+    const { insights } = this;
     let outcome: ILockdownResult = null;
     try {
       outcome = await this.lockdownIfNecessaryImpl(
@@ -139,6 +146,7 @@ export default class NewRepositoryLockdownSystem {
       lockdownLog.push('Not sending lockdown emails due to "doNotLockdown" mode.');
     } else {
       await sendLockdownMails(
+        insights,
         this.operations,
         this.repository,
         outcome,
@@ -150,8 +158,6 @@ export default class NewRepositoryLockdownSystem {
         transferSourceRepositoryLogin
       );
     }
-
-    const insights = this.operations.insights;
     if (insights) {
       let metricName = 'CreatedRepos';
       if (isForkAdministratorLocked) {

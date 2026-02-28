@@ -34,13 +34,19 @@ import routeLogger from './logger.js';
 import routeLocals from './locals.js';
 import routePassport from './passport-routes.js';
 
-import type { IProviders, IReposApplication, SiteConfiguration } from '../interfaces/index.js';
+import type {
+  AppInsightsTelemetryClient,
+  IProviders,
+  IReposApplication,
+  SiteConfiguration,
+} from '../interfaces/index.js';
 import type { ExpressWithStatic } from './types.js';
 
 export default async function initMiddleware(
   app: IReposApplication,
   express: Express,
   providers: IProviders,
+  insights: AppInsightsTelemetryClient,
   config: SiteConfiguration,
   dirname: string,
   hasCustomRoutes: boolean,
@@ -104,7 +110,7 @@ export default async function initMiddleware(
       if (applicationProfile.sessions) {
         app.use(await connectSession(app, config, providers));
         try {
-          passport = passportConfig(app, config);
+          passport = passportConfig(app, insights, config);
         } catch (passportError) {
           initializationError = passportError;
         }

@@ -10,7 +10,6 @@ const router: Router = Router();
 import { getProviders } from '../../lib/transitional.js';
 import {
   OrganizationSetting,
-  BasicGitHubAppInstallation,
   SystemTeam,
 } from '../../business/entities/organizationSettings/organizationSetting.js';
 import { IndividualContext } from '../../business/user/index.js';
@@ -101,45 +100,12 @@ async function getDynamicSettingsFromLegacySettings(
   installation: IGitHubAppInstallation,
   individualContext: IndividualContext
 ): Promise<[OrganizationSetting, Organization]> {
-  const settings = OrganizationSetting.CreateFromStaticSettings(staticSettings);
-
-  if (installation.target_type !== 'Organization') {
-    throw new Error(`Unsupported GitHub App target of ${installation.target_type}.`);
-  }
-  settings.organizationName = installation.account.login;
-  settings.organizationId = installation.account.id;
-
-  const thisInstallation: BasicGitHubAppInstallation = {
-    appId: installation.app_id,
-    installationId: installation.id,
-  };
-  settings.installations.push(thisInstallation);
-
-  settings.updated = new Date();
-  settings.setupDate = new Date();
-  settings.setupByCorporateDisplayName = individualContext.corporateIdentity.displayName;
-  settings.setupByCorporateId = individualContext.corporateIdentity.id;
-  settings.setupByCorporateUsername = individualContext.corporateIdentity.username;
-
-  settings.active = false;
-
-  let organizationDetails = null;
-  let unconfiguredOrganization: Organization = null;
-  try {
-    unconfiguredOrganization = operations.getUnconfiguredOrganization(settings);
-    organizationDetails = await unconfiguredOrganization.getDetails();
-  } catch (ignoreOrganizationDetailsProblem) {
-    throw new Error(
-      `Is the app still installed correctly? The app needs to be able to read the organization plan information. ${ignoreOrganizationDetailsProblem.message}`
-    );
-  }
-  if (organizationDetails && organizationDetails.plan) {
-    settings.properties['plan'] = organizationDetails.plan.name;
-    if (!settings.properties['type']) {
-      settings.properties['type'] = organizationDetails.plan.name === 'free' ? 'public' : 'publicprivate'; // free SKU or not
-    }
-  }
-
+  const settings = await operations.createDynamicSettingsForNewOrganization(
+    staticSettings,
+    installation,
+    individualContext.corporateIdentity
+  );
+  const unconfiguredOrganization = operations.getUnconfiguredOrganization(settings);
   return [settings, unconfiguredOrganization];
 }
 

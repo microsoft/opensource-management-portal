@@ -12,7 +12,8 @@ import { WebhookProcessor } from '../organizationProcessor.js';
 import { Organization } from '../../index.js';
 import { AuditLogRecord } from '../../entities/auditLogRecord/auditLogRecord.js';
 import { MapWebhookEventsToAuditEvents, AuditLogSource } from '../../entities/auditLogRecord/index.js';
-import type { IProviders } from '../../../interfaces/index.js';
+
+import type { AppInsightsTelemetryClient, IProviders } from '../../../interfaces/index.js';
 
 // prettier-ignore
 const eventTypes = new Set([
@@ -123,7 +124,12 @@ export default class AuditLogRecorderWebhookProcessor implements WebhookProcesso
     return has;
   }
 
-  async run(providers: IProviders, organization: Organization, data: any): Promise<boolean> {
+  async run(
+    providers: IProviders,
+    insights: AppInsightsTelemetryClient,
+    organization: Organization,
+    data: any
+  ): Promise<boolean> {
     const result = await runAsync(providers, organization, data);
     return true;
   }
