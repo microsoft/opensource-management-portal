@@ -119,7 +119,7 @@
     "jsonc": "2.0.0",
     "jsonwebtoken": "9.0.3",
     "jwks-rsa": "3.2.2",
-    "liquidjs": "10.24.0",
+    "liquidjs": "10.25.0",
     "lodash": "4.17.23",
     "lowlight": "3.3.0",
     "luxon": "3.7.2",
