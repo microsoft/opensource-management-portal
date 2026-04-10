@@ -118,7 +118,7 @@
     "jose": "6.2.2",
     "jsonc": "2.0.0",
     "jsonwebtoken": "9.0.3",
-    "jwks-rsa": "3.2.2",
+    "jwks-rsa": "4.0.1",
     "liquidjs": "10.25.5",
     "lodash": "4.18.1",
     "lowlight": "3.3.0",
