@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout 🛒
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Packages 📦
         run: |
@@ -46,7 +46,7 @@ jobs:
     environment:
       name: development
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       #- uses: docker/build-push-action@v3
 
       - name: Azure OpenID Connect ✨
